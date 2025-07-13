@@ -1,0 +1,24 @@
+ALTER TABLE accounts
+    DROP CONSTRAINT IF EXISTS fk_accounts_branch;
+
+ALTER TABLE branches
+    DROP CONSTRAINT IF EXISTS fk_branches_manager;
+
+ALTER TABLE dishes
+    DROP COLUMN IF EXISTS count_order,
+    DROP COLUMN IF EXISTS total_sold;
+
+DROP TABLE IF EXISTS accounts;
+DROP TABLE IF EXISTS branches;
+DROP TABLE IF EXISTS dishes;
+DROP TABLE IF EXISTS set_dishes;
+DROP TABLE IF EXISTS sets;
+DROP TABLE IF EXISTS tables;
+DROP TYPE IF EXISTS table_status;
+DROP TABLE IF EXISTS guests;
+DROP TABLE IF EXISTS order_sets;
+DROP TABLE IF EXISTS order_dishes;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS delivery_dishes;
+DROP TABLE IF EXISTS deliveries;
+DROP TABLE IF EXISTS regulations;

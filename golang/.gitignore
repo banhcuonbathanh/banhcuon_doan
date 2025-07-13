@@ -1,0 +1,65 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+vendor/
+
+# Go workspace file
+go.work
+
+# Air temporary directory
+tmp/
+
+# IDE-specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Environment variables file
+.env
+
+# Compiled Object files, Static and Dynamic libs (Shared Objects)
+*.o
+*.a
+
+# Debug files
+debug
+
+# Docker-specific
+.docker/
+
+# Database files
+*.db
+*.sqlite
+
+# Binary file
+main
+
+# If you're using any task runners, ignore their files
+Taskfile.yml
+Taskfile.yaml
+
+# Ignore any local configuration files
+config.local.yaml
+config.local.yml
+
+# Ignore any files in a "scripts" directory
+scripts/

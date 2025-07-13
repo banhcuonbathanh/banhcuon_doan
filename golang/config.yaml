@@ -1,0 +1,8 @@
+DATABASE_URL: "postgres://restaurant:restaurant@localhost:5432/restaurant?sslmode=disable"
+GRPCAddress: ":50051"
+ServerAddress: ":8888"
+anthropicAPIKey: "your-api-key-here"
+anthropicAPIURL: "https://api.anthropic.com/v1/completions"
+pythonAddress: ":50052"
+QuanAnAddress: "http://localhost:3000"
+JWT_SECRET: "+5u4J0jNnH/ZGmEY4Y/cruXCsW6YDLLiIrhBsdpVCeMIw8mIRK3sonyDRVShfc+wS1L2fVY2Ute/RGhFXsdzTA=="

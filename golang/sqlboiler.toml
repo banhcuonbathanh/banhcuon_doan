@@ -1,0 +1,15 @@
+pkgname = "orm"                 # Package name for the generated code
+output = "orm"           # Directory where generated ORM code will be placed
+[psql]
+    dbname = "restaurant"
+    host = "localhost"
+    port = 5432
+    user = "restaurant"
+    pass = "restaurant"
+    sslmode = "disable"
+    blacklist = ["schema_migrations"]
+
+# Options
+wipe = true                          # clean output dir before generation
+no-tests = true                      # disable test file generation
+add-global-variants = true           # generate global slice variants

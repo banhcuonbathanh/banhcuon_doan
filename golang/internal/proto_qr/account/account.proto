@@ -1,0 +1,100 @@
+syntax = "proto3";
+package account_proto;
+option go_package = "english-ai-full/internal/proto_qr/account";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+service AccountService {
+  rpc CreateUser(AccountReq) returns (Account);
+  rpc UpdateUser(UpdateUserReq) returns (AccountRes);
+  rpc DeleteUser(DeleteAccountReq) returns (DeleteAccountRes);
+  rpc FindAllUsers(google.protobuf.Empty) returns (AccountList);
+  rpc FindByEmail(FindByEmailReq) returns (AccountRes);
+  rpc Login(LoginReq) returns (AccountRes);
+  rpc Register(RegisterReq) returns (RegisterRes);
+  rpc FindByID(FindByIDReq) returns (FindByIDRes);
+}
+
+message Account {
+  int64 id = 1;
+  int64 branch_id = 2;
+  string name = 3;
+  string email = 4;
+  string password = 5;
+  string avatar = 6;
+  string title = 7;
+  string role = 8;
+  int64 owner_id = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+
+message AccountReq {
+  int64 branch_id = 1;
+  string name = 2;
+  string email = 3;
+  string password = 4;
+  string avatar = 5;
+  string title = 6;
+  string role = 7;
+  int64 owner_id = 8;
+}
+
+message UpdateUserReq {
+  int64 id = 1;
+  int64 branch_id = 2;
+  string name = 3;
+  string email = 4;
+  string avatar = 6;
+  string title = 7;
+  string role = 8;
+  int64 owner_id = 9;
+}
+
+message AccountRes {
+  Account account = 1;
+}
+
+message AccountList {
+  repeated Account accounts = 1;
+}
+
+message LoginReq {
+  string email = 1;
+  string password = 2;
+}
+
+message DeleteAccountReq {
+  int64 userID = 1;
+}
+
+message DeleteAccountRes {
+  bool success = 1;
+}
+
+message FindByEmailReq {
+  string email = 1;
+}
+
+message RegisterReq {
+  string name = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message RegisterRes {
+  bool success = 1;
+  int64 id = 2;
+  string name = 3;
+  string email = 4;
+}
+
+message FindByIDReq {
+  int64 id = 1;
+}
+
+message FindByIDRes {
+  Account account = 1;
+}

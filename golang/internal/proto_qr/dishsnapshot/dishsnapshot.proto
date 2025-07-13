@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "english-ai-full/internal/proto_qr/dishsnapshot";
+
+import "google/protobuf/timestamp.proto";
+
+message DishSnapshot {
+    int64 id = 1;
+    string name = 2;
+    int32 price = 3;
+    string description = 4;
+    string image = 5;
+    string status = 6;
+    int64 dish_id = 7;
+    google.protobuf.Timestamp created_at = 8;
+    google.protobuf.Timestamp updated_at = 9;
+    }

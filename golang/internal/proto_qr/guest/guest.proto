@@ -1,0 +1,141 @@
+syntax = "proto3";
+
+package guest;
+
+option go_package = "english-ai-full/internal/proto_qr/guest";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+message Guest {
+  int64 id = 1;
+  string name = 2;
+  int32 table_number = 3;
+  string refresh_token = 4;
+  google.protobuf.Timestamp refresh_token_expires_at = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message GuestLoginRequest {
+  string name = 1;
+  int32 table_number = 2;
+  string token = 3;
+}
+
+message GuestLoginResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  GuestInfo guest = 3;
+
+  google.protobuf.Timestamp access_token_expires_at = 4;
+  google.protobuf.Timestamp refresh_token_expires_at = 5;
+  string message = 6;
+  string session_id = 7;
+
+}
+
+message GuestInfo {
+  int64 id = 1;
+  string name = 2;
+  string role = 3;
+  int32 table_number = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+
+
+}
+
+message LogoutRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  string message = 3;
+}
+
+message GuestCreateOrderItem {
+  int64 dish_id = 1;
+  int32 quantity = 2;
+  int64 guest_id = 3;
+}
+
+message GuestCreateOrderRequest {
+  repeated GuestCreateOrderItem items = 1;
+}
+
+message Order {
+  // Define the Order message based on your OrderSchema
+  // This is a placeholder, adjust according to your actual schema
+  int64 id = 1;
+  int64 guest_id = 2;
+  int32 table_number = 3;
+  int64 dish_id = 4;
+  int32 quantity = 5;
+  string status = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message OrdersResponse {
+  repeated Order data = 1;
+  string message = 2;
+}
+
+
+message GuestGetOrdersGRPCRequest {
+
+  int64 guestId = 1;
+}
+
+message ListOrdersResponse {
+  repeated Order orders = 1;
+  string message = 2;
+}
+message GuestSessionReq {
+  string id = 1;
+  string name = 2;
+  string refresh_token = 3;
+  bool is_revoked = 4;
+  google.protobuf.Timestamp expires_at = 5;
+}
+message GuestSessionRes {
+  string id = 1;
+  string name = 2;
+  string refresh_token = 3;
+  bool is_revoked = 4;
+  google.protobuf.Timestamp expires_at = 5;
+}
+// service GuestService {
+//   rpc guestLoginGRPC(GuestLoginRequest) returns (GuestLoginResponse);
+//   rpc guestLogoutGRPC(LogoutRequest) returns (google.protobuf.Empty);
+//   rpc guestRefreshTokenGRPC(RefreshTokenRequest) returns (RefreshTokenResponse);
+//   rpc guestCreateOrdersGRPC(GuestCreateOrderRequest) returns (OrdersResponse);
+//   rpc guestGetOrdersGRPC(GuestGetOrdersGRPCRequest) returns (ListOrdersResponse);
+
+
+
+//   rpc CreateSession(GuestSessionReq) returns (GuestSessionRes) {}
+//   rpc GetSession(GuestSessionReq) returns (GuestSessionRes) {}
+//   rpc RevokeSession(GuestSessionReq) returns (GuestSessionRes) {}
+//   rpc DeleteSession(GuestSessionReq) returns (GuestSessionRes) {}
+// }
+
+service GuestService {
+  rpc GuestLoginGRPC(GuestLoginRequest) returns (GuestLoginResponse);
+  rpc GuestLogoutGRPC(LogoutRequest) returns (google.protobuf.Empty);
+  rpc GuestRefreshTokenGRPC(RefreshTokenRequest) returns (RefreshTokenResponse);
+  rpc GuestCreateOrdersGRPC(GuestCreateOrderRequest) returns (OrdersResponse);
+  rpc GuestGetOrdersGRPC(GuestGetOrdersGRPCRequest) returns (ListOrdersResponse);
+
+  rpc GuestCreateSession(GuestSessionReq) returns (GuestSessionRes);
+  rpc GuestGetSession(GuestSessionReq) returns (GuestSessionRes);
+  rpc GuestRevokeSession(GuestSessionReq) returns (GuestSessionRes);
+  rpc GuestDeleteSession(GuestSessionReq) returns (GuestSessionRes);
+}

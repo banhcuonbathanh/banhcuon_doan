@@ -1,0 +1,100 @@
+version: "3.8"
+services:
+#  nextjs_app:
+#    build:
+#      context: ./quananqr1
+#      dockerfile: Dockerfile
+#      args:
+#        - NODE_ENV=${NODE_ENV:-production}
+#        - NEXT_SERVER_API_ENDPOINT=${NEXT_SERVER_API_ENDPOINT:-http://go_app_ai:8888/}
+#        - NEXT_PUBLIC_API_ENDPOINT=${NEXT_PUBLIC_API_ENDPOINT:-http://localhost:8888/}
+#        - NEXT_PUBLIC_URL=${NEXT_PUBLIC_URL:-http://nextjs_app:3000/}
+#    container_name: nextjs-app
+#    ports:
+#      - "3000:3000"
+#    volumes:
+#      - ./quananqr1:/app/src
+#      - ./quananqr1/public:/app/public
+#      - ./quananqr1/.env:/app/.env
+#      - ./quananqr1/.env.local:/app/.env.local
+#    environment:
+#      - NODE_ENV=${NODE_ENV:-development}
+#      - WATCHPACK_POLLING=true
+#      - NEXT_SERVER_API_ENDPOINT=${NEXT_SERVER_API_ENDPOINT:-http://go_app_ai:8888/}
+#      - NEXT_PUBLIC_API_ENDPOINT=${NEXT_PUBLIC_API_ENDPOINT:-http://localhost:8888/}
+#      - NEXT_PUBLIC_URL=${NEXT_PUBLIC_URL:-http://nextjs_app:3000/}
+#      - NEXT_PUBLIC_API_Create_User=${NEXT_PUBLIC_API_Create_User:-users}
+#      - NEXT_PUBLIC_API_Get_Account_Email=${NEXT_PUBLIC_API_Get_Account_Email:-users/email/}
+#      - NEXT_PUBLIC_API_Login=${NEXT_PUBLIC_API_Login:-users/login}
+#      - NEXT_PUBLIC_API_Logout=${NEXT_PUBLIC_API_Logout:-users/logout}
+#      - NEXT_PUBLIC_Image_Upload=${NEXT_PUBLIC_Image_Upload:-images/upload}
+#      - NEXT_PUBLIC_Upload=${NEXT_PUBLIC_Upload:-uploads/}
+#      - NEXT_PUBLIC_Add_Dished=${NEXT_PUBLIC_Add_Dished:-dishes}
+#      - NEXT_PUBLIC_Set_End_Point=${NEXT_PUBLIC_Set_End_Point:-sets}
+#      - NEXT_PUBLIC_Table_End_Point=${NEXT_PUBLIC_Table_End_Point:-table}
+#      - NEXT_PUBLIC_Table_List=${NEXT_PUBLIC_Table_List:-table/list}
+#      - NEXT_PUBLIC_Get_set_intenal=${NEXT_PUBLIC_Get_set_intenal:-api/sets}
+#      - NEXT_PUBLIC_Get_Dished_intenal=${NEXT_PUBLIC_Get_Dished_intenal:-api/guest}
+#      - NEXT_PUBLIC_intern_table_end_point=${NEXT_PUBLIC_intern_table_end_point:-api/table}
+#      - NEXT_PUBLIC_Add_Guest_login=${NEXT_PUBLIC_Add_Guest_login:-qr/guest}
+#      - NEXT_PUBLIC_Folder1_BE=${NEXT_PUBLIC_Folder1_BE:-quananqr/}
+#      - NEXT_PUBLIC_API_Guest_Login=${NEXT_PUBLIC_API_Guest_Login:-qr/guest/login}
+#      - NEXT_PUBLIC_API_Guest_Logout=${NEXT_PUBLIC_API_Guest_Logout:-qr/guest/logout}
+#      - NEXT_PUBLIC_WS_LINK=${NEXT_PUBLIC_WS_LINK:-ws://localhost:8888/ws/}
+#      - NEXT_PUBLIC_WS_AUTH=${NEXT_PUBLIC_WS_AUTH:-ws/api/ws-auth}
+#      - ORDER_INTERNAL_END_POINT=${ORDER_INTERNAL_END_POINT:-api/order}
+#      - ORDER_EXTERNAL_END_POINT=${ORDER_EXTERNAL_END_POINT:-orders}
+#    networks:
+#      - app-network
+#    depends_on:
+#      mypostgres_ai:
+#        condition: service_healthy
+#    restart: unless-stopped
+  mypostgres_ai:
+    image: postgres:15-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: restaurant
+      POSTGRES_PASSWORD: restaurant
+      POSTGRES_DB: restaurant
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U restaurant -d restaurant"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+  go_app:
+    build:
+      dockerfile: Dockerfile
+    container_name: restaurant
+    ports:
+      - "8888:8888"
+      - "50051:50051"
+    networks:
+      - app-network
+    environment:
+      - APP_ENV=docker
+      - DB_HOST=mypostgres_ai
+      - DB_USER=restaurant
+      - DB_PASSWORD=restaurant
+      - DB_NAME=restaurant
+      - DB_PORT=5432
+    depends_on:
+      mypostgres_ai:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local

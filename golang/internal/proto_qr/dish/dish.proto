@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "english-ai-full/internal/proto_qr/dish";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+message Dish {
+  int64 id = 1;
+  string name = 2;
+  int32 price = 3;
+  string description = 4;
+  string image = 5;
+  string status = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message CreateDishRequest {
+  string name = 1;
+  int32 price = 2;
+  string description = 3;
+  string image = 4;
+  optional string status = 5;
+}
+
+message UpdateDishRequest {
+  int64 id = 1;
+  string name = 2;
+  int32 price = 3;
+  string description = 4;
+  string image = 5;
+  optional string status = 6;
+}
+
+message DishResponse {
+  Dish data = 1;
+  string message = 2;
+}
+
+message DishListResponse {
+  repeated Dish data = 1;
+  string message = 2;
+}
+
+message DishIdParam {
+  int64 id = 1;
+}
+
+service DishService {
+  rpc GetDishList(google.protobuf.Empty) returns (DishListResponse);
+  rpc GetDishDetail(DishIdParam) returns (DishResponse);
+  rpc CreateDish(CreateDishRequest) returns (DishResponse);
+  rpc UpdateDish(UpdateDishRequest) returns (DishResponse);
+  rpc DeleteDish(DishIdParam) returns (DishResponse);
+}

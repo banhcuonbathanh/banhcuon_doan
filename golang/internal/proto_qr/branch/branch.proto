@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package branch_proto;
+
+option go_package = "english-ai-full/internal/proto_qr/branch;branchpb";
+
+// Branch message representing a branch table record
+message Branch {
+  int64 id = 1;
+  string name = 2;
+  string address = 3;
+  string phone = 4;
+  int64 manager_id = 5;
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+// Request to create a new branch
+message CreateBranchRequest {
+  string name = 1;
+  string address = 2;
+  string phone = 3;
+  int64 manager_id = 4;
+}
+
+// Response after creating a branch
+message CreateBranchResponse {
+  int64 id = 1;
+  string name = 2;
+  string address = 3;
+  string phone = 4;
+  int64 manager_id = 5;
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+// Request to get a branch by ID
+message GetBranchByIDRequest {
+  int64 id = 1;
+}
+
+// Response for getting a branch by ID
+message GetBranchResponse {
+  int64 id = 1;
+  string name = 2;
+  string address = 3;
+  string phone = 4;
+  int64 manager_id = 5;
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+// Request to get all branches
+message GetAllBranchesRequest {}
+
+// Response for getting all branches
+message GetAllBranchesResponse {
+  repeated Branch branches = 1;
+}
+
+// Request to update a branch
+message UpdateBranchRequest {
+  int64 id = 1;
+  string name = 2;
+  string address = 3;
+  string phone = 4;
+  int64 manager_id = 5;
+}
+
+// Response after updating a branch
+message UpdateBranchResponse {
+  int64 id = 1;
+  string name = 2;
+  string address = 3;
+  string phone = 4;
+  int64 manager_id = 5;
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+// Request to delete a branch
+message DeleteBranchRequest {
+  int64 id = 1;
+}
+
+// Response after deleting a branch
+message DeleteBranchResponse {
+  bool success = 1;
+}
+
+// Branch service definition
+service BranchService {
+  rpc CreateBranch(CreateBranchRequest) returns (CreateBranchResponse);
+  rpc GetBranchByID(GetBranchByIDRequest) returns (GetBranchResponse);
+  rpc GetAllBranches(GetAllBranchesRequest) returns (GetAllBranchesResponse);
+  rpc UpdateBranch(UpdateBranchRequest) returns (UpdateBranchResponse);
+  rpc DeleteBranch(DeleteBranchRequest) returns (DeleteBranchResponse);
+}

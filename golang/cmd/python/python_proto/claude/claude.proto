@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package claude;
+
+
+
+service IELTSService {
+  rpc EvaluateIELTS (EvaluationResponseFromToDataBase) returns (EvaluationResponseFromToDataBase) {}
+}
+
+message EvaluationRequestToClaude {
+  string student_response = 1;
+  string passage = 2;
+  string question = 3;
+  string complex_sentences = 4;
+  string advanced_vocabulary = 5;
+  string cohesive_devices = 6;
+}
+
+message EvaluationResponseFromClaude {
+  string evaluation = 1;
+}
+
+message EvaluationResponseFromToDataBase {
+  string student_response = 1;
+  string passage = 2;
+  string question = 3;
+  string complex_sentences = 4;
+  string advanced_vocabulary = 5;
+  string cohesive_devices = 6;
+  string evaluation_from_claude = 7;
+}

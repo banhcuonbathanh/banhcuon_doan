@@ -1,0 +1,62 @@
+// table.proto
+syntax = "proto3";
+
+package table;
+
+option go_package = "english-ai-full/internal/proto_qr/table";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+enum TableStatus {
+  AVAILABLE = 0;
+  OCCUPIED = 1;
+  RESERVED = 2;
+  OUT_OF_SERVICE = 3;
+  TAKE_AWAY = 4;  // Added new status
+}
+
+message Table {
+  int32 number = 1;
+  int32 capacity = 2;
+  TableStatus status = 3;
+  string token = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+// Rest of the messages remain the same
+message CreateTableRequest {
+  int32 number = 1;
+  int32 capacity = 2;
+  TableStatus status = 3;
+}
+
+message UpdateTableRequest {
+  int32 number = 1;
+  bool change_token = 2;
+  int32 capacity = 3;
+  TableStatus status = 4;
+}
+
+message TableResponse {
+  Table data = 1;
+  string message = 2;
+}
+
+message TableListResponse {
+  repeated Table data = 1;
+  string message = 2;
+}
+
+message TableNumberRequest {
+  int32 number = 1;
+}
+
+service TableService {
+  rpc GetTableList(google.protobuf.Empty) returns (TableListResponse);
+  rpc GetTableDetail(TableNumberRequest) returns (TableResponse);
+  rpc CreateTable(CreateTableRequest) returns (TableResponse);
+  rpc UpdateTable(UpdateTableRequest) returns (TableResponse);
+  rpc DeleteTable(TableNumberRequest) returns (TableResponse);
+}
