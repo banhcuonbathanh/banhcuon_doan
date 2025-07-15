@@ -16,6 +16,7 @@ import (
 	"english-ai-full/utils"
 
 	"github.com/go-chi/chi"
+	"github.com/go-playground/validator"
 )
 
 var ctx = context.Background()
@@ -23,10 +24,12 @@ var ctx = context.Background()
 type Handler struct {
 	ctx  context.Context
 	user pb.AccountServiceClient
+	validator *validator.Validate
 }
 
 func New(user pb.AccountServiceClient) Handler {
 	return Handler{
+		  validator: validator.New(),
 		ctx:  context.Background(),
 		user: user,
 	}
@@ -174,49 +177,49 @@ type CreateUserResponse struct {
 	OwnerID  int64  `json:"owner_id"`
 }
 
-func (h Handler) CreateAccount(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	var req model.CreateUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "error decoding request body", http.StatusBadRequest)
-		return
-	}
+// func (h Handler) CreateAccount(w http.ResponseWriter, r *http.Request) {
+// 	ctx := r.Context()
+// 	var req model.CreateUserRequest
+// 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+// 		http.Error(w, "error decoding request body", http.StatusBadRequest)
+// 		return
+// 	}
 
-	hashedPassword, err := utils.HashPassword(req.Password)
-	if err != nil {
-		http.Error(w, "error hashing password", http.StatusInternalServerError)
-		return
-	}
-	req.Password = hashedPassword
+// 	hashedPassword, err := utils.HashPassword(req.Password)
+// 	if err != nil {
+// 		http.Error(w, "error hashing password", http.StatusInternalServerError)
+// 		return
+// 	}
+// 	req.Password = hashedPassword
 
-	// Call the user service to create the user
-	userRes, err := h.user.CreateUser(ctx, &pb.AccountReq{
-		BranchId: req.BranchID,
-		Name:     req.Name,
-		Email:    req.Email,
-		Password: req.Password,
-		Avatar:   req.Avatar,
-		Title:    req.Title,
-		Role:     req.Role,
-		OwnerId:  req.OwnerID,
-	})
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error creating user: %v", err), http.StatusInternalServerError)
-		return
-	}
+// 	// Call the user service to create the user
+// 	userRes, err := h.user.CreateUser(ctx, &pb.AccountReq{
+// 		BranchId: req.BranchID,
+// 		Name:     req.Name,
+// 		Email:    req.Email,
+// 		Password: req.Password,
+// 		Avatar:   req.Avatar,
+// 		Title:    req.Title,
+// 		Role:     req.Role,
+// 		OwnerId:  req.OwnerID,
+// 	})
+// 	if err != nil {
+// 		http.Error(w, fmt.Sprintf("error creating user: %v", err), http.StatusInternalServerError)
+// 		return
+// 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(CreateUserResponse{
-		BranchID: userRes.BranchId,
-		Name:     userRes.Name,
-		Email:    userRes.Email,
-		Avatar:   userRes.Avatar,
-		Title:    userRes.Title,
-		Role:     userRes.Role,
-		OwnerID:  userRes.OwnerId,
-	})
-}
+// 	w.Header().Set("Content-Type", "application/json")
+// 	w.WriteHeader(http.StatusCreated)
+// 	json.NewEncoder(w).Encode(CreateUserResponse{
+// 		BranchID: userRes.BranchId,
+// 		Name:     userRes.Name,
+// 		Email:    userRes.Email,
+// 		Avatar:   userRes.Avatar,
+// 		Title:    userRes.Title,
+// 		Role:     userRes.Role,
+// 		OwnerID:  userRes.OwnerId,
+// 	})
+// }
 
 type FindAccountByIDResponse struct {
 	ID        int64     `json:"id"`
@@ -392,3 +395,86 @@ func (h Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		Message: "User deleted successfully",
 	})
 }
+//---------------------- new craete account function ----------------------
+
+func (h Handler) CreateAccount(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req model.CreateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "error decoding request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate the request
+	if err := h.validator.Struct(&req); err != nil {
+		// Handle validation errors
+		var validationErrors []string
+		for _, err := range err.(validator.ValidationErrors) {
+			switch err.Tag() {
+			case "required":
+				validationErrors = append(validationErrors, fmt.Sprintf("%s is required", err.Field()))
+			case "min":
+				validationErrors = append(validationErrors, fmt.Sprintf("%s must be at least %s characters", err.Field(), err.Param()))
+			case "max":
+				validationErrors = append(validationErrors, fmt.Sprintf("%s must not exceed %s characters", err.Field(), err.Param()))
+			case "email":
+				validationErrors = append(validationErrors, fmt.Sprintf("%s must be a valid email address", err.Field()))
+			case "gt":
+				validationErrors = append(validationErrors, fmt.Sprintf("%s must be greater than %s", err.Field(), err.Param()))
+			case "url":
+				validationErrors = append(validationErrors, fmt.Sprintf("%s must be a valid URL", err.Field()))
+			case "oneof":
+				validationErrors = append(validationErrors, fmt.Sprintf("%s must be one of: %s", err.Field(), err.Param()))
+			default:
+				validationErrors = append(validationErrors, fmt.Sprintf("%s is invalid", err.Field()))
+			}
+		}
+		
+		response := map[string]interface{}{
+			"error": "validation failed",
+			"details": validationErrors,
+		}
+		
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	hashedPassword, err := utils.HashPassword(req.Password)
+	if err != nil {
+		http.Error(w, "error hashing password", http.StatusInternalServerError)
+		return
+	}
+	req.Password = hashedPassword
+
+	// Call the user service to create the user
+	userRes, err := h.user.CreateUser(ctx, &pb.AccountReq{
+		BranchId: req.BranchID,
+		Name:     req.Name,
+		Email:    req.Email,
+		Password: req.Password,
+		Avatar:   req.Avatar,
+		Title:    req.Title,
+		Role:     req.Role,
+		OwnerId:  req.OwnerID,
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error creating user: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(CreateUserResponse{
+		BranchID: userRes.BranchId,
+		Name:     userRes.Name,
+		Email:    userRes.Email,
+		Avatar:   userRes.Avatar,
+		Title:    userRes.Title,
+		Role:     userRes.Role,
+		OwnerID:  userRes.OwnerId,
+	})
+}
+
+//---------------
