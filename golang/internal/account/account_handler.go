@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"english-ai-full/internal/mapping"
 	"english-ai-full/internal/model"
@@ -35,18 +34,7 @@ func New(user pb.AccountServiceClient) Handler {
 	}
 }
 
-type FindByEmailResponse struct {
-	ID        int64     `json:"id"`
-	BranchID  int64     `json:"branch_id"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	Avatar    string    `json:"avatar"`
-	Title     string    `json:"title"`
-	Role      string    `json:"role"`
-	OwnerID   int64     `json:"owner_id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
+
 
 func (h Handler) FindByEmail(w http.ResponseWriter, r *http.Request) {
 	email := chi.URLParam(r, "email")
@@ -72,12 +60,7 @@ func (h Handler) FindByEmail(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-type RegisterResponse struct {
-	ID     int64  `json:"id"`
-	Name   string `json:"name"`
-	Email  string `json:"email"`
-	Status bool   `json:"status"`
-}
+
 
 func (h Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req model.RegisterUserReq
@@ -167,15 +150,7 @@ func (h Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("logout successful"))
 }
 
-type CreateUserResponse struct {
-	BranchID int64  `json:"branch_id"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Avatar   string `json:"avatar"`
-	Title    string `json:"title"`
-	Role     string `json:"role"`
-	OwnerID  int64  `json:"owner_id"`
-}
+
 
 // func (h Handler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 // 	ctx := r.Context()
@@ -221,18 +196,7 @@ type CreateUserResponse struct {
 // 	})
 // }
 
-type FindAccountByIDResponse struct {
-	ID        int64     `json:"id"`
-	BranchID  int64     `json:"branch_id"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	Avatar    string    `json:"avatar"`
-	Title     string    `json:"title"`
-	Role      string    `json:"role"`
-	OwnerID   int64     `json:"owner_id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
+
 
 func (h Handler) FindAccountByID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -274,18 +238,7 @@ func (h Handler) FindAccountByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-type UpdateUserResponse struct {
-	ID        int64     `json:"id"`
-	BranchID  int64     `json:"branch_id"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	Avatar    string    `json:"avatar"`
-	Title     string    `json:"title"`
-	Role      string    `json:"role"`
-	OwnerID   int64     `json:"owner_id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
+
 
 func (h Handler) UpdateUserByID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -353,10 +306,6 @@ func (h Handler) UpdateUserByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-type DeleteUserResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
-}
 
 func (h Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
