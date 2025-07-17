@@ -129,7 +129,7 @@ func (h Handler) Logout(w http.ResponseWriter, r *http.Request) {
 // User management endpoints
 func (h Handler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var req model.CreateUserRequest
+	var req CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "error decoding request body", http.StatusBadRequest)
 		return
