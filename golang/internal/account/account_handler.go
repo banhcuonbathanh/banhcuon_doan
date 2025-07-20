@@ -36,7 +36,13 @@ func New(user pb.AccountServiceClient) Handler {
 		user:      user,
 	}
 }
-
+// func New(user pb.AccountServiceClient) Handler {
+// 	return &Handler{
+// 		validator: validator.New(),
+// 		ctx:       context.Background(),
+// 		user:      user,
+// 	}
+// }
 // Authentication endpoints
 func (h Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req model.RegisterUserReq

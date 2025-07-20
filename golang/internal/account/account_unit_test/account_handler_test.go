@@ -1,17 +1,16 @@
-
-
 package account
 
 import (
-
-	res "english-ai-full/internal/account"
 	"bytes"
 	"context"
 	"encoding/json"
+	res "english-ai-full/internal/account"
 	"errors"
+
 	// "fmt"
 	"net/http"
 	"net/http/httptest"
+
 	// "strings"
 	"testing"
 	"time"
@@ -23,6 +22,8 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -31,45 +32,77 @@ type MockAccountServiceClient struct {
 	mock.Mock
 }
 
-func (m *MockAccountServiceClient) Register(ctx context.Context, req *pb.RegisterReq) (*pb.RegisterRes, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*pb.RegisterRes), args.Error(1)
-}
+// Ensure MockAccountServiceClient implements pb.AccountServiceClient interface
+var _ pb.AccountServiceClient = (*MockAccountServiceClient)(nil)
 
-func (m *MockAccountServiceClient) Login(ctx context.Context, req *pb.LoginReq) (*pb.AccountRes, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*pb.AccountRes), args.Error(1)
-}
-
-func (m *MockAccountServiceClient) CreateUser(ctx context.Context, req *pb.AccountReq) (*pb.Account, error) {
-	args := m.Called(ctx, req)
+func (m *MockAccountServiceClient) CreateUser(ctx context.Context, in *pb.AccountReq, opts ...grpc.CallOption) (*pb.Account, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*pb.Account), args.Error(1)
 }
 
-func (m *MockAccountServiceClient) FindByID(ctx context.Context, req *pb.FindByIDReq) (*pb.FindByIDRes, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*pb.FindByIDRes), args.Error(1)
-}
-
-func (m *MockAccountServiceClient) FindByEmail(ctx context.Context, req *pb.FindByEmailReq) (*pb.AccountRes, error) {
-	args := m.Called(ctx, req)
+func (m *MockAccountServiceClient) UpdateUser(ctx context.Context, in *pb.UpdateUserReq, opts ...grpc.CallOption) (*pb.AccountRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*pb.AccountRes), args.Error(1)
 }
 
-func (m *MockAccountServiceClient) UpdateUser(ctx context.Context, req *pb.UpdateUserReq) (*pb.AccountRes, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*pb.AccountRes), args.Error(1)
-}
-
-func (m *MockAccountServiceClient) DeleteUser(ctx context.Context, req *pb.DeleteAccountReq) (*pb.DeleteAccountRes, error) {
-	args := m.Called(ctx, req)
+func (m *MockAccountServiceClient) DeleteUser(ctx context.Context, in *pb.DeleteAccountReq, opts ...grpc.CallOption) (*pb.DeleteAccountRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*pb.DeleteAccountRes), args.Error(1)
+}
+
+func (m *MockAccountServiceClient) FindAllUsers(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*pb.AccountList, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.AccountList), args.Error(1)
+}
+
+func (m *MockAccountServiceClient) FindByEmail(ctx context.Context, in *pb.FindByEmailReq, opts ...grpc.CallOption) (*pb.AccountRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.AccountRes), args.Error(1)
+}
+
+func (m *MockAccountServiceClient) Login(ctx context.Context, in *pb.LoginReq, opts ...grpc.CallOption) (*pb.AccountRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.AccountRes), args.Error(1)
+}
+
+func (m *MockAccountServiceClient) Register(ctx context.Context, in *pb.RegisterReq, opts ...grpc.CallOption) (*pb.RegisterRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.RegisterRes), args.Error(1)
+}
+
+func (m *MockAccountServiceClient) FindByID(ctx context.Context, in *pb.FindByIDReq, opts ...grpc.CallOption) (*pb.FindByIDRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.FindByIDRes), args.Error(1)
 }
 
 // Store original functions for restoration
 var (
-	originalHashPassword        func(string) (string, error)
-	originalGenerateJWTToken    func(res.CreateUserRequest) (string, error)
+	originalHashPassword         func(string) (string, error)
+	originalGenerateJWTToken     func(res.CreateUserRequest) (string, error)
 	originalGenerateRefreshToken func(res.CreateUserRequest) (string, error)
 )
 
@@ -96,11 +129,11 @@ func mockGenerateRefreshToken(user res.CreateUserRequest) (string, error) {
 }
 
 // Setup function to create handler with mocks
-func setupHandlerTest() (*Handler, *MockAccountServiceClient) {
+func setupHandlerTest() (*res.Handler, *MockAccountServiceClient) {
 	mockClient := new(MockAccountServiceClient)
 	
 	// Create handler using the New function
-	handler := New(mockClient)
+	handler := res.New(mockClient)
 	
 	// Store original functions if not already stored
 	if originalHashPassword == nil {
@@ -118,7 +151,7 @@ func setupHandlerTest() (*Handler, *MockAccountServiceClient) {
 }
 
 // Cleanup function to restore original functions
-func cleanupHandlerTest() {
+func teardownHandlerTest() {
 	if originalHashPassword != nil {
 		utils.HashPassword = originalHashPassword
 		utils.GenerateJWTToken = originalGenerateJWTToken
