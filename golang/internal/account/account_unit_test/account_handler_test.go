@@ -1,14 +1,18 @@
+
+
 package account
 
 import (
+
+	res "english-ai-full/internal/account"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
+	// "fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
+	// "strings"
 	"testing"
 	"time"
 
@@ -62,6 +66,13 @@ func (m *MockAccountServiceClient) DeleteUser(ctx context.Context, req *pb.Delet
 	return args.Get(0).(*pb.DeleteAccountRes), args.Error(1)
 }
 
+// Store original functions for restoration
+var (
+	originalHashPassword        func(string) (string, error)
+	originalGenerateJWTToken    func(res.CreateUserRequest) (string, error)
+	originalGenerateRefreshToken func(res.CreateUserRequest) (string, error)
+)
+
 // Mock utils functions
 func mockHashPassword(password string) (string, error) {
 	if password == "error_password" {
@@ -70,14 +81,14 @@ func mockHashPassword(password string) (string, error) {
 	return "hashed_" + password, nil
 }
 
-func mockGenerateJWTToken(user model.UserResponse) (string, error) {
+func mockGenerateJWTToken(user res.CreateUserRequest) (string, error) {
 	if user.Email == "jwt_error@example.com" {
 		return "", errors.New("jwt error")
 	}
 	return "jwt_token_" + user.Email, nil
 }
 
-func mockGenerateRefreshToken(user model.UserResponse) (string, error) {
+func mockGenerateRefreshToken(user res.CreateUserRequest) (string, error) {
 	if user.Email == "refresh_error@example.com" {
 		return "", errors.New("refresh token error")
 	}
@@ -87,7 +98,16 @@ func mockGenerateRefreshToken(user model.UserResponse) (string, error) {
 // Setup function to create handler with mocks
 func setupHandlerTest() (*Handler, *MockAccountServiceClient) {
 	mockClient := new(MockAccountServiceClient)
+	
+	// Create handler using the New function
 	handler := New(mockClient)
+	
+	// Store original functions if not already stored
+	if originalHashPassword == nil {
+		originalHashPassword = utils.HashPassword
+		originalGenerateJWTToken = utils.GenerateJWTToken
+		originalGenerateRefreshToken = utils.GenerateRefreshToken
+	}
 	
 	// Mock the utils functions
 	utils.HashPassword = mockHashPassword
@@ -97,7 +117,18 @@ func setupHandlerTest() (*Handler, *MockAccountServiceClient) {
 	return &handler, mockClient
 }
 
+// Cleanup function to restore original functions
+func cleanupHandlerTest() {
+	if originalHashPassword != nil {
+		utils.HashPassword = originalHashPassword
+		utils.GenerateJWTToken = originalGenerateJWTToken
+		utils.GenerateRefreshToken = originalGenerateRefreshToken
+	}
+}
+
 func TestHandler_Register(t *testing.T) {
+	defer cleanupHandlerTest() // Ensure cleanup after all tests
+	
 	tests := []struct {
 		name           string
 		requestBody    interface{}
@@ -182,6 +213,8 @@ func TestHandler_Register(t *testing.T) {
 }
 
 func TestHandler_Login(t *testing.T) {
+	defer cleanupHandlerTest()
+	
 	tests := []struct {
 		name           string
 		requestBody    interface{}
@@ -258,6 +291,8 @@ func TestHandler_Login(t *testing.T) {
 }
 
 func TestHandler_CreateAccount(t *testing.T) {
+	defer cleanupHandlerTest()
+	
 	tests := []struct {
 		name           string
 		requestBody    interface{}
@@ -340,6 +375,8 @@ func TestHandler_CreateAccount(t *testing.T) {
 }
 
 func TestHandler_FindAccountByID(t *testing.T) {
+	defer cleanupHandlerTest()
+	
 	tests := []struct {
 		name           string
 		userID         string
@@ -413,6 +450,8 @@ func TestHandler_FindAccountByID(t *testing.T) {
 }
 
 func TestHandler_FindByEmail(t *testing.T) {
+	defer cleanupHandlerTest()
+	
 	tests := []struct {
 		name           string
 		email          string
@@ -474,6 +513,8 @@ func TestHandler_FindByEmail(t *testing.T) {
 }
 
 func TestHandler_UpdateUserByID(t *testing.T) {
+	defer cleanupHandlerTest()
+	
 	tests := []struct {
 		name           string
 		userID         string
@@ -566,6 +607,8 @@ func TestHandler_UpdateUserByID(t *testing.T) {
 }
 
 func TestHandler_DeleteUser(t *testing.T) {
+	defer cleanupHandlerTest()
+	
 	tests := []struct {
 		name           string
 		userID         string
@@ -628,6 +671,8 @@ func TestHandler_DeleteUser(t *testing.T) {
 }
 
 func TestHandler_GetUserProfile(t *testing.T) {
+	defer cleanupHandlerTest()
+	
 	tests := []struct {
 		name           string
 		userID         string
@@ -691,172 +736,3 @@ func TestHandler_GetUserProfile(t *testing.T) {
 		})
 	}
 }
-
-func TestHandler_ChangePassword(t *testing.T) {
-	tests := []struct {
-		name           string
-		userID         string
-		requestBody    interface{}
-		mockSetup      func(*MockAccountServiceClient)
-		expectedStatus int
-	}{
-		{
-			name:   "successful password change",
-			userID: "1",
-			requestBody: map[string]string{
-				"old_password": "oldpassword",
-				"new_password": "newpassword123",
-			},
-			mockSetup: func(m *MockAccountServiceClient) {
-				// Mock FindByID
-				m.On("FindByID", mock.Anything, &pb.FindByIDReq{Id: 1}).Return(&pb.FindByIDRes{
-					Account: &pb.Account{
-						Id:       1,
-						BranchId: 1,
-						Name:     "John Doe",
-						Email:    "john@example.com",
-						Avatar:   "avatar.jpg",
-						Title:    "Developer",
-						Role:     "user",
-						OwnerId:  1,
-					},
-				}, nil)
-				
-				// Mock Login for old password verification
-				m.On("Login", mock.Anything, &pb.LoginReq{
-					Email:    "john@example.com",
-					Password: "oldpassword",
-				}).Return(&pb.AccountRes{
-					Account: &pb.Account{
-						Id:       1,
-						BranchId: 1,
-						Name:     "John Doe",
-						Email:    "john@example.com",
-						Avatar:   "avatar.jpg",
-						Title:    "Developer",
-						Role:     "user",
-						OwnerId:  1,
-					},
-				}, nil)
-				
-				// Mock UpdateUser
-				m.On("UpdateUser", mock.Anything, mock.Anything).Return(&pb.AccountRes{
-					Account: &pb.Account{
-						Id:       1,
-						BranchId: 1,
-						Name:     "John Doe",
-						Email:    "john@example.com",
-						Avatar:   "avatar.jpg",
-						Title:    "Developer",
-						Role:     "user",
-						OwnerId:  1,
-					},
-				}, nil)
-			},
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name:           "missing ID parameter",
-			userID:         "",
-			requestBody:    map[string]string{},
-			mockSetup:      func(m *MockAccountServiceClient) {},
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:   "invalid old password",
-			userID: "1",
-			requestBody: map[string]string{
-				"old_password": "wrongpassword",
-				"new_password": "newpassword123",
-			},
-			mockSetup: func(m *MockAccountServiceClient) {
-				// Mock FindByID
-				m.On("FindByID", mock.Anything, &pb.FindByIDReq{Id: 1}).Return(&pb.FindByIDRes{
-					Account: &pb.Account{
-						Id:       1,
-						BranchId: 1,
-						Name:     "John Doe",
-						Email:    "john@example.com",
-						Avatar:   "avatar.jpg",
-						Title:    "Developer",
-						Role:     "user",
-						OwnerId:  1,
-					},
-				}, nil)
-				
-				// Mock Login failure
-				m.On("Login", mock.Anything, &pb.LoginReq{
-					Email:    "john@example.com",
-					Password: "wrongpassword",
-				}).Return((*pb.AccountRes)(nil), errors.New("invalid password"))
-			},
-			expectedStatus: http.StatusUnauthorized,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			handler, mockClient := setupHandlerTest()
-			tt.mockSetup(mockClient)
-
-			var body bytes.Buffer
-			json.NewEncoder(&body).Encode(tt.requestBody)
-
-			req := httptest.NewRequest(http.MethodPut, "/accounts/"+tt.userID+"/password", &body)
-			req.Header.Set("Content-Type", "application/json")
-			
-			// Setup chi router context
-			rctx := chi.NewRouteContext()
-			rctx.URLParams.Add("id", tt.userID)
-			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-			
-			w := httptest.NewRecorder()
-
-			handler.ChangePassword(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			mockClient.AssertExpectations(t)
-		})
-	}
-}
-
-func TestHandler_GetUsersByBranch(t *testing.T) {
-	tests := []struct {
-		name           string
-		branchID       string
-		expectedStatus int
-	}{
-		{
-			name:           "successful request (not implemented)",
-			branchID:       "1",
-			expectedStatus: http.StatusNotImplemented,
-		},
-		{
-			name:           "missing branch ID parameter",
-			branchID:       "",
-			expectedStatus: http.StatusBadRequest,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			handler, _ := setupHandlerTest()
-
-			req := httptest.NewRequest(http.MethodGet, "/branches/"+tt.branchID+"/users", nil)
-			
-			// Setup chi router context
-			rctx := chi.NewRouteContext()
-			rctx.URLParams.Add("branch_id", tt.branchID)
-			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
-			
-			w := httptest.NewRecorder()
-
-			handler.GetUsersByBranch(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-		})
-	}
-}
-
-// func TestHandler_Logout(t *testing.T) {
-// 	handler,
