@@ -44,8 +44,3 @@ git push origin master
 
 git branch -d feature-account
 git push origin --delete feature-account
-
-# Merge
-
-git checkout feature-account
-git merge feature-account-interface-service

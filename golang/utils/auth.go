@@ -7,13 +7,18 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
+var (
+
+	GenerateJWTToken     = generateJWTToken
+	GenerateRefreshToken = generateRefreshToken
+)
 
 func Compare(hashedPassword, password string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	return err == nil
 }
 
-func GenerateJWTToken(user model.Account) (string, error) {
+func generateJWTToken(user model.Account) (string, error) {
 	claims := jwt.MapClaims{
 		"id":         user.ID,
 		"name":       user.Name,
@@ -47,7 +52,7 @@ func ParseToken(tokenString string) (jwt.MapClaims, error) {
 	return nil, err
 }
 
-func GenerateRefreshToken(user model.Account) (string, error) {
+func generateRefreshToken(user model.Account) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id":    user.ID,
 		"email":      user.Email,
