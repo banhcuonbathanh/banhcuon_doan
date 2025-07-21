@@ -219,6 +219,8 @@ func TestHandler_Register(t *testing.T) {
 			},
 			expectedStatus: http.StatusInternalServerError,
 		},
+
+		
 	}
 
 	for _, tt := range tests {
