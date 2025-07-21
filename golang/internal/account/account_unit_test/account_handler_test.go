@@ -102,9 +102,10 @@ func (m *MockAccountServiceClient) FindByID(ctx context.Context, in *pb.FindByID
 // Store original functions for restoration
 var (
     originalHashPassword         func(string) (string, error)
-    originalGenerateJWTToken     func(model.Account) (string, error)  // Changed this line
-    originalGenerateRefreshToken func(model.Account) (string, error)  // Probably need to change this too
+    originalGenerateJWTToken     func(model.Account) (string, error)
+    originalGenerateRefreshToken func(model.Account) (string, error)
 )
+
 // Mock utils functions
 func mockHashPassword(password string) (string, error) {
 	if password == "error_password" {
@@ -113,14 +114,14 @@ func mockHashPassword(password string) (string, error) {
 	return "hashed_" + password, nil
 }
 
-func mockGenerateJWTToken(user res.CreateUserRequest) (string, error) {
+func mockGenerateJWTToken(user model.Account) (string, error) {
 	if user.Email == "jwt_error@example.com" {
 		return "", errors.New("jwt error")
 	}
 	return "jwt_token_" + user.Email, nil
 }
 
-func mockGenerateRefreshToken(user res.CreateUserRequest) (string, error) {
+func mockGenerateRefreshToken(user model.Account) (string, error) {
 	if user.Email == "refresh_error@example.com" {
 		return "", errors.New("refresh token error")
 	}
@@ -146,11 +147,11 @@ func setupHandlerTest() (*res.Handler, *MockAccountServiceClient) {
 	utils.GenerateJWTToken = mockGenerateJWTToken
 	utils.GenerateRefreshToken = mockGenerateRefreshToken
 	
-	return &handler, mockClientx
+		return &handler, mockClient 
 }
 
 // Cleanup function to restore original functions
-func teardownHandlerTest() {
+func cleanupHandlerTest() {
 	if originalHashPassword != nil {
 		utils.HashPassword = originalHashPassword
 		utils.GenerateJWTToken = originalGenerateJWTToken
@@ -333,7 +334,7 @@ func TestHandler_CreateAccount(t *testing.T) {
 	}{
 		{
 			name: "successful account creation",
-			requestBody: CreateUserRequest{
+			requestBody: res.CreateUserRequest{
 				BranchID: 1,
 				Name:     "John Doe",
 				Email:    "john@example.com",
@@ -359,7 +360,7 @@ func TestHandler_CreateAccount(t *testing.T) {
 		},
 		{
 			name: "validation error - missing required fields",
-			requestBody: CreateUserRequest{
+			requestBody: res.CreateUserRequest{
 				Name:  "John Doe",
 				Email: "invalid-email",
 			},
@@ -368,7 +369,7 @@ func TestHandler_CreateAccount(t *testing.T) {
 		},
 		{
 			name: "service creation error",
-			requestBody: CreateUserRequest{
+			requestBody: res.CreateUserRequest{
 				BranchID: 1,
 				Name:     "John Doe",
 				Email:    "john@example.com",
