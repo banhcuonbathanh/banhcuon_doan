@@ -40,3 +40,6 @@ git push origin master
 # Cleanup (optional)
 git branch -d feature-account
 git push origin --delete feature-account
+
+
+git checkout feature-account
