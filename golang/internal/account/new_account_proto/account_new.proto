@@ -12,12 +12,28 @@ service AccountService {
   rpc FindAllUsers(google.protobuf.Empty) returns (AccountList);
   rpc FindByEmail(FindByEmailReq) returns (AccountRes);
   rpc Login(LoginReq) returns (AccountRes);
+  rpc Logout(LogoutReq) returns (LogoutRes);
   rpc Register(RegisterReq) returns (RegisterRes);
   rpc FindByID(FindByIDReq) returns (FindByIDRes);
-
-  //
-
   
+  // Password management
+  rpc ChangePassword(ChangePasswordReq) returns (ChangePasswordRes);
+  rpc ResetPassword(ResetPasswordReq) returns (ResetPasswordRes);
+  rpc ForgotPassword(ForgotPasswordReq) returns (ForgotPasswordRes);
+  
+  // Account verification and status
+  rpc VerifyEmail(VerifyEmailReq) returns (VerifyEmailRes);
+  rpc ResendVerification(ResendVerificationReq) returns (ResendVerificationRes);
+  rpc UpdateAccountStatus(UpdateAccountStatusReq) returns (UpdateAccountStatusRes);
+  
+  // Enhanced search and filtering
+  rpc FindByRole(FindByRoleReq) returns (AccountList);
+  rpc FindByBranch(FindByBranchReq) returns (AccountList);
+  rpc SearchUsers(SearchUsersReq) returns (AccountList);
+  
+  // Token/Session management
+  rpc RefreshToken(RefreshTokenReq) returns (RefreshTokenRes);
+  rpc ValidateToken(ValidateTokenReq) returns (ValidateTokenRes);
 }
 
 message Account {
@@ -68,6 +84,16 @@ message AccountList {
 message LoginReq {
   string email = 1;
   string password = 2;
+}
+
+message LogoutReq {
+  int64 user_id = 1;
+  string token = 2; // Optional: if you're using token-based authentication
+}
+
+message LogoutRes {
+  bool success = 1;
+  string message = 2;
 }
 
 message DeleteAccountReq {

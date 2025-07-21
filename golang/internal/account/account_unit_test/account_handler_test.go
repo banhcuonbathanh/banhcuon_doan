@@ -99,6 +99,13 @@ func (m *MockAccountServiceClient) FindByID(ctx context.Context, in *pb.FindByID
 	return args.Get(0).(*pb.FindByIDRes), args.Error(1)
 }
 
+
+// new ---------------
+// func (m *MockAccountServiceClient) Logout(ctx context.Context, in *pb.LogoutReq, opts ...grpc.CallOption) (*pb.LogoutRes, error) {
+// 	args := m.Called(ctx, in)
+// 	return args.Get(0).(*pb.LogoutRes), args.Error(1)
+// }
+// old ---------
 // Store original functions for restoration
 var (
     originalHashPassword         func(string) (string, error)
