@@ -101,11 +101,10 @@ func (m *MockAccountServiceClient) FindByID(ctx context.Context, in *pb.FindByID
 
 // Store original functions for restoration
 var (
-	originalHashPassword         func(string) (string, error)
-	originalGenerateJWTToken     func(res.CreateUserRequest) (string, error)
-	originalGenerateRefreshToken func(res.CreateUserRequest) (string, error)
+    originalHashPassword         func(string) (string, error)
+    originalGenerateJWTToken     func(model.Account) (string, error)  // Changed this line
+    originalGenerateRefreshToken func(model.Account) (string, error)  // Probably need to change this too
 )
-
 // Mock utils functions
 func mockHashPassword(password string) (string, error) {
 	if password == "error_password" {
@@ -147,7 +146,7 @@ func setupHandlerTest() (*res.Handler, *MockAccountServiceClient) {
 	utils.GenerateJWTToken = mockGenerateJWTToken
 	utils.GenerateRefreshToken = mockGenerateRefreshToken
 	
-	return &handler, mockClient
+	return &handler, mockClientx
 }
 
 // Cleanup function to restore original functions
