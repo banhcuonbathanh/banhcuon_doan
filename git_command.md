@@ -1,6 +1,6 @@
 # Create feature branch
 
-git checkout -b feature-account-interface-service
+git checkout -b update-proto
 
 # Commit changes
 
