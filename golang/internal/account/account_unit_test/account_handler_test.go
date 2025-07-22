@@ -17,6 +17,8 @@ import (
 
 	"english-ai-full/internal/model"
 	pb "english-ai-full/internal/proto_qr/account"
+
+		dto "english-ai-full/internal/account/account_dto"
 	"english-ai-full/utils"
 
 	"github.com/go-chi/chi"
@@ -99,6 +101,13 @@ func (m *MockAccountServiceClient) FindByID(ctx context.Context, in *pb.FindByID
 	return args.Get(0).(*pb.FindByIDRes), args.Error(1)
 }
 
+
+// new ---------------
+// func (m *MockAccountServiceClient) Logout(ctx context.Context, in *pb.LogoutReq, opts ...grpc.CallOption) (*pb.LogoutRes, error) {
+// 	args := m.Called(ctx, in)
+// 	return args.Get(0).(*pb.LogoutRes), args.Error(1)
+// }
+// old ---------
 // Store original functions for restoration
 var (
     originalHashPassword         func(string) (string, error)
@@ -219,6 +228,8 @@ func TestHandler_Register(t *testing.T) {
 			},
 			expectedStatus: http.StatusInternalServerError,
 		},
+
+		
 	}
 
 	for _, tt := range tests {
@@ -334,7 +345,7 @@ func TestHandler_CreateAccount(t *testing.T) {
 	}{
 		{
 			name: "successful account creation",
-			requestBody: res.CreateUserRequest{
+			requestBody: dto.CreateUserRequest{
 				BranchID: 1,
 				Name:     "John Doe",
 				Email:    "john@example.com",
@@ -360,7 +371,7 @@ func TestHandler_CreateAccount(t *testing.T) {
 		},
 		{
 			name: "validation error - missing required fields",
-			requestBody: res.CreateUserRequest{
+			requestBody: dto.CreateUserRequest{
 				Name:  "John Doe",
 				Email: "invalid-email",
 			},
@@ -369,7 +380,7 @@ func TestHandler_CreateAccount(t *testing.T) {
 		},
 		{
 			name: "service creation error",
-			requestBody: res.CreateUserRequest{
+			requestBody: dto.CreateUserRequest{
 				BranchID: 1,
 				Name:     "John Doe",
 				Email:    "john@example.com",

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	dto "english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/mapping"
 	"english-ai-full/internal/model"
 	pb "english-ai-full/internal/proto_qr/account"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-playground/validator"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 var ctx = context.Background()
@@ -45,7 +47,7 @@ func New(user pb.AccountServiceClient) Handler {
 // }
 // Authentication endpoints
 func (h Handler) Register(w http.ResponseWriter, r *http.Request) {
-	var req model.RegisterUserReq
+	var req dto.RegisterUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "error decoding request body", http.StatusBadRequest)
 		return
@@ -80,7 +82,7 @@ func (h Handler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) Login(w http.ResponseWriter, r *http.Request) {
-	var req model.LoginUserReq
+	var req dto.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "error decoding request body", http.StatusBadRequest)
 		return
@@ -135,7 +137,7 @@ func (h Handler) Logout(w http.ResponseWriter, r *http.Request) {
 // User management endpoints
 func (h Handler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var req CreateUserRequest
+	var req dto.CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "error decoding request body", http.StatusBadRequest)
 		return
@@ -295,7 +297,7 @@ func (h Handler) UpdateUserByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Decode request body
-	var req model.UpdateUserRequest
+	var req dto.UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, ErrDecodeFailed.Error(), http.StatusBadRequest)
 		return
@@ -329,20 +331,24 @@ func (h Handler) UpdateUserByID(w http.ResponseWriter, r *http.Request) {
 	// Return success response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(UpdateUserResponse{
-		ID:        res.Account.Id,
-		BranchID:  res.Account.BranchId,
-		Name:      res.Account.Name,
-		Email:     res.Account.Email,
-		Avatar:    res.Account.Avatar,
-		Title:     res.Account.Title,
-		Role:      res.Account.Role,
-		OwnerID:   res.Account.OwnerId,
-		CreatedAt: res.Account.CreatedAt.AsTime(),
-		UpdatedAt: res.Account.UpdatedAt.AsTime(),
+	json.NewEncoder(w).Encode(dto.UpdateUserResponse{
+		User: dto.UserProfile{
+			ID:        res.Account.Id,
+			BranchID:  res.Account.BranchId,
+			Name:      res.Account.Name,
+			Email:     res.Account.Email,
+			Avatar:    res.Account.Avatar,
+			Title:     res.Account.Title,
+			Role:      res.Account.Role,
+			OwnerID:   res.Account.OwnerId,
+		
+			CreatedAt: res.Account.CreatedAt.AsTime(),
+			UpdatedAt: res.Account.UpdatedAt.AsTime(),
+		},
+		Success: true,
+		Message: "User updated successfully",
 	})
 }
-
 func (h Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -414,7 +420,7 @@ func (h Handler) GetUserProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userProfile := UserProfile{
+	userProfile := dto.UserProfile{
 		ID:       res.Account.Id,
 		BranchID: res.Account.BranchId,
 		Name:     res.Account.Name,
@@ -426,7 +432,7 @@ func (h Handler) GetUserProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(UserProfileResponse{
+	json.NewEncoder(w).Encode(dto.UserProfileResponse{
 		User: userProfile,
 	})
 }
@@ -558,3 +564,411 @@ func (h Handler) getUserIDFromContext(ctx context.Context) (int64, error) {
 	}
 	return userID, nil
 }
+
+// new1 asdlifjlasdjfl;ajsd;fljas;ldfj;alsjfd;lasjfljasl;fj
+
+// Add these missing methods to your Handler struct to implement AccountHandlerInterface
+
+// Authentication endpoints
+func (h Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		RefreshToken string `json:"refresh_token" validate:"required"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "error decoding request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate refresh token and generate new access token
+	// This is a placeholder - implement your refresh token logic
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotImplemented)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "RefreshToken endpoint not yet implemented",
+	})
+}
+
+func (h Handler) ValidateToken(w http.ResponseWriter, r *http.Request) {
+	// Extract token from Authorization header or request body
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "missing authorization header", http.StatusUnauthorized)
+		return
+	}
+
+	// Validate JWT token
+	// This is a placeholder - implement your token validation logic
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotImplemented)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "ValidateToken endpoint not yet implemented",
+	})
+}
+
+// User management endpoints
+func (h Handler) FindAllUsers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Parse query parameters for pagination
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+
+	var limit, offset int64 = 10, 0 // defaults
+	
+	if limitStr != "" {
+		if l, err := strconv.ParseInt(limitStr, 10, 64); err == nil {
+			limit = l
+		}
+	}
+	
+	if offsetStr != "" {
+		if o, err := strconv.ParseInt(offsetStr, 10, 64); err == nil {
+			offset = o
+		}
+	}
+
+	// Use google.protobuf.Empty as defined in the proto
+	res, err := h.user.FindAllUsers(ctx, &emptypb.Empty{})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error finding users: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Apply pagination to the response if needed
+	// Note: This is client-side pagination. Ideally, pagination should be handled in the gRPC service
+	accounts := res.GetAccounts()
+	total := len(accounts)
+	
+	// Calculate pagination
+	start := int(offset)
+	end := int(offset + limit)
+	
+	if start >= total {
+		start = total
+	}
+	if end >= total {
+		end = total
+	}
+	
+	paginatedAccounts := accounts[start:end]
+	
+	// Create response with pagination info
+	response := map[string]interface{}{
+		"accounts": paginatedAccounts,
+		"total":    total,
+		"pagination": map[string]interface{}{
+			"page":      (offset / limit) + 1,
+			"page_size": limit,
+			"total_pages": (int64(total) + limit - 1) / limit, // ceiling division
+			"has_next":  end < total,
+			"has_prev":  start > 0,
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+// Password management endpoints
+func (h Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email string `json:"email" validate:"required,email"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "error decoding request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.validator.Struct(&req); err != nil {
+		http.Error(w, "validation failed", http.StatusBadRequest)
+		return
+	}
+
+	// Send password reset email
+	// This is a placeholder - implement your forgot password logic
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotImplemented)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "ForgotPassword endpoint not yet implemented",
+	})
+}
+
+func (h Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Token       string `json:"token" validate:"required"`
+		NewPassword string `json:"new_password" validate:"required,min=8"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "error decoding request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.validator.Struct(&req); err != nil {
+		http.Error(w, "validation failed", http.StatusBadRequest)
+		return
+	}
+
+	// Reset password using token
+	// This is a placeholder - implement your reset password logic
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotImplemented)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "ResetPassword endpoint not yet implemented",
+	})
+}
+
+// Account verification endpoints
+func (h Handler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
+	token := chi.URLParam(r, "token")
+	if token == "" {
+		http.Error(w, "missing verification token", http.StatusBadRequest)
+		return
+	}
+
+	// Verify email using token
+	// This is a placeholder - implement your email verification logic
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotImplemented)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "VerifyEmail endpoint not yet implemented",
+	})
+}
+
+func (h Handler) ResendVerification(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email string `json:"email" validate:"required,email"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "error decoding request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.validator.Struct(&req); err != nil {
+		http.Error(w, "validation failed", http.StatusBadRequest)
+		return
+	}
+
+	// Resend verification email
+	// This is a placeholder - implement your resend verification logic
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotImplemented)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "ResendVerification endpoint not yet implemented",
+	})
+}
+
+func (h Handler) UpdateAccountStatus(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	idStr := chi.URLParam(r, "id")
+	if idStr == "" {
+		http.Error(w, "missing id parameter", http.StatusBadRequest)
+		return
+	}
+
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id parameter", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Status string `json:"status" validate:"required,oneof=active inactive suspended pending"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "error decoding request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.validator.Struct(&req); err != nil {
+		http.Error(w, "validation failed", http.StatusBadRequest)
+		return
+	}
+
+	// Call the gRPC service to update account status
+	res, err := h.user.UpdateAccountStatus(ctx, &pb.UpdateAccountStatusReq{
+		UserId: id,
+		Status: req.Status,
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error updating account status: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Prepare response
+	response := map[string]interface{}{
+		"success": res.Success,
+		"message": res.Message,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if res.Success {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+	
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "error encoding response", http.StatusInternalServerError)
+		return
+	}
+}
+
+// Enhanced search and filtering endpoints
+func (h Handler) FindByRole(w http.ResponseWriter, r *http.Request) {
+	role := chi.URLParam(r, "role")
+	if role == "" {
+		http.Error(w, "missing role parameter", http.StatusBadRequest)
+		return
+	}
+
+	// This assumes you have a service method to find users by role
+	// res, err := h.user.FindByRole(ctx, &pb.FindByRoleReq{Role: role})
+	// if err != nil {
+	//     http.Error(w, fmt.Sprintf("error finding users by role: %v", err), http.StatusInternalServerError)
+	//     return
+	// }
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotImplemented)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "FindByRole endpoint not yet implemented in service layer",
+	})
+}
+
+func (h Handler) FindByBranch(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	branchIDStr := chi.URLParam(r, "branch_id")
+	if branchIDStr == "" {
+		http.Error(w, "missing branch_id parameter", http.StatusBadRequest)
+		return
+	}
+
+	branchID, err := strconv.ParseInt(branchIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid branch_id parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Call the gRPC service to find users by branch
+	res, err := h.user.FindByBranch(ctx, &pb.FindByBranchReq{
+		BranchId: branchID,
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error finding users by branch: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Prepare response
+	response := map[string]interface{}{
+		"accounts":   res.Accounts,
+		"total":      res.Total,
+		"pagination": res.Pagination,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "error encoding response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h Handler) SearchUsers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		http.Error(w, "missing search query parameter 'q'", http.StatusBadRequest)
+		return
+	}
+
+	// Parse optional filter parameters
+	role := r.URL.Query().Get("role")
+	branchIDStr := r.URL.Query().Get("branch_id")
+	statusFilters := r.URL.Query()["status"] // Get multiple status values
+	
+	var branchID int64
+	if branchIDStr != "" {
+		if id, err := strconv.ParseInt(branchIDStr, 10, 64); err == nil {
+			branchID = id
+		}
+	}
+
+	// Parse pagination parameters
+	pageStr := r.URL.Query().Get("page")
+	pageSizeStr := r.URL.Query().Get("page_size")
+
+	var page, pageSize int32 = 1, 10 // defaults
+	
+	if pageStr != "" {
+		if p, err := strconv.ParseInt(pageStr, 10, 32); err == nil && p > 0 {
+			page = int32(p)
+		}
+	}
+	
+	if pageSizeStr != "" {
+		if ps, err := strconv.ParseInt(pageSizeStr, 10, 32); err == nil && ps > 0 && ps <= 100 {
+			pageSize = int32(ps)
+		}
+	}
+
+	// Parse sorting parameters
+	sortBy := r.URL.Query().Get("sort_by")
+	sortOrder := r.URL.Query().Get("sort_order")
+	
+	// Default sorting
+	if sortBy == "" {
+		sortBy = "created_at"
+	}
+	if sortOrder == "" {
+		sortOrder = "desc"
+	}
+
+	// Build the search request
+	searchReq := &pb.SearchUsersReq{
+		Query:    query,
+		Role:     role,
+		BranchId: branchID,
+		Pagination: &pb.PaginationInfo{
+			Page:     page,
+			PageSize: pageSize,
+		},
+		Sort: &pb.SortInfo{
+			SortBy:    sortBy,
+			SortOrder: sortOrder,
+		},
+		StatusFilter: statusFilters,
+	}
+
+	// Call the gRPC service to search users
+	res, err := h.user.SearchUsers(ctx, searchReq)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error searching users: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Prepare response
+	response := map[string]interface{}{
+		"accounts":   res.Accounts,
+		"total":      res.Total,
+		"pagination": res.Pagination,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "error encoding response", http.StatusInternalServerError)
+		return
+	}
+}
+
+// new1 doneeeeeee
