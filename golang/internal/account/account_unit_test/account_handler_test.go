@@ -37,6 +37,94 @@ type MockAccountServiceClient struct {
 // Ensure MockAccountServiceClient implements pb.AccountServiceClient interface
 var _ pb.AccountServiceClient = (*MockAccountServiceClient)(nil)
 
+
+// new1212 -----
+func (m *MockAccountServiceClient) ChangePassword(ctx context.Context, in *pb.ChangePasswordReq, opts ...grpc.CallOption) (*pb.ChangePasswordRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.ChangePasswordRes), args.Error(1)
+}
+
+func (m *MockAccountServiceClient) FindByBranch(ctx context.Context, in *pb.FindByBranchReq, opts ...grpc.CallOption) (*pb.AccountList, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.AccountList), args.Error(1)
+}
+func (m *MockAccountServiceClient) FindByRole(ctx context.Context, in *pb.FindByRoleReq, opts ...grpc.CallOption) (*pb.AccountList, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.AccountList), args.Error(1)
+}
+func (m *MockAccountServiceClient) ForgotPassword(ctx context.Context, in *pb.ForgotPasswordReq, opts ...grpc.CallOption) (*pb.ForgotPasswordRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.ForgotPasswordRes), args.Error(1)
+}
+func (m *MockAccountServiceClient) Logout(ctx context.Context, in *pb.LogoutReq, opts ...grpc.CallOption) (*pb.LogoutRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.LogoutRes), args.Error(1)
+}
+func (m *MockAccountServiceClient) RefreshToken(ctx context.Context, in *pb.RefreshTokenReq, opts ...grpc.CallOption) (*pb.RefreshTokenRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.RefreshTokenRes), args.Error(1)
+}
+func (m *MockAccountServiceClient) ResendVerification(ctx context.Context, in *pb.ResendVerificationReq, opts ...grpc.CallOption) (*pb.ResendVerificationRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.ResendVerificationRes), args.Error(1)
+}
+func (m *MockAccountServiceClient) ResetPassword(ctx context.Context, in *pb.ResetPasswordReq, opts ...grpc.CallOption) (*pb.ResetPasswordRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.ResetPasswordRes), args.Error(1)
+}
+func (m *MockAccountServiceClient) SearchUsers(ctx context.Context, in *pb.SearchUsersReq, opts ...grpc.CallOption) (*pb.SearchUsersRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.SearchUsersRes), args.Error(1)
+}
+func (m *MockAccountServiceClient) UpdateAccountStatus(ctx context.Context, in *pb.UpdateAccountStatusReq, opts ...grpc.CallOption) (*pb.UpdateAccountStatusRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.UpdateAccountStatusRes), args.Error(1)
+}
+func (m *MockAccountServiceClient) ValidateToken(ctx context.Context, in *pb.ValidateTokenReq, opts ...grpc.CallOption) (*pb.ValidateTokenRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.ValidateTokenRes), args.Error(1)
+}
+func (m *MockAccountServiceClient) VerifyEmail(ctx context.Context, in *pb.VerifyEmailReq, opts ...grpc.CallOption) (*pb.VerifyEmailRes, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb.VerifyEmailRes), args.Error(1)
+}
+// new1212
 func (m *MockAccountServiceClient) CreateUser(ctx context.Context, in *pb.AccountReq, opts ...grpc.CallOption) (*pb.Account, error) {
 	args := m.Called(ctx, in)
 	if args.Get(0) == nil {
