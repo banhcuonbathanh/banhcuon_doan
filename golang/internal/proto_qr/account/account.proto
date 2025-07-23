@@ -205,10 +205,12 @@ message UpdateAccountStatusRes {
 // Enhanced search and filtering messages
 message FindByRoleReq {
   string role = 1;
+   PaginationInfo pagination = 2; // Pagination information
 }
 
 message FindByBranchReq {
   int64 branch_id = 1;
+   PaginationInfo pagination = 2;
 }
 
 
