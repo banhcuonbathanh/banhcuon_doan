@@ -1,6 +1,7 @@
 package main
 
 import (
+	"english-ai-full/internal/account"
 	"english-ai-full/internal/branch"
 	"log"
 	"net"
@@ -17,6 +18,60 @@ import (
 	"google.golang.org/grpc"
 )
 
+// new 121212121212
+
+func initializeAccountService(accountRepository *account.Repository) *account.ServiceStruct {
+	// Initialize JWT Token Maker
+	tokenMaker := utils.NewJWTTokenMaker("your-super-secret-jwt-key-here")
+	
+	// Initialize Password Hasher
+	passwordHasher := utils.NewBcryptPasswordHasher()
+	
+	// Initialize Email Service
+	// Option 1: Real SMTP Email Service
+	emailConfig := utils.EmailConfig{
+		Host:     "smtp.gmail.com",  // or your SMTP server
+		Port:     "587",
+		Username: "your-email@gmail.com",
+		Password: "your-app-password",
+		From:     "your-email@gmail.com",
+	}
+	emailService := utils.NewSMTPEmailService(emailConfig)
+	
+	// Option 2: Mock Email Service (for development/testing)
+	// emailService := email.NewMockEmailService()
+	
+	// Create account service with all dependencies
+	accountService := account.NewAccountService(
+		accountRepository,
+		tokenMaker,
+		passwordHasher,
+		emailService,
+	)
+	
+	return accountService
+}
+
+// Alternative: Gradual implementation
+func initializeAccountServiceGradual(accountRepository *account.Repository) *account.ServiceStruct {
+	// Start with just token maker and password hasher
+	tokenMaker := utils.NewJWTTokenMaker("your-super-secret-jwt-key-here")
+	passwordHasher := utils.NewBcryptPasswordHasher()
+	
+	// Use mock email service for now
+	emailService := utils.NewMockEmailService()
+	
+	accountService := account.NewAccountService(
+		accountRepository,
+		tokenMaker,
+		passwordHasher,
+		emailService, // or nil if you don't want any email functionality
+	)
+	
+	return accountService
+}
+
+// new 1212121212
 func main() {
 	cfg, err := utils.LoadServer()
 	if err != nil {
@@ -29,9 +84,17 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer dbConn.Close()
+// // new 121212121
+// tokenMaker := utils.NewJWTTokenMaker(secretKey) // secretKey should be from config
 
+// // 2. Create the password hasher
+// passwordHasher := utils.NewBcryptPasswordHasher() // or whatever implementation you have
+
+// // 3. Create the email service
+// emailService := email.NewEmailService(emailConfig) 
+// // new 12121212
 	accountRepository := accountRepo.NewAccountRepository(dbConn)
-	accountService := accountRepo.NewAccountService(accountRepository)
+	accountService := initializeAccountService(accountRepository)
 
 	branchRepository := branch.NewBranchRepository(dbConn)
 	branchService := branch.NewBranchService(branchRepository)
