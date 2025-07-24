@@ -27,7 +27,7 @@ func TestHandler_IntegrationScenarios(t *testing.T) {
 	defer cleanupHandlerTest()
 	
 	t.Run("complete user lifecycle", func(t *testing.T) {
-		handler, mockClient := setupHandlerTest()
+		_, mockClient := setupHandlerTest()
 
 		// 1. Register user
 		mockClient.On("Register", mock.Anything, mock.Anything).Return(&pb.RegisterRes{
@@ -78,114 +78,62 @@ func TestHandler_IntegrationScenarios(t *testing.T) {
 }
 
 // Test error handling scenarios
-func TestHandler_ErrorHandlingScenarios(t *testing.T) {
-	defer cleanupHandlerTest()
+// func TestHandler_ErrorHandlingScenarios(t *testing.T) {
+// 	defer cleanupHandlerTest()
 	
-	tests := []struct {
-		name        string
-		operation   string
-		mockSetup   func(*MockAccountServiceClient)
-		requestFunc func(*res.Handler) (*httptest.ResponseRecorder, error)
-	}{
-		{
-			name:      "network timeout simulation",
-			operation: "login",
-			mockSetup: func(m *MockAccountServiceClient) {
-				m.On("Login", mock.Anything, mock.Anything).Return(
-					(*pb.AccountRes)(nil), errors.New("context deadline exceeded"))
-			},
-			requestFunc: func(handler *res.Handler) (*httptest.ResponseRecorder, error) {
-				body := bytes.NewBuffer([]byte(`{"email":"test@example.com","password":"password"}`))
-				req := httptest.NewRequest(http.MethodPost, "/login", body)
-				req.Header.Set("Content-Type", "application/json")
-				w := httptest.NewRecorder()
-				handler.Login(w, req)
-				return w, nil
-			},
-		},
-		{
-			name:      "database connection error",
-			operation: "find_all_users",
-			mockSetup: func(m *MockAccountServiceClient) {
-				m.On("FindAllUsers", mock.Anything, mock.Anything).Return(
-					(*pb.AccountList)(nil), errors.New("database connection refused"))
-			},
-			requestFunc: func(handler *res.Handler) (*httptest.ResponseRecorder, error) {
-				req := httptest.NewRequest(http.MethodGet, "/users", nil)
-				w := httptest.NewRecorder()
-				handler.FindAllUsers(w, req)
-				return w, nil
-			},
-		},
-	}
+// 	tests := []struct {
+// 		name        string
+// 		operation   string
+// 		mockSetup   func(*MockAccountServiceClient)
+// 		requestFunc func(*res.Handler) (*httptest.ResponseRecorder, error)
+// 	}{
+// 		{
+// 			name:      "network timeout simulation",
+// 			operation: "login",
+// 			mockSetup: func(m *MockAccountServiceClient) {
+// 				m.On("Login", mock.Anything, mock.Anything).Return(
+// 					(*pb.AccountRes)(nil), errors.New("context deadline exceeded"))
+// 			},
+// 			requestFunc: func(handler *res.Handler) (*httptest.ResponseRecorder, error) {
+// 				body := bytes.NewBuffer([]byte(`{"email":"test@example.com","password":"password"}`))
+// 				req := httptest.NewRequest(http.MethodPost, "/login", body)
+// 				req.Header.Set("Content-Type", "application/json")
+// 				w := httptest.NewRecorder()
+// 				handler.Login(w, req)
+// 				return w, nil
+// 			},
+// 		},
+// 		{
+// 			name:      "database connection error",
+// 			operation: "find_all_users",
+// 			mockSetup: func(m *MockAccountServiceClient) {
+// 				m.On("FindAllUsers", mock.Anything, mock.Anything).Return(
+// 					(*pb.AccountList)(nil), errors.New("database connection refused"))
+// 			},
+// 			requestFunc: func(handler *res.Handler) (*httptest.ResponseRecorder, error) {
+// 				req := httptest.NewRequest(http.MethodGet, "/users", nil)
+// 				w := httptest.NewRecorder()
+// 				handler.FindAllUsers(w, req)
+// 				return w, nil
+// 			},
+// 		},
+// 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			handler, mockClient := setupHandlerTest()
-			tt.mockSetup(mockClient)
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			handler, mockClient := setupHandlerTest()
+// 			tt.mockSetup(mockClient)
 
-			w, err := tt.requestFunc(&handler)
-			assert.NoError(t, err)
-			assert.Equal(t, http.StatusInternalServerError, w.Code)
-			mockClient.AssertExpectations(t)
-		})
-	}
-}
+// 			w, err := tt.requestFunc(&handler)
+// 			assert.NoError(t, err)
+// 			assert.Equal(t, http.StatusInternalServerError, w.Code)
+// 			mockClient.AssertExpectations(t)
+// 		})
+// 	}
+// }
 
 // Test concurrent access scenarios
-func TestHandler_ConcurrentAccess(t *testing.T) {
-	defer cleanupHandlerTest()
-	
-	t.Run("concurrent user creation", func(t *testing.T) {
-		handler, mockClient := setupHandlerTest()
-		
-		// Setup mock for concurrent requests
-		mockClient.On("CreateUser", mock.Anything, mock.Anything).Return(&pb.Account{
-			Id:       mock.AnythingOfType("int64"),
-			BranchId: 1,
-			Name:     mock.AnythingOfType("string"),
-			Email:    mock.AnythingOfType("string"),
-			Role:     "user",
-		}, nil).Times(5)
 
-		// Simulate concurrent requests
-		var wg sync.WaitGroup
-		results := make([]int, 5)
-		
-		for i := 0; i < 5; i++ {
-			wg.Add(1)
-			go func(index int) {
-				defer wg.Done()
-				
-				userReq := dto.CreateUserRequest{
-					BranchID: 1,
-					Name:     fmt.Sprintf("User %d", index),
-					Email:    fmt.Sprintf("user%d@example.com", index),
-					Password: "password123",
-					Role:     "user",
-					OwnerID:  1,
-				}
-				
-				body, _ := json.Marshal(userReq)
-				req := httptest.NewRequest(http.MethodPost, "/accounts", bytes.NewBuffer(body))
-				req.Header.Set("Content-Type", "application/json")
-				w := httptest.NewRecorder()
-				
-				handler.CreateAccount(w, req)
-				results[index] = w.Code
-			}(i)
-		}
-		
-		wg.Wait()
-		
-		// Verify all requests succeeded
-		for i, code := range results {
-			assert.Equal(t, http.StatusCreated, code, "Request %d failed", i)
-		}
-		
-		mockClient.AssertExpectations(t)
-	})
-}
 
 // Test validation scenarios
 func TestHandler_ValidationScenarios(t *testing.T) {
@@ -289,10 +237,10 @@ func TestHandler_PerformanceScenarios(t *testing.T) {
 		
 		// Mock for bulk operations
 		mockClient.On("CreateUser", mock.Anything, mock.Anything).Return(&pb.Account{
-			Id:       mock.AnythingOfType("int64"),
+			Id:       1,
 			BranchId: 1,
-			Name:     mock.AnythingOfType("string"),
-			Email:    mock.AnythingOfType("string"),
+				Name:     "Test User", // Use actual string value
+			Email:    "test@example.com", // Use actual string value
 			Role:     "user",
 		}, nil).Times(100)
 
@@ -453,6 +401,116 @@ func TestHandler_SecurityScenarios(t *testing.T) {
 		
 		handler.Register(w, req)
 		// Should process the request (input sanitization should happen at the service layer)
+		mockClient.AssertExpectations(t)
+	})
+}
+
+func TestHandler_ErrorHandlingScenarios(t *testing.T) {
+	defer cleanupHandlerTest()
+	
+	tests := []struct {
+		name        string
+		operation   string
+		mockSetup   func(*MockAccountServiceClient)
+		requestFunc func(*res.Handler) (*httptest.ResponseRecorder, error)
+	}{
+		{
+			name:      "network timeout simulation",
+			operation: "login",
+			mockSetup: func(m *MockAccountServiceClient) {
+				m.On("Login", mock.Anything, mock.Anything).Return(
+					(*pb.AccountRes)(nil), errors.New("context deadline exceeded"))
+			},
+			requestFunc: func(handler *res.Handler) (*httptest.ResponseRecorder, error) {
+				body := bytes.NewBuffer([]byte(`{"email":"test@example.com","password":"password"}`))
+				req := httptest.NewRequest(http.MethodPost, "/login", body)
+				req.Header.Set("Content-Type", "application/json")
+				w := httptest.NewRecorder()
+				handler.Login(w, req)
+				return w, nil
+			},
+		},
+		{
+			name:      "database connection error",
+			operation: "find_all_users",
+			mockSetup: func(m *MockAccountServiceClient) {
+				m.On("FindAllUsers", mock.Anything, mock.Anything).Return(
+					(*pb.AccountList)(nil), errors.New("database connection refused"))
+			},
+			requestFunc: func(handler *res.Handler) (*httptest.ResponseRecorder, error) {
+				req := httptest.NewRequest(http.MethodGet, "/users", nil)
+				w := httptest.NewRecorder()
+				handler.FindAllUsers(w, req)
+				return w, nil
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler, mockClient := setupHandlerTest()
+			tt.mockSetup(mockClient)
+
+			// Fix: Pass handler directly instead of &handler
+			w, err := tt.requestFunc(handler)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusInternalServerError, w.Code)
+			mockClient.AssertExpectations(t)
+		})
+	}
+}
+
+func TestHandler_ConcurrentAccess(t *testing.T) {
+	defer cleanupHandlerTest()
+	
+	t.Run("concurrent user creation", func(t *testing.T) {
+		handler, mockClient := setupHandlerTest()
+		
+		// Setup mock for concurrent requests - provide actual return values
+		mockClient.On("CreateUser", mock.Anything, mock.Anything).Return(&pb.Account{
+			Id:       1, // Use actual int64 value
+			BranchId: 1,
+			Name:     "Test User", // Use actual string value
+			Email:    "test@example.com", // Use actual string value
+			Role:     "user",
+		}, nil).Times(5)
+
+		// Simulate concurrent requests
+		var wg sync.WaitGroup
+		results := make([]int, 5)
+		
+		for i := 0; i < 5; i++ {
+			wg.Add(1)
+			go func(index int) {
+				defer wg.Done()
+				
+				userReq := dto.CreateUserRequest{
+					ID:       int64(index + 1), // Add missing ID field
+					BranchID: 1,
+					Name:     fmt.Sprintf("User %d", index),
+					Email:    fmt.Sprintf("user%d@example.com", index),
+					Password: "password123",
+					Role:     "user",
+					OwnerID:  1,
+				}
+				
+				body, _ := json.Marshal(userReq)
+				req := httptest.NewRequest(http.MethodPost, "/accounts", bytes.NewBuffer(body))
+				req.Header.Set("Content-Type", "application/json")
+				w := httptest.NewRecorder()
+				
+				handler.CreateAccount(w, req)
+				results[index] = w.Code
+			}(i)
+		}
+		
+		wg.Wait()
+		
+		// Verify all requests succeeded
+		for i, code := range results {
+			assert.Equal(t, http.StatusCreated, code, "Request %d failed", i)
+		}
+		
 		mockClient.AssertExpectations(t)
 	})
 }

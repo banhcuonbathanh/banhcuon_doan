@@ -163,92 +163,6 @@ func TestHandler_FindByRole(t *testing.T) {
 	}
 }
 
-func TestHandler_SearchUsers(t *testing.T) {
-	defer cleanupHandlerTest()
-	
-	tests := []struct {
-		name           string
-		requestBody    interface{}
-		mockSetup      func(*MockAccountServiceClient)
-		expectedStatus int
-	}{
-		{
-			name: "successful user search",
-			requestBody: dto.SearchUsersRequest{
-				Query:    "john",
-				Role:     "user",
-				BranchID: 1,
-				Page:     1,
-				PageSize: 10,
-			},
-			mockSetup: func(m *MockAccountServiceClient) {
-				m.On("SearchUsers", mock.Anything, &pb.SearchUsersReq{
-					Query:    "john",
-					Role:     "user",
-					BranchId: 1,
-					Page:     1,
-					PageSize: 10,
-				}).Return(&pb.SearchUsersRes{
-					Users: []*pb.Account{
-						{
-							Id:    1,
-							Name:  "John Doe",
-							Email: "john@example.com",
-							Role:  "user",
-						},
-					},
-					TotalCount: 1,
-					Page:       1,
-					PageSize:   10,
-					TotalPages: 1,
-				}, nil)
-			},
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name:           "invalid request body",
-			requestBody:    "invalid json",
-			mockSetup:      func(m *MockAccountServiceClient) {},
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name: "service error",
-			requestBody: dto.SearchUsersRequest{
-				Query:    "nonexistent",
-				Page:     1,
-				PageSize: 10,
-			},
-			mockSetup: func(m *MockAccountServiceClient) {
-				m.On("SearchUsers", mock.Anything, mock.Anything).Return(
-					(*pb.SearchUsersRes)(nil), errors.New("search failed"))
-			},
-			expectedStatus: http.StatusInternalServerError,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			handler, mockClient := setupHandlerTest()
-			tt.mockSetup(mockClient)
-
-			var body bytes.Buffer
-			if str, ok := tt.requestBody.(string); ok {
-				body.WriteString(str)
-			} else {
-				json.NewEncoder(&body).Encode(tt.requestBody)
-			}
-
-			req := httptest.NewRequest(http.MethodPost, "/users/search", &body)
-			req.Header.Set("Content-Type", "application/json")
-			w := httptest.NewRecorder()
-
-			handler.SearchUsers(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			mockClient.AssertExpectations(t)
-		})
-	}
-}
 
 func TestHandler_UpdateAccountStatus(t *testing.T) {
 	defer cleanupHandlerTest()
@@ -274,7 +188,7 @@ func TestHandler_UpdateAccountStatus(t *testing.T) {
 				}).Return(&pb.UpdateAccountStatusRes{
 					Success: true,
 					Message: "Status updated successfully",
-					Status:  "active",
+				
 				}, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -331,6 +245,98 @@ func TestHandler_UpdateAccountStatus(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			handler.UpdateAccountStatus(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			mockClient.AssertExpectations(t)
+		})
+	}
+}
+func TestHandler_SearchUsers(t *testing.T) {
+	defer cleanupHandlerTest()
+	
+	tests := []struct {
+		name           string
+		requestBody    interface{}
+		mockSetup      func(*MockAccountServiceClient)
+		expectedStatus int
+	}{
+		{
+			name: "successful user search",
+			requestBody: dto.SearchUsersRequest{
+				Query:    "john",
+				Role:     "user",
+				BranchID: 1,
+				Page:     1,
+				PageSize: 10,
+			},
+			mockSetup: func(m *MockAccountServiceClient) {
+				m.On("SearchUsers", mock.Anything, &pb.SearchUsersReq{
+					Query:    "john",
+					Role:     "user",
+					BranchId: 1,
+					Pagination: &pb.PaginationInfo{
+						Page:     1,
+						PageSize: 10,
+					},
+				}).Return(&pb.SearchUsersRes{
+					Accounts: []*pb.Account{
+						{
+							Id:    1,
+							Name:  "John Doe",
+							Email: "john@example.com",
+							Role:  "user",
+						},
+					},
+					Total: 1,
+					Pagination: &pb.PaginationInfo{
+						Page:       1,
+						PageSize:   10,
+						TotalPages: 1,
+						HasNext:    false,
+						HasPrev:    false,
+					},
+				}, nil)
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "invalid request body",
+			requestBody:    "invalid json",
+			mockSetup:      func(m *MockAccountServiceClient) {},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "service error",
+			requestBody: dto.SearchUsersRequest{
+				Query:    "nonexistent",
+				Page:     1,
+				PageSize: 10,
+			},
+			mockSetup: func(m *MockAccountServiceClient) {
+				m.On("SearchUsers", mock.Anything, mock.Anything).Return(
+					(*pb.SearchUsersRes)(nil), errors.New("search failed"))
+			},
+			expectedStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler, mockClient := setupHandlerTest()
+			tt.mockSetup(mockClient)
+
+			var body bytes.Buffer
+			if str, ok := tt.requestBody.(string); ok {
+				body.WriteString(str)
+			} else {
+				json.NewEncoder(&body).Encode(tt.requestBody)
+			}
+
+			req := httptest.NewRequest(http.MethodPost, "/users/search", &body)
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+
+			handler.SearchUsers(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			mockClient.AssertExpectations(t)
