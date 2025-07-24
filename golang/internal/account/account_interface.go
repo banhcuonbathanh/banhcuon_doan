@@ -71,7 +71,8 @@ type AccountServiceInterface interface {
 	// Enhanced search and filtering
 	FindByRole(ctx context.Context, req *pb.FindByRoleReq) (*pb.AccountList, error)
 	FindByBranch(ctx context.Context, req *pb.FindByBranchReq) (*pb.AccountList, error)
-	SearchUsers(ctx context.Context, req *pb.SearchUsersReq) (*pb.AccountList, error)
+// In your interface definition file
+SearchUsers(ctx context.Context, req *account.SearchUsersReq) (*account.SearchUsersRes, error)
 	
 	// Token/Session management
 	RefreshToken(ctx context.Context, req *pb.RefreshTokenReq) (*pb.RefreshTokenRes, error)
