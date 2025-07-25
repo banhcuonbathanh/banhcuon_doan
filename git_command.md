@@ -1,6 +1,6 @@
 # Create feature branch
 
-git checkout -b update-proto
+git checkout -b separate-account-handler
 
 # Commit changes
 
