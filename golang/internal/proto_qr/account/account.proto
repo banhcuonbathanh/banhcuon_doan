@@ -12,8 +12,28 @@ service AccountService {
   rpc FindAllUsers(google.protobuf.Empty) returns (AccountList);
   rpc FindByEmail(FindByEmailReq) returns (AccountRes);
   rpc Login(LoginReq) returns (AccountRes);
+  rpc Logout(LogoutReq) returns (LogoutRes);
   rpc Register(RegisterReq) returns (RegisterRes);
   rpc FindByID(FindByIDReq) returns (FindByIDRes);
+  
+  // Password management
+  rpc ChangePassword(ChangePasswordReq) returns (ChangePasswordRes);
+  rpc ResetPassword(ResetPasswordReq) returns (ResetPasswordRes);
+  rpc ForgotPassword(ForgotPasswordReq) returns (ForgotPasswordRes);
+  
+  // Account verification and status
+  rpc VerifyEmail(VerifyEmailReq) returns (VerifyEmailRes);
+  rpc ResendVerification(ResendVerificationReq) returns (ResendVerificationRes);
+  rpc UpdateAccountStatus(UpdateAccountStatusReq) returns (UpdateAccountStatusRes);
+  
+  // Enhanced search and filtering
+  rpc FindByRole(FindByRoleReq) returns (AccountList);
+  rpc FindByBranch(FindByBranchReq) returns (AccountList);
+  rpc SearchUsers(SearchUsersReq) returns (SearchUsersRes);
+  
+  // Token/Session management
+  rpc RefreshToken(RefreshTokenReq) returns (RefreshTokenRes);
+  rpc ValidateToken(ValidateTokenReq) returns (ValidateTokenRes);
 }
 
 message Account {
@@ -29,7 +49,6 @@ message Account {
   google.protobuf.Timestamp created_at = 10;
   google.protobuf.Timestamp updated_at = 11;
 }
-
 
 message AccountReq {
   int64 branch_id = 1;
@@ -55,15 +74,38 @@ message UpdateUserReq {
 
 message AccountRes {
   Account account = 1;
+  string token = 2;  // Add this field
 }
 
 message AccountList {
   repeated Account accounts = 1;
+  int32 Total = 2;
+    PaginationInfo pagination = 3;
 }
+
+// New message for paginated search results
+message SearchUsersRes {
+  repeated Account accounts = 1;
+  int32 total = 2;
+  PaginationInfo pagination = 3;
+}
+
+// New message for pagination information
+
 
 message LoginReq {
   string email = 1;
   string password = 2;
+}
+
+message LogoutReq {
+  int64 user_id = 1;
+  string token = 2; // Optional: if you're using token-based authentication
+}
+
+message LogoutRes {
+  bool success = 1;
+  string message = 2;
 }
 
 message DeleteAccountReq {
@@ -97,4 +139,128 @@ message FindByIDReq {
 
 message FindByIDRes {
   Account account = 1;
+}
+
+// Password management messages
+message ChangePasswordReq {
+  int64 user_id = 1;
+  string current_password = 2;
+  string new_password = 3;
+}
+
+message ChangePasswordRes {
+  bool success = 1;
+  string message = 2;
+}
+
+message ResetPasswordReq {
+  string token = 1;
+  string new_password = 2;
+}
+
+message ResetPasswordRes {
+  bool success = 1;
+  string message = 2;
+}
+
+message ForgotPasswordReq {
+  string email = 1;
+}
+
+message ForgotPasswordRes {
+  bool success = 1;
+  string message = 2;
+  string reset_token = 3; // Optional: if you want to return the token for testing
+}
+
+// Account verification and status messages
+message VerifyEmailReq {
+  string verification_token = 1;
+}
+
+message VerifyEmailRes {
+  bool success = 1;
+  string message = 2;
+}
+
+message ResendVerificationReq {
+  string email = 1;
+}
+
+message ResendVerificationRes {
+  bool success = 1;
+  string message = 2;
+}
+
+message UpdateAccountStatusReq {
+  int64 user_id = 1;
+  string status = 2; // e.g., "active", "inactive", "suspended", "pending"
+}
+
+message UpdateAccountStatusRes {
+  bool success = 1;
+  string message = 2;
+}
+
+// Enhanced search and filtering messages
+message FindByRoleReq {
+  string role = 1;
+   PaginationInfo pagination = 2; // Pagination information
+}
+
+message FindByBranchReq {
+  int64 branch_id = 1;
+     PaginationInfo pagination = 2;
+
+}
+
+message FindByBranchRes {
+  int64 branch_id = 1;
+   PaginationInfo pagination = 2;
+}
+
+
+// Token/Session management messages
+message RefreshTokenReq {
+  string refresh_token = 1;
+}
+
+message RefreshTokenRes {
+  bool success = 1;
+  string access_token = 2;
+  string refresh_token = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+message ValidateTokenReq {
+  string token = 1;
+}
+
+message ValidateTokenRes {
+  bool valid = 1;
+  int64 user_id = 2;
+  string message = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+message SearchUsersReq {
+  string query = 1; // Search term (name, email, etc.)
+  string role = 2; // Optional filter by role
+  int64 branch_id = 3; // Optional filter by branch
+  PaginationInfo pagination = 4; // Pagination information
+  SortInfo sort = 5; // Optional sorting information
+  repeated string status_filter = 6; // Optional filter by account status
+}
+
+message SortInfo {
+  string sort_by = 1; // Sort field (e.g., "name", "email", "created_at")
+  string sort_order = 2; // Sort order ("asc" or "desc")
+}
+
+message PaginationInfo {
+  int32 page = 1;
+  int32 page_size = 2;
+  int32 total_pages = 3;
+  bool has_next = 4;
+  bool has_prev = 5;
 }
