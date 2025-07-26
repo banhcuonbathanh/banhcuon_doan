@@ -620,67 +620,7 @@ func (s *ServiceStruct) FindByBranch(ctx context.Context, req *account.FindByBra
 	}, nil
 }
 
-// func (s *ServiceStruct) SearchUsers(ctx context.Context, req *account.SearchUsersReq) (*account.AccountList, error) {
-// 	// Extract pagination info
-// 	var page, pageSize int32
-// 	if req.Pagination != nil {
-// 		page = req.Pagination.Page
-// 		pageSize = req.Pagination.PageSize
-// 	} else {
-// 		// Default values if pagination is not provided
-// 		page = 1
-// 		pageSize = 10
-// 	}
 
-// 	// Extract sort info
-// 	var sortBy, sortOrder string
-// 	if req.Sort != nil {
-// 		sortBy = req.Sort.SortBy
-// 		sortOrder = req.Sort.SortOrder
-// 	}
-
-// 	users, totalCount, err := s.userRepo.SearchUsers(ctx, req.Query, req.Role, req.BranchId, req.StatusFilter, page, pageSize, sortBy, sortOrder)
-// 	if err != nil {
-// 		return nil, pkgerrors.WithStack(err)
-// 	}
-
-// 	var accountList []*account.Account
-// 	for _, user := range users {
-// 		accountList = append(accountList, &account.Account{
-// 			Id:        user.Id,
-// 			BranchId:  user.BranchId,
-// 			Name:      user.Name,
-// 			Email:     user.Email,
-// 			Avatar:    user.Avatar,
-// 			Title:     user.Title,
-// 			Role:      user.Role, // Remove string() conversion since user.Role is already a string
-// 			OwnerId:   user.OwnerId,
-// 			CreatedAt: user.CreatedAt, // Direct assignment since both are *timestamppb.Timestamp
-// 			UpdatedAt: user.UpdatedAt, // Direct assignment since both are *timestamppb.Timestamp
-// 		})
-// 	}
-
-// 	// Calculate pagination info
-// 	totalPages := int32((totalCount + int64(pageSize) - 1) / int64(pageSize)) // Ceiling division
-// 	hasNext := page < totalPages
-// 	hasPrev := page > 1
-
-// 	// Create pagination info
-// 	paginationInfo := &account.PaginationInfo{
-// 		Page:       page,
-// 		PageSize:   pageSize,
-// 		TotalPages: totalPages,
-// 		HasNext:    hasNext,
-// 		HasPrev:    hasPrev,
-// 	}
-
-// 	return &account.AccountList{
-// 		Accounts:   accountList,
-// 		Total:      int32(totalCount),
-// 		Pagination: paginationInfo, // Include pagination info in response
-// 	}, nil
-// }
-// Token management methods
 func (s *ServiceStruct) RefreshToken(ctx context.Context, req *account.RefreshTokenReq) (*account.RefreshTokenRes, error) {
 	if s.tokenMaker == nil {
 		return nil, errors.New("token functionality not available")

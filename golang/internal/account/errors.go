@@ -1,8 +1,10 @@
 package account
 
 import (
+	"encoding/json"
 	error "english-ai-full/internal/error_custom"
 	"fmt"
+	"log"
 	"net/http"
 
 	"errors"
@@ -131,11 +133,28 @@ func NewAuthorizationError(action string, resource string) *error.APIError {
 
 // Helper function to send error response
 func SendErrorResponse(w http.ResponseWriter, err *error.APIError) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(err.HTTPStatus)
-	w.Write(err.ToJSON())
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(err.HTTPStatus)
+    
+    // Get JSON bytes and handle potential marshaling error
+    jsonBytes, jsonErr := err.ToJSON()
+    if jsonErr != nil {
+        // Handle JSON serialization failure
+        log.Printf("Failed to marshal error: %v", jsonErr)
+        
+        // Create fallback error response
+        fallback := map[string]string{
+            "code":    "internal_error",
+            "message": "Failed to generate error response",
+        }
+        fallbackJson, _ := json.Marshal(fallback)
+        w.Write(fallbackJson)
+        return
+    }
+    
+    // Write original JSON response
+    w.Write(jsonBytes)
 }
-
 
 
 // Mock function for example
