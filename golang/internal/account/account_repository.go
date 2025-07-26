@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"english-ai-full/internal/model"
 	"english-ai-full/internal/proto_qr/account"
+	"fmt"
 	"strings"
 
 	"time"
@@ -249,7 +250,6 @@ func (r *Repository) FindByOwnerID(ctx context.Context, ownerID int64) ([]model.
 
 	return accounts, nil
 }
-
 func (r *Repository) SearchUsers(ctx context.Context, query, role string, branchId int64, statusFilter []string, page, pageSize int32, sortBy, sortOrder string) (users []account.Account, totalCount int64, err error) {
 	// Build query modifiers
 	var queryMods []qm.QueryMod
@@ -289,7 +289,7 @@ func (r *Repository) SearchUsers(ctx context.Context, query, role string, branch
 		return nil, 0, pkgerrors.WithStack(err)
 	}
 	
-	// Add sorting
+	// Add sorting - FIX: Actually implement the sorting
 	if sortBy == "" {
 		sortBy = "created_at"
 	}
@@ -297,8 +297,22 @@ func (r *Repository) SearchUsers(ctx context.Context, query, role string, branch
 		sortOrder = "DESC"
 	}
 	
-
-
+	// Validate sortBy to prevent SQL injection
+	validSortFields := map[string]bool{
+		"id": true, "name": true, "email": true, "role": true, 
+		"created_at": true, "updated_at": true, "branch_id": true,
+	}
+	if !validSortFields[sortBy] {
+		sortBy = "created_at"
+	}
+	
+	// Validate sortOrder
+	if sortOrder != "ASC" && sortOrder != "DESC" {
+		sortOrder = "DESC"
+	}
+	
+	orderByClause := fmt.Sprintf("%s %s", sortBy, sortOrder)
+	queryMods = append(queryMods, qm.OrderBy(orderByClause))
 	
 	// Add pagination
 	if page < 1 {
@@ -317,25 +331,146 @@ func (r *Repository) SearchUsers(ctx context.Context, query, role string, branch
 		return nil, 0, pkgerrors.WithStack(err)
 	}
 	
-	// Convert ORM models to proto models
+	// Convert ORM models to proto models - FIX: Handle null values properly
 	users = make([]account.Account, len(ormUsers))
 	for i, user := range ormUsers {
+		// Handle nullable BranchID
+		var branchId int64
+		if user.BranchID.Valid {
+			branchId = user.BranchID.Int64
+		}
+		
+		// Handle nullable OwnerID
+		var ownerId int64
+		if user.OwnerID.Valid {
+			ownerId = user.OwnerID.Int64
+		}
+		
+		// Handle nullable Avatar
+		var avatar string
+		if user.Avatar.Valid {
+			avatar = user.Avatar.String
+		}
+		
+		// Handle nullable Title
+		var title string
+		if user.Title.Valid {
+			title = user.Title.String
+		}
+		
+		// Handle nullable timestamps
+		var createdAt *timestamppb.Timestamp
+		if user.CreatedAt.Valid {
+			createdAt = timestamppb.New(user.CreatedAt.Time)
+		}
+		
+		var updatedAt *timestamppb.Timestamp
+		if user.UpdatedAt.Valid {
+			updatedAt = timestamppb.New(user.UpdatedAt.Time)
+		}
+		
 		users[i] = account.Account{
 			Id:        user.ID,
-			BranchId:  user.BranchID.Int64,
+			BranchId:  branchId,
 			Name:      user.Name,
 			Email:     user.Email,
-			Avatar:    user.Avatar.String,
-			Title:     user.Title.String,
+			Avatar:    avatar,
+			Title:     title,
 			Role:      user.Role,
-			OwnerId:   user.OwnerID.Int64,
-			CreatedAt: timestamppb.New(user.CreatedAt.Time),
-			UpdatedAt: timestamppb.New(user.UpdatedAt.Time),
+			OwnerId:   ownerId,
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
 		}
 	}
 	
 	return users, totalCount, nil
 }
+// func (r *Repository) SearchUsers(ctx context.Context, query, role string, branchId int64, statusFilter []string, page, pageSize int32, sortBy, sortOrder string) (users []account.Account, totalCount int64, err error) {
+// 	// Build query modifiers
+// 	var queryMods []qm.QueryMod
+	
+// 	// Always exclude soft deleted records
+// 	queryMods = append(queryMods, orm.AccountWhere.DeletedAt.IsNull())
+	
+// 	// Add search query filter
+// 	if query != "" {
+// 		searchPattern := "%" + strings.ToLower(query) + "%"
+// 		queryMods = append(queryMods, qm.Where("(LOWER(name) LIKE ? OR LOWER(email) LIKE ?)", searchPattern, searchPattern))
+// 	}
+	
+// 	// Add role filter
+// 	if role != "" {
+// 		queryMods = append(queryMods, orm.AccountWhere.Role.EQ(role))
+// 	}
+	
+// 	// Add branch filter
+// 	if branchId > 0 {
+// 		queryMods = append(queryMods, orm.AccountWhere.BranchID.EQ(null.Int64{Int64: branchId, Valid: true}))
+// 	}
+	
+// 	// Add status filter (if you have a status column)
+// 	if len(statusFilter) > 0 {
+// 		// Assuming you have a status column in your accounts table
+// 		// queryMods = append(queryMods, qm.WhereIn("status IN ?", statusFilter))
+// 		// For now, we'll skip this since the schema doesn't show a status column
+// 	}
+	
+// 	// Get total count first
+// 	countQueryMods := make([]qm.QueryMod, len(queryMods))
+// 	copy(countQueryMods, queryMods)
+	
+// 	totalCount, err = orm.Accounts(countQueryMods...).Count(ctx, r.db)
+// 	if err != nil {
+// 		return nil, 0, pkgerrors.WithStack(err)
+// 	}
+	
+// 	// Add sorting
+// 	if sortBy == "" {
+// 		sortBy = "created_at"
+// 	}
+// 	if sortOrder == "" {
+// 		sortOrder = "DESC"
+// 	}
+	
+
+
+	
+// 	// Add pagination
+// 	if page < 1 {
+// 		page = 1
+// 	}
+// 	if pageSize < 1 {
+// 		pageSize = 10
+// 	}
+	
+// 	offset := (page - 1) * pageSize
+// 	queryMods = append(queryMods, qm.Limit(int(pageSize)), qm.Offset(int(offset)))
+	
+// 	// Execute the query
+// 	ormUsers, err := orm.Accounts(queryMods...).All(ctx, r.db)
+// 	if err != nil {
+// 		return nil, 0, pkgerrors.WithStack(err)
+// 	}
+	
+// 	// Convert ORM models to proto models
+// 	users = make([]account.Account, len(ormUsers))
+// 	for i, user := range ormUsers {
+// 		users[i] = account.Account{
+// 			Id:        user.ID,
+// 			BranchId:  user.BranchID.Int64,
+// 			Name:      user.Name,
+// 			Email:     user.Email,
+// 			Avatar:    user.Avatar.String,
+// 			Title:     user.Title.String,
+// 			Role:      user.Role,
+// 			OwnerId:   user.OwnerID.Int64,
+// 			CreatedAt: timestamppb.New(user.CreatedAt.Time),
+// 			UpdatedAt: timestamppb.New(user.UpdatedAt.Time),
+// 		}
+// 	}
+	
+// 	return users, totalCount, nil
+// }
 
 func (r *Repository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
 	exists, err := orm.Accounts(

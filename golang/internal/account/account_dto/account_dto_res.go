@@ -235,3 +235,39 @@ type HealthCheckResponse struct {
 	Version   string    `json:"version"`
 	Uptime    string    `json:"uptime"`
 }
+
+type RegisterResponse struct {
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	Email  string `json:"email"`
+	Status bool   `json:"status"`
+}
+
+type CreateUserResponse struct {
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Avatar   string `json:"avatar"`
+	Title    string `json:"title"`
+	Role     string `json:"role"`
+	BranchID int64  `json:"branch_id"`
+	Status   string `json:"status"`
+	Created  bool   `json:"created"`
+	OwnerID int64 `json:"owner_id"`
+}
+
+
+type FindAccountByIDResponse struct {
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Avatar    string    `json:"avatar"`
+	Title     string    `json:"title"`
+	Role      string    `json:"role"`
+	BranchID  int64     `json:"branch_id"`
+	Status    string    `json:"status"`
+	Created   bool      `json:"created"`
+	OwnerID   int64     `json:"owner_id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
