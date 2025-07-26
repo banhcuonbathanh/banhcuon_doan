@@ -806,7 +806,9 @@ func (s *ServiceStruct) SearchUsers(ctx context.Context, req *account.SearchUser
 	}
 
 	var accounts []*account.Account
-	for _, user := range users {
+	// Fix: Use index-based loop or range over pointers to avoid copying the struct
+	for i := range users {
+		user := &users[i] // Get pointer to avoid copying
 		accounts = append(accounts, &account.Account{
 			Id:        user.Id,
 			BranchId:  user.BranchId,
@@ -814,10 +816,10 @@ func (s *ServiceStruct) SearchUsers(ctx context.Context, req *account.SearchUser
 			Email:     user.Email,
 			Avatar:    user.Avatar,
 			Title:     user.Title,
-			Role:      user.Role, // Remove string() conversion since user.Role is already a string
+			Role:      user.Role,
 			OwnerId:   user.OwnerId,
-			CreatedAt: user.CreatedAt, // Direct assignment since both are *timestamppb.Timestamp
-			UpdatedAt: user.UpdatedAt, // Direct assignment since both are *timestamppb.Timestamp
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
 		})
 	}
 
@@ -837,7 +839,7 @@ func (s *ServiceStruct) SearchUsers(ctx context.Context, req *account.SearchUser
 
 	// Return SearchUsersRes with the accounts slice directly
 	return &account.SearchUsersRes{
-		Accounts:   accounts,        // Use the accounts slice directly
+		Accounts:   accounts,
 		Total:      int32(totalCount),
 		Pagination: paginationInfo,
 	}, nil
