@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	dto "english-ai-full/internal/account/account_dto"
 	errorcustom "english-ai-full/internal/error_custom"
 	pb "english-ai-full/internal/proto_qr/account"
 	"english-ai-full/utils"
@@ -93,5 +94,69 @@ func (h *AccountHandler) ResendVerification(w http.ResponseWriter, r *http.Reque
 	utils.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"success": res.Success,
 		"message": res.Message,
+	})
+}
+
+
+func (h *AccountHandler) FindByEmail(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	email, apiErr := utils.GetStringParam(r, "email", 1)
+	if apiErr != nil {
+		utils.RespondWithAPIError(w, apiErr)
+		return
+	}
+
+	// Validate email format
+	var req struct {
+		Email string `validate:"required,email"`
+	}
+	req.Email = email
+
+	if err := h.validator.Struct(&req); err != nil {
+		if validationErrors, ok := err.(validator.ValidationErrors); ok {
+			utils.HandleValidationErrors(w, validationErrors)
+		} else {
+			utils.HandleError(w, errorcustom.NewAPIError(
+				errorcustom.ErrCodeValidationError,
+				"Invalid email format",
+				http.StatusBadRequest,
+			))
+		}
+		return
+	}
+
+	res, err := h.userClient.FindByEmail(ctx, &pb.FindByEmailReq{
+		Email: email,
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			utils.HandleError(w, errorcustom.NewAPIError(
+				errorcustom.ErrCodeNotFound,
+				"User not found with provided email",
+				http.StatusNotFound,
+			))
+			return
+		}
+		log.Printf("Find user by email error: %v", err)
+		utils.HandleError(w, errorcustom.NewAPIError(
+			errorcustom.ErrCodeServiceError,
+			"Failed to retrieve user",
+			http.StatusInternalServerError,
+		))
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, dto.FindAccountByIDResponse{
+		ID:        res.Account.Id,
+		BranchID:  res.Account.BranchId,
+		Name:      res.Account.Name,
+		Email:     res.Account.Email,
+		Avatar:    res.Account.Avatar,
+		Title:     res.Account.Title,
+		Role:      res.Account.Role,
+		OwnerID:   res.Account.OwnerId,
+		CreatedAt: res.Account.CreatedAt.AsTime(),
+		UpdatedAt: res.Account.UpdatedAt.AsTime(),
 	})
 }

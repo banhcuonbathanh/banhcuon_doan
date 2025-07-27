@@ -232,7 +232,7 @@ const (
 	ErrCodeAuthFailed      = "AUTHENTICATION_ERROR"
 	ErrCodeAccessDenied    = "AUTHORIZATION_ERROR"
 	ErrCodeInvalidToken    = "INVALID_TOKEN"
-	
+		ErrCodeNotFound        = "NOT_FOUND"    
 	// Validation errors
 	ErrCodeValidationError = "VALIDATION_ERROR"
 	ErrCodeInvalidInput    = "INVALID_INPUT"
