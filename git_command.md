@@ -1,6 +1,6 @@
 # Create feature branch
 
-git checkout -b separate-account-handler
+git checkout -b account-handler-split
 
 # Commit changes
 
