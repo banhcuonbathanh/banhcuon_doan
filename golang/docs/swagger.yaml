@@ -73,7 +73,7 @@ definitions:
       user:
         $ref: '#/definitions/model.AccountLoginResponse'
     type: object
-host: localhost:8080
+host: localhost:8888
 info:
   contact:
     email: support@swagger.io

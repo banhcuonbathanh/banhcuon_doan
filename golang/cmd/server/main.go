@@ -41,7 +41,7 @@ import (
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
-// @host localhost:8080
+// @host localhost:8888
 // @BasePath /
 // @schemes http https
 
@@ -93,7 +93,7 @@ func main() {
 
 	// Add Swagger UI route
 	r.Get("/swagger/*", httpSwagger.Handler(
-		httpSwagger.URL("http://localhost:8080/swagger/doc.json"), // The url pointing to API definition
+		httpSwagger.URL("http://localhost:8888/swagger/doc.json"), // The url pointing to API definition
 	))
 
 	/**

@@ -19,7 +19,7 @@
         },
         "version": "1.0"
     },
-    "host": "localhost:8080",
+    "host": "localhost:8888",
     "basePath": "/",
     "paths": {
         "/accounts/auth/login": {
