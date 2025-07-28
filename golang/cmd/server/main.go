@@ -4,7 +4,7 @@ import (
 
 		"english-ai-full/internal/account/account_handler" // Add this import
 	"context"
-	"english-ai-full/internal/account"
+
 	"english-ai-full/internal/branch"
 	branchpb "english-ai-full/internal/proto_qr/branch"
 	"log"
@@ -83,13 +83,13 @@ func main() {
 	log.Println("Calling to GRPC Server: ", cfg.GRPCAddress)
 // account start
 
+// In your main.go or wherever you're setting up routes
+userClient := pb.NewAccountServiceClient(conn)
+accountHandler := account_handler.NewAccountHandler(userClient)
+account_handler.RegisterRoutesAccountHandler(r, accountHandler)
 
-	accountClient := pb.NewAccountServiceClient(conn)
 
-		accountHandler := account_handler.NewAccountHandler(accountClient)
-	account.RegisterRoutes(r, accountHandler)
-	// h := account.New(accountClient)
-	// account.RegisterRoutes(r, h)
+
 // account end
 	branchClient := branchpb.NewBranchServiceClient(conn)
 	b := branch.NewBranchHandler(branchClient)
