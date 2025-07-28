@@ -1,6 +1,6 @@
 # Create feature branch
 
-git checkout -b account-handler-split
+git checkout -b swager
 
 # Commit changes
 
