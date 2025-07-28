@@ -1,6 +1,8 @@
 package main
 
 import (
+
+		"english-ai-full/internal/account/account_handler" // Add this import
 	"context"
 	"english-ai-full/internal/account"
 	"english-ai-full/internal/branch"
@@ -79,11 +81,16 @@ func main() {
 	defer conn.Close()
 	log.Println("Connection State to GRPC Server: ", conn.GetState())
 	log.Println("Calling to GRPC Server: ", cfg.GRPCAddress)
+// account start
+
 
 	accountClient := pb.NewAccountServiceClient(conn)
-	h := account.New(accountClient)
-	account.RegisterRoutes(r, h)
 
+		accountHandler := account_handler.NewAccountHandler(accountClient)
+	account.RegisterRoutes(r, accountHandler)
+	// h := account.New(accountClient)
+	// account.RegisterRoutes(r, h)
+// account end
 	branchClient := branchpb.NewBranchServiceClient(conn)
 	b := branch.NewBranchHandler(branchClient)
 	branch.RegisterRoutes(r, b)
