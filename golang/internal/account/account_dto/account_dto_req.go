@@ -1,160 +1,158 @@
+// account_dto/dto_models.go
 package account_dto
 
 
 
-// ===== AUTHENTICATION REQUESTS =====
-
-type CreateUserRequest struct {
-	ID       int64  `json:"id" validate:"required,gt=0"`
-	Name     string `json:"name" validate:"omitempty,min=2,max=100"`
-	Email    string `json:"email" validate:"omitempty,email"`
-	Avatar   string `json:"avatar"`
-	Title    string `json:"title"`
-	Role     string `json:"role"`
-	BranchID int64  `json:"branch_id" validate:"omitempty,gt=0"`
-	Password string `json:"password" validate:"required"`
-	OwnerID int64 `json:"owner_id" validate:"required,gt=0"`
-}
-type RegisterUserRequest struct {
-	Name     string `json:"name" validate:"required,min=2,max=100"`
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=8"`
-	BranchID int64  `json:"branch_id" validate:"required,gt=0"`
-}
-
+// LoginRequest represents the login request payload
 type LoginRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required"`
+	Email    string `json:"email" validate:"required,email" example:"user@example.com"`
+	Password string `json:"password" validate:"required" example:"password123"`
 }
 
-// ===== USER MANAGEMENT REQUESTS =====
+// RegisterUserRequest represents the user registration request payload
+type RegisterUserRequest struct {
+	Name     string `json:"name" validate:"required,min=2,max=100" example:"John Doe"`
+	Email    string `json:"email" validate:"required,email,uniqueemail" example:"john.doe@example.com"`
+	Password string `json:"password" validate:"required,password" example:"SecurePass123!"`
+}
+
+// CreateUserRequest represents the user creation request payload
+type CreateUserRequest struct {
+	 ID       int64  `json:"id"`  
+	BranchID int64  `json:"branch_id" validate:"required" example:"1"`
+	Name     string `json:"name" validate:"required,min=2,max=100" example:"John Doe"`
+	Email    string `json:"email" validate:"required,email,uniqueemail" example:"john.doe@example.com"`
+	Password string `json:"password" validate:"required,password" example:"SecurePass123!"`
+	Avatar   string `json:"avatar,omitempty" example:"https://example.com/avatar.jpg"`
+	Title    string `json:"title,omitempty" example:"Manager"`
+	Role     string `json:"role" validate:"required,role" example:"admin"`
+	OwnerID  int64  `json:"owner_id,omitempty" example:"1"`
+}
+
+// UpdateUserRequest represents the user update request payload
 type UpdateUserRequest struct {
-	ID       int64  `json:"id" validate:"required,gt=0"`
-	Name     string `json:"name" validate:"omitempty,min=2,max=100"`
-	Email    string `json:"email" validate:"omitempty,email"`
-	Avatar   string `json:"avatar"`
-	Title    string `json:"title"`
-	Role     string `json:"role"`
-	BranchID int64  `json:"branch_id" validate:"omitempty,gt=0"`
-	OwnerID int64 `json:"owner_id" validate:"required,gt=0"`
+	BranchID int64  `json:"branch_id,omitempty" example:"1"`
+	Name     string `json:"name,omitempty" validate:"omitempty,min=2,max=100" example:"John Doe"`
+	Email    string `json:"email,omitempty" validate:"omitempty,email" example:"john.doe@example.com"`
+	Avatar   string `json:"avatar,omitempty" example:"https://example.com/avatar.jpg"`
+	Title    string `json:"title,omitempty" example:"Senior Manager"`
+	Role     string `json:"role,omitempty" validate:"omitempty,role" example:"manager"`
+	OwnerID  int64  `json:"owner_id,omitempty" example:"1"`
 }
 
-type DeleteUserRequest struct {
-	UserID int64 `json:"user_id" validate:"required,gt=0"`
-}
 
-// ===== PASSWORD MANAGEMENT REQUESTS =====
+// ChangePasswordRequest represents the change password request
 type ChangePasswordRequest struct {
-	UserID          int64  `json:"user_id" validate:"required,gt=0"`
-	CurrentPassword string `json:"current_password" validate:"required"`
-	NewPassword     string `json:"new_password" validate:"required,min=8"`
+	  UserID          int64  `json:"user_id"`   
+	CurrentPassword string `json:"current_password" validate:"required" example:"oldPassword123"`
+	NewPassword     string `json:"new_password" validate:"required,password" example:"newPassword123!"`
 }
 
+// ForgotPasswordRequest represents the forgot password request
 type ForgotPasswordRequest struct {
-	Email string `json:"email" validate:"required,email"`
+	Email string `json:"email" validate:"required,email" example:"user@example.com"`
 }
 
+// ResetPasswordRequest represents the reset password request
 type ResetPasswordRequest struct {
-	Token       string `json:"token" validate:"required"`
-	NewPassword string `json:"new_password" validate:"required,min=8"`
+	Token       string `json:"token" validate:"required" example:"reset_token_here"`
+	NewPassword string `json:"new_password" validate:"required,password" example:"newPassword123!"`
 }
 
-// ===== ACCOUNT VERIFICATION REQUESTS =====
-type VerifyEmailRequest struct {
-	VerificationToken string `json:"verification_token" validate:"required"`
-}
-
-type ResendVerificationRequest struct {
-	Email string `json:"email" validate:"required,email"`
-}
-
-type UpdateAccountStatusRequest struct {
-	UserID int64  `json:"user_id" validate:"required,gt=0"`
-	Status string `json:"status" validate:"required,oneof=active inactive suspended pending"`
-}
-
-// ===== SEARCH AND FILTERING REQUESTS =====
-type FindByRoleRequest struct {
-	Role string `json:"role" validate:"required"`
-}
-
-type FindByBranchRequest struct {
-	BranchID int64 `json:"branch_id" validate:"required,gt=0"`
-}
-
-type FindByEmailRequest struct {
-	Email string `json:"email" validate:"required,email"`
-}
-
-type FindByIDRequest struct {
-	ID int64 `json:"id" validate:"required,gt=0"`
-}
-
-type SearchUsersRequest struct {
-	Query    string `json:"query" validate:"omitempty,min=1"`
-	Role     string `json:"role,omitempty"`
-	BranchID int64  `json:"branch_id,omitempty"`
-	Page     int32  `json:"page" validate:"min=1"`
-	PageSize int32  `json:"page_size" validate:"min=1,max=100"`
-}
-
-// ===== TOKEN MANAGEMENT REQUESTS =====
+// RefreshTokenRequest represents the refresh token request
 type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" validate:"required"`
+	RefreshToken string `json:"refresh_token" validate:"required" example:"refresh_token_here"`
+}
+
+// ResendVerificationRequest represents the resend verification request
+type ResendVerificationRequest struct {
+	Email string `json:"email" validate:"required,email" example:"user@example.com"`
+}
+
+// UpdateAccountStatusRequest represents the update account status request
+type UpdateAccountStatusRequest struct {
+	UserID     int    `json:"id" validate:"required,min=1"`
+	Status string `json:"status" validate:"required,oneof=active inactive suspended pending" example:"active"`
+}
+
+// SearchUsersRequest represents the search users query parameters
+type SearchUsersRequest struct {
+	Query     string `json:"q,omitempty" example:"john"`
+	Role      string `json:"role,omitempty" example:"admin"`
+	BranchID  int64  `json:"branch_id,omitempty" example:"1"`
+	Status    string `json:"status,omitempty" example:"active,pending"`
+	Page      int32  `json:"page,omitempty" example:"1"`
+	PageSize  int32  `json:"page_size,omitempty" example:"10"`
+	SortBy    string `json:"sort_by,omitempty" example:"created_at"`
+	SortOrder string `json:"sort_order,omitempty" example:"desc"`
+}
+
+// PaginationResponse represents pagination information
+type PaginationResponse struct {
+	Page       int32 `json:"page" example:"1"`
+	PageSize   int32 `json:"page_size" example:"10"`
+	TotalCount int64 `json:"total_count" example:"100"`
+	TotalPages int32 `json:"total_pages" example:"10"`
+	HasNext    bool  `json:"has_next" example:"true"`
+	HasPrev    bool  `json:"has_prev" example:"false"`
+}
+
+// UsersListResponse represents a paginated list of users
+type UsersListResponse struct {
+	Users      []UserProfile      `json:"users"`
+	Pagination PaginationResponse `json:"pagination"`
+}
+
+// SearchUsersResponse represents search results with pagination
+type SearchUsersResponse struct {
+	Users      []UserProfile      `json:"users"`
+	TotalCount int64              `json:"total_count" example:"50"`
+	Page       int32              `json:"page" example:"1"`
+	PageSize   int32              `json:"page_size" example:"10"`
+	TotalPages int32              `json:"total_pages" example:"5"`
+	Pagination PaginationResponse `json:"pagination"`
+}
+
+// APIErrorResponse represents an API error response
+type APIErrorResponse struct {
+	Error   string                 `json:"error" example:"validation_error"`
+	Message string                 `json:"message" example:"Validation failed"`
+	Code    int                    `json:"code" example:"400"`
+	Details map[string]interface{} `json:"details,omitempty"`
+}
+
+// SuccessResponse represents a generic success response
+type SuccessResponse struct {
+	Success bool   `json:"success" example:"true"`
+	Message string `json:"message" example:"Operation completed successfully"`
+}
+
+// TokenResponse represents token-related responses
+type TokenResponse struct {
+	AccessToken  string `json:"access_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	RefreshToken string `json:"refresh_token,omitempty" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	ExpiresAt    int64  `json:"expires_at,omitempty" example:"1640995200"`
+}
+
+// TokenValidationResponse represents token validation response
+type TokenValidationResponse struct {
+	Valid     bool   `json:"valid" example:"true"`
+	ExpiresAt int64  `json:"expires_at" example:"1640995200"`
+	Message   string `json:"message" example:"Token is valid"`
+	UserID    int64  `json:"id" example:"123"`
+}
+
+// new
+
+type LogoutRequest struct {
+    UserID int    `json:"user_id" validate:"required"`
+    Token  string `json:"token" validate:"required"`
 }
 
 type ValidateTokenRequest struct {
-	Token string `json:"token" validate:"required"`
+    Token string `json:"token" validate:"required"`
 }
 
-type LogoutRequest struct {
-	UserID int64  `json:"user_id" validate:"required,gt=0"`
-	Token  string `json:"token,omitempty"` // Optional: if using token-based authentication
-}
-
-// ===== PROFILE REQUESTS =====
-type GetUserProfileRequest struct {
-	UserID int64 `json:"user_id" validate:"required,gt=0"`
-}
-
-type GetUsersByBranchRequest struct {
-	BranchID int64 `json:"branch_id" validate:"required,gt=0"`
-}
-
-type GetUsersByOwnerRequest struct {
-	OwnerID int64 `json:"owner_id" validate:"required,gt=0"`
-}
-
-// ===== BULK OPERATIONS REQUESTS =====
-type BulkDeleteUsersRequest struct {
-	UserIDs []int64 `json:"user_ids" validate:"required,min=1,dive,gt=0"`
-}
-
-type BulkUpdateStatusRequest struct {
-	UserIDs []int64 `json:"user_ids" validate:"required,min=1,dive,gt=0"`
-	Status  string  `json:"status" validate:"required,oneof=active inactive suspended pending"`
-}
-
-// ===== PAGINATION REQUEST =====
-type PaginationRequest struct {
-	Page     int32 `json:"page" validate:"min=1"`
-	PageSize int32 `json:"page_size" validate:"min=1,max=100"`
-}
-
-// ===== FILTERS REQUEST =====
-type UserFiltersRequest struct {
-	Role      string `json:"role,omitempty"`
-	BranchID  int64  `json:"branch_id,omitempty"`
-	Status    string `json:"status,omitempty"`
-	OwnerID   int64  `json:"owner_id,omitempty"`
-	CreatedAt string `json:"created_at,omitempty"` // Format: "2006-01-02" or date range
-}
-
-// ===== COMBINED SEARCH REQUEST =====
-type AdvancedSearchRequest struct {
-	Query      string                `json:"query,omitempty"`
-	Filters    UserFiltersRequest    `json:"filters"`
-	Pagination PaginationRequest     `json:"pagination"`
-	SortBy     string               `json:"sort_by,omitempty" validate:"omitempty,oneof=id name email created_at updated_at"`
-	SortOrder  string               `json:"sort_order,omitempty" validate:"omitempty,oneof=asc desc"`
+type VerifyEmailRequest struct {
+	VerificationToken string `json:"verification_token" validate:"required"`
 }

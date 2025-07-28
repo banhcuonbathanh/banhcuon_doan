@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
+	dto "english-ai-full/internal/account/account_dto"
 	errorcustom "english-ai-full/internal/error_custom"
 	"english-ai-full/internal/mapping"
-	dto "english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/model"
 	pb "english-ai-full/internal/proto_qr/account"
 	"english-ai-full/utils"
@@ -16,6 +16,17 @@ import (
 )
 
 // Login handles user authentication
+// @Summary User login
+// @Description Authenticate user with email and password
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body account_dto.LoginRequest true "Login credentials"
+// @Success 200 {object} model.LoginUserRes "Successful login"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 401 {object} map[string]interface{} "Invalid credentials"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /accounts/auth/login [post]
 func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req dto.LoginRequest
 	if err := utils.DecodeJSON(r.Body, &req); err != nil {
@@ -87,6 +98,17 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 // Register handles user registration
+// @Summary User registration
+// @Description Register a new user account
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body account_dto.RegisterUserRequest true "Registration data"
+// @Success 201 {object} account_dto.RegisterResponse "Successful registration"
+// @Failure 400 {object} map[string]interface{} "Bad request or validation error"
+// @Failure 409 {object} map[string]interface{} "Email already exists"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /accounts/auth/register [post]
 func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req dto.RegisterUserRequest
 	if err := utils.DecodeJSON(r.Body, &req); err != nil {
@@ -153,6 +175,12 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 // Logout handles user logout
+// @Summary User logout
+// @Description Logout current user
+// @Tags Authentication
+// @Produce json
+// @Success 200 {object} map[string]string "Successful logout"
+// @Router /accounts/auth/logout [post]
 func (h *AccountHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithJSON(w, http.StatusOK, map[string]string{
 		"message": "logout successful",
