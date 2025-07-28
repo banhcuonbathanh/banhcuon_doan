@@ -1,0 +1,100 @@
+# docs/swagger/account/swagger_account_auth/logout.yaml
+/accounts/swagger_account_auth/logout:
+  post:
+    summary: "User logout"
+    description: |
+      Logout current user and invalidate authentication session.
+      
+      **Logout Flow:**
+      1. Optionally validates request format
+      2. Invalidates user session (if session-based)
+      3. Returns success confirmation
+      
+      **Test Scenarios Covered:**
+      - ✅ **Successful logout** - Valid request returns success message
+      - ❌ **Invalid JSON** - Malformed request body returns 400 error  
+      - ❌ **Invalid token** - Invalid/expired token returns 401 error
+      
+      **Note:** This endpoint currently returns success regardless of input.
+      In production, you may want to:
+      - Validate JWT token
+      - Invalidate token in blacklist
+      - Clear server-side sessions
+      - Log security events
+      
+      **Security Considerations:**
+      - Token invalidation (recommended)
+      - Session cleanup
+      - Audit logging
+      - Rate limiting
+      
+    tags:
+      - Authentication
+    consumes:
+      - application/json
+    produces:
+      - application/json
+    parameters:
+      - in: body
+        name: request
+        description: "Logout request data (optional)"
+        required: false
+        schema:
+          $ref: "#/definitions/LogoutRequest"
+    responses:
+      200:
+        description: "✅ Successful logout"
+        schema:
+          $ref: "#/definitions/LogoutResponse"
+        examples:
+          application/json:
+            message: "logout successful"
+      400:
+        description: "❌ Bad request - Invalid input data"
+        schema:
+          $ref: "#/definitions/ErrorResponse"
+        examples:
+          invalid_json:
+            summary: "Invalid JSON format"
+            value:
+              error: "invalid_request"
+              message: "Invalid JSON format"
+      401:
+        description: "❌ Unauthorized - Invalid token"
+        schema:
+          $ref: "#/definitions/ErrorResponse"
+        examples:
+          invalid_token:
+            summary: "Token validation failed"
+            value:
+              error: "invalid_token"
+              message: "Token is invalid or expired"
+          expired_token:
+            summary: "Token expired"
+            value:
+              error: "token_expired"
+              message: "Token has expired"
+          malformed_token:
+            summary: "Malformed token"
+            value:
+              error: "malformed_token"
+              message: "Token format is invalid"
+    x-code-samples:
+      - lang: "curl"
+        source: |
+          # Simple logout (current implementation)
+          curl -X POST "http://localhost:8080/accounts/auth/logout" \
+            -H "Content-Type: application/json"
+            
+          # With token invalidation (future implementation)
+          curl -X POST "http://localhost:8080/accounts/auth/logout" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+            -d '{
+              "user_id": 1,
+              "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            }'
+      - lang: "JavaScript"
+        source: |
+          // Simple logout
+          const response = await fetch

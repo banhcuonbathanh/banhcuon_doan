@@ -1,78 +1,4 @@
 basePath: /
-definitions:
-  account_dto.LoginRequest:
-    properties:
-      email:
-        example: user@example.com
-        type: string
-      password:
-        example: password123
-        type: string
-    required:
-    - email
-    - password
-    type: object
-  account_dto.RegisterResponse:
-    properties:
-      email:
-        example: john.doe@example.com
-        type: string
-      id:
-        example: 123
-        type: integer
-      name:
-        example: John Doe
-        type: string
-      status:
-        example: true
-        type: boolean
-    type: object
-  account_dto.RegisterUserRequest:
-    properties:
-      email:
-        example: john.doe@example.com
-        type: string
-      name:
-        example: John Doe
-        maxLength: 100
-        minLength: 2
-        type: string
-      password:
-        example: SecurePass123!
-        type: string
-    required:
-    - email
-    - name
-    - password
-    type: object
-  model.AccountLoginResponse:
-    properties:
-      avatar:
-        type: string
-      branch_id:
-        type: integer
-      email:
-        type: string
-      id:
-        type: integer
-      name:
-        type: string
-      owner_id:
-        type: integer
-      role:
-        type: string
-      title:
-        type: string
-    type: object
-  model.LoginUserRes:
-    properties:
-      access_token:
-        type: string
-      refresh_token:
-        type: string
-      user:
-        $ref: '#/definitions/model.AccountLoginResponse'
-    type: object
 host: localhost:8888
 info:
   contact:
@@ -89,90 +15,19 @@ info:
 paths:
   /accounts/auth/login:
     post:
-      consumes:
-      - application/json
-      description: Authenticate user with email and password
-      parameters:
-      - description: Login credentials
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/account_dto.LoginRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successful login
-          schema:
-            $ref: '#/definitions/model.LoginUserRes'
-        "400":
-          description: Bad request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Invalid credentials
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
+      responses: {}
       summary: User login
       tags:
       - Authentication
   /accounts/auth/logout:
     post:
-      description: Logout current user
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successful logout
-          schema:
-            additionalProperties:
-              type: string
-            type: object
+      responses: {}
       summary: User logout
       tags:
       - Authentication
   /accounts/auth/register:
     post:
-      consumes:
-      - application/json
-      description: Register a new user account
-      parameters:
-      - description: Registration data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/account_dto.RegisterUserRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Successful registration
-          schema:
-            $ref: '#/definitions/account_dto.RegisterResponse'
-        "400":
-          description: Bad request or validation error
-          schema:
-            additionalProperties: true
-            type: object
-        "409":
-          description: Email already exists
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal server error
-          schema:
-            additionalProperties: true
-            type: object
+      responses: {}
       summary: User registration
       tags:
       - Authentication

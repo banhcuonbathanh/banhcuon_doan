@@ -1,0 +1,181 @@
+# docs/swagger/account/swagger_account_auth/register.yaml
+/accounts/swagger_account_auth/register:
+  post:
+    summary: "User registration"
+    description: |
+      Register a new user account with comprehensive validation.
+      
+      **Registration Flow:**
+      1. Validates request format and required fields
+      2. Validates password strength requirements
+      3. Checks email uniqueness
+      4. Hashes password securely
+      5. Creates user account in database
+      6. Returns user data with success confirmation
+      
+      **Test Scenarios Covered:**
+      - ✅ **Successful registration** - Valid data creates new user account
+      - ❌ **Invalid JSON** - Malformed request body returns 400 error
+      - ❌ **Password hashing error** - System failure returns 500 error
+      - ❌ **Service registration error** - Database error returns 500 error
+      - ❌ **Email already exists** - Duplicate email returns 409 error
+      - ❌ **Weak password** - Password validation failure returns 400 error
+      
+      **Password Requirements:**
+      - Minimum 8 characters
+      - At least one uppercase letter
+      - At least one lowercase letter  
+      - At least one number
+      - At least one special character
+      
+      **Security Features:**
+      - Secure password hashing (bcrypt)
+      - Email uniqueness validation
+      - Input sanitization and validation
+      - Comprehensive error handling
+      
+    tags:
+      - Authentication
+    consumes:
+      - application/json
+    produces:
+      - application/json
+    parameters:
+      - in: body
+        name: request
+        description: Registration data
+        required: true
+        schema:
+          $ref: "#/definitions/RegisterUserRequest"
+    responses:
+      201:
+        description: "✅ Successful registration"
+        schema:
+          $ref: "#/definitions/RegisterResponse"
+        examples:
+          application/json:
+            id: 1
+            name: "John Doe"
+            email: "john@example.com"
+            status: true
+      400:
+        description: "❌ Bad request - Validation errors"
+        schema:
+          $ref: "#/definitions/ErrorResponse"
+        examples:
+          invalid_json:
+            summary: "Invalid JSON format"
+            value:
+              error: "invalid_request"
+              message: "Invalid JSON format"
+          missing_name:
+            summary: "Missing name field"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                name: "Name is required"
+          invalid_email:
+            summary: "Invalid email format"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                email: "Invalid email format"
+          weak_password:
+            summary: "Password too weak"
+            value:
+              error: "weak_password"
+              message: "Password must contain uppercase, lowercase, number and special character"
+          password_too_short:
+            summary: "Password too short"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                password: "Password must be at least 8 characters"
+          multiple_validation_errors:
+            summary: "Multiple validation failures"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                name: "Name is required"
+                email: "Invalid email format"
+                password: "Password is required"
+      409:
+        description: "❌ Conflict - Email already exists"
+        schema:
+          $ref: "#/definitions/ErrorResponse"
+        examples:
+          duplicate_email:
+            summary: "Email already registered"
+            value:
+              error: "duplicate_email"
+              message: "Email john@example.com already exists"
+      500:
+        description: "❌ Internal server error"
+        schema:
+          $ref: "#/definitions/ErrorResponse"
+        examples:
+          password_hashing_error:
+            summary: "Password hashing failed"
+            value:
+              error: "internal_error"
+              message: "Password processing failed"
+          service_error:
+            summary: "Registration service failed"
+            value:
+              error: "service_error"
+              message: "Registration failed"
+          database_error:
+            summary: "Database operation failed"
+            value:
+              error: "database_error"
+              message: "User creation failed"
+          grpc_service_error:
+            summary: "Backend service unavailable"
+            value:
+              error: "service_error"
+              message: "Registration service unavailable"
+    x-code-samples:
+      - lang: "curl"
+        source: |
+          curl -X POST "http://localhost:8080/accounts/auth/register" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "John Doe",
+              "email": "john@example.com",
+              "password": "SecureP@ssw0rd123"
+            }'
+      - lang: "JavaScript"
+        source: |
+          const response = await fetch('/accounts/auth/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: 'John Doe',
+              email: 'john@example.com',
+              password: 'SecureP@ssw0rd123'
+            })
+          });
+          const data = await response.json();
+      - lang: "Go"
+        source: |
+          type RegisterReq struct {
+            Name     string `json:"name"`
+            Email    string `json:"email"`
+            Password string `json:"password"`
+          }
+          
+          req := RegisterReq{
+            Name:     "John Doe",
+            Email:    "john@example.com", 
+            Password: "SecureP@ssw0rd123",
+          }
+          
+          jsonData, _ := json.Marshal(req)
+          resp, err := http.Post("http://localhost:8080/accounts/auth/register",
+                                "application/json", bytes.NewBuffer(jsonData))
