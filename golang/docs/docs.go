@@ -69,7 +69,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{"http", "https"},
 	Title:            "Restaurant Management API",
-	Description:      "This is a restaurant management system API with account management",
+	Description:      "Restaurant management system with account authentication",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

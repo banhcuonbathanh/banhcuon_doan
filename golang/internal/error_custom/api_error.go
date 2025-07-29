@@ -1,3 +1,5 @@
+// internal/error_custom/errors.go
+
 
 package errorcustom
 
@@ -241,3 +243,40 @@ const (
 	ErrCodeInternalError   = "INTERNAL_ERROR"
 	ErrCodeServiceError    = "SERVICE_ERROR"
 )
+
+
+
+
+// ErrorResponse represents the standard error format for API responses
+// swagger:model ErrorResponse
+type ErrorResponse struct {
+	Code    string                 `json:"code" example:"validation_error"`
+	Message string                 `json:"message" example:"Validation failed"`
+	Details map[string]interface{} `json:"details,omitempty"`
+}
+
+// ToErrorResponse converts APIError to Swagger-compatible format
+func (e *APIError) ToErrorResponse() ErrorResponse {
+	return ErrorResponse{
+		Code:    e.Code,
+		Message: e.Message,
+		Details: e.Details,
+	}
+}
+
+// NewErrorResponse creates a new ErrorResponse instance
+func NewErrorResponse(code, message string) ErrorResponse {
+	return ErrorResponse{
+		Code:    code,
+		Message: message,
+	}
+}
+
+// WithDetail adds a detail to ErrorResponse
+func (er ErrorResponse) WithDetail(key string, value interface{}) ErrorResponse {
+	if er.Details == nil {
+		er.Details = make(map[string]interface{})
+	}
+	er.Details[key] = value
+	return er
+}

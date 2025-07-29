@@ -1,26 +1,27 @@
-// model/auth_models.go
+// internal/account/account_dto/account_dto_auth.go
 package account_dto
 
 import "time"
 
-// LoginUserRes represents the login response
-type LoginUserRes struct {
-	AccessToken  string                `json:"access_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
-	RefreshToken string                `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
-	User         AccountLoginResponse  `json:"user"`
-}
+// // LoginRequest represents the login request payload
+// // swagger:model LoginRequest
+// type LoginUserRes struct {
+// 	AccessToken  string                `json:"access_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+// 	RefreshToken string                `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+// 	User         AccountLoginResponse  `json:"user"`
+// }
 
-// AccountLoginResponse represents the user data in login response
-type AccountLoginResponse struct {
-	ID       int64  `json:"id" example:"123"`
-	BranchID int64  `json:"branch_id" example:"1"`
-	Name     string `json:"name" example:"John Doe"`
-	Email    string `json:"email" example:"john.doe@example.com"`
-	Avatar   string `json:"avatar" example:"https://example.com/avatar.jpg"`
-	Title    string `json:"title" example:"Manager"`
-	Role     string `json:"role" example:"admin"`
-	OwnerID  int64  `json:"owner_id" example:"1"`
-}
+// // AccountLoginResponse represents the user data in login response
+// type AccountLoginResponse struct {
+// 	ID       int64  `json:"id" example:"123"`
+// 	BranchID int64  `json:"branch_id" example:"1"`
+// 	Name     string `json:"name" example:"John Doe"`
+// 	Email    string `json:"email" example:"john.doe@example.com"`
+// 	Avatar   string `json:"avatar" example:"https://example.com/avatar.jpg"`
+// 	Title    string `json:"title" example:"Manager"`
+// 	Role     string `json:"role" example:"admin"`
+// 	OwnerID  int64  `json:"owner_id" example:"1"`
+// }
 
 // Account represents a user account
 type Account struct {
@@ -233,4 +234,33 @@ type HealthCheck struct {
 	Services  map[string]string `json:"services"`
 	Version   string            `json:"version" example:"1.0.0"`
 	Uptime    string            `json:"uptime" example:"72h30m"`
+}
+
+// // RegisterUserRequest represents the user registration request payload
+// // swagger:model RegisterUserRequest
+// type RegisterUserRequest struct {
+// 	Name     string `json:"name" validate:"required,min=2,max=100" example:"John Doe"`
+// 	Email    string `json:"email" validate:"required,email" example:"john.doe@example.com"`
+// 	Password string `json:"password" validate:"required" example:"SecurePass123!"`
+// }
+
+// LoginUserRes represents the login response
+// swagger:model LoginUserRes
+type LoginUserRes struct {
+	AccessToken  string                `json:"access_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	RefreshToken string                `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	User         AccountLoginResponse  `json:"user"`
+}
+
+// AccountLoginResponse represents the user data in login response
+// swagger:model AccountLoginResponse
+type AccountLoginResponse struct {
+	ID       int64  `json:"id" example:"123"`
+	BranchID int64  `json:"branch_id" example:"1"`
+	Name     string `json:"name" example:"John Doe"`
+	Email    string `json:"email" example:"john.doe@example.com"`
+	Avatar   string `json:"avatar" example:"https://example.com/avatar.jpg"`
+	Title    string `json:"title" example:"Manager"`
+	Role     string `json:"role" example:"admin"`
+	OwnerID  int64  `json:"owner_id" example:"1"`
 }

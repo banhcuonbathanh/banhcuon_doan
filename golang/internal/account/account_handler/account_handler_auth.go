@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	dto "english-ai-full/internal/account/account_dto"
+	 "english-ai-full/internal/account/account_dto"
 	errorcustom "english-ai-full/internal/error_custom"
 	"english-ai-full/internal/mapping"
 	"english-ai-full/internal/model"
@@ -19,10 +19,18 @@ import (
 
 // Login handles user authentication
 // @Summary User login
+// @Description Authenticate user with email and password
 // @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body account_dto.LoginRequest true "Login credentials"
+// @Success 200 {object} account_dto.LoginUserRes
+// @Failure 400 {object} errorcustom.ErrorResponse
+// @Failure 401 {object} errorcustom.ErrorResponse
+// @Failure 500 {object} errorcustom.ErrorResponse
 // @Router /accounts/auth/login [post]
 func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req dto.LoginRequest
+	var req account_dto.LoginRequest
 	if err := utils.DecodeJSON(r.Body, &req); err != nil {
 		utils.HandleError(w, err)
 		return
@@ -91,12 +99,20 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Register handles user registration  
+// Register handles user registration
 // @Summary User registration
+// @Description Create new user account
 // @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body dto.RegisterUserRequest true "Registration data"
+// @Success 201 {object} dto.RegisterResponse
+// @Failure 400 {object} errorcustom.ErrorResponse
+// @Failure 409 {object} errorcustom.ErrorResponse
+// @Failure 500 {object} errorcustom.ErrorResponse
 // @Router /accounts/auth/register [post]
 func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var req dto.RegisterUserRequest
+	var req account_dto.RegisterUserRequest
 	if err := utils.DecodeJSON(r.Body, &req); err != nil {
 		utils.HandleError(w, err)
 		return
@@ -152,7 +168,7 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.RespondWithJSON(w, http.StatusCreated, dto.RegisterResponse{
+	utils.RespondWithJSON(w, http.StatusCreated, account_dto.RegisterResponse{
 		ID:     userRes.Id,
 		Name:   userRes.Name,
 		Email:  userRes.Email,
@@ -162,7 +178,10 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 // Logout handles user logout
 // @Summary User logout
-// @Tags Authentication  
+// @Description Invalidate user session
+// @Tags Authentication
+// @Produce json
+// @Success 200 {object} model.LogoutResponse
 // @Router /accounts/auth/logout [post]
 func (h *AccountHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithJSON(w, http.StatusOK, map[string]string{
