@@ -1,5 +1,5 @@
 # docs/swagger/account/swagger_account_auth/login.yaml
-/accounts/swagger_account_auth/login:
+/account/swagger_account_auth/login:
   post:
     summary: "User login"
     description: |
@@ -129,7 +129,7 @@
     x-code-samples:
       - lang: "curl"
         source: |
-          curl -X POST "http://localhost:8080/accounts/auth/login" \
+          curl -X POST "http://localhost:8888/account/auth/login" \
             -H "Content-Type: application/json" \
             -d '{
               "email": "john@example.com",
@@ -137,7 +137,7 @@
             }'
       - lang: "JavaScript"
         source: |
-          const response = await fetch('/accounts/auth/login', {
+          const response = await fetch('/account/auth/login', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -161,5 +161,5 @@
           }
           
           jsonData, _ := json.Marshal(req)
-          resp, err := http.Post("http://localhost:8080/accounts/auth/login", 
+          resp, err := http.Post("http://localhost:8888/account/auth/login", 
                                 "application/json", bytes.NewBuffer(jsonData))

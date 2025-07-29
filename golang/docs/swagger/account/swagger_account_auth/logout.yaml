@@ -1,5 +1,5 @@
 # docs/swagger/account/swagger_account_auth/logout.yaml
-/accounts/swagger_account_auth/logout:
+/account/swagger_account_auth/logout:
   post:
     summary: "User logout"
     description: |
@@ -83,11 +83,11 @@
       - lang: "curl"
         source: |
           # Simple logout (current implementation)
-          curl -X POST "http://localhost:8080/accounts/auth/logout" \
+          curl -X POST "http://localhost:8888/account/swagger_account_auth/logout" \
             -H "Content-Type: application/json"
             
           # With token invalidation (future implementation)
-          curl -X POST "http://localhost:8080/accounts/auth/logout" \
+          curl -X POST "http://localhost:8888/account/swagger_account_auth/logout" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
             -d '{

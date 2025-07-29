@@ -1,5 +1,5 @@
 # docs/swagger/account/swagger_account_auth/register.yaml
-/accounts/swagger_account_auth/register:
+/account/swagger_account_auth/register:
   post:
     summary: "User registration"
     description: |
@@ -141,7 +141,7 @@
     x-code-samples:
       - lang: "curl"
         source: |
-          curl -X POST "http://localhost:8080/accounts/auth/register" \
+          curl -X POST "http://localhost:8888/account/swagger_account_authuth/register" \
             -H "Content-Type: application/json" \
             -d '{
               "name": "John Doe",
@@ -150,7 +150,7 @@
             }'
       - lang: "JavaScript"
         source: |
-          const response = await fetch('/accounts/auth/register', {
+          const response = await fetch('/account/auth/register', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -177,5 +177,5 @@
           }
           
           jsonData, _ := json.Marshal(req)
-          resp, err := http.Post("http://localhost:8080/accounts/auth/register",
+          resp, err := http.Post("http://localhost:8888/account/auth/register",
                                 "application/json", bytes.NewBuffer(jsonData))

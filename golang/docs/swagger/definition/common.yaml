@@ -1,0 +1,183 @@
+# docs/swagger/definitions/common.yaml
+definitions:
+  # Request Models
+  LoginRequest:
+    type: object
+    required:
+      - email
+      - password
+    properties:
+      email:
+        type: string
+        format: email
+        example: "john@example.com"
+        description: "User's email address"
+      password:
+        type: string
+        example: "password123"
+        description: "User's password"
+        minLength: 8
+
+  RegisterUserRequest:
+    type: object
+    required:
+      - name
+      - email
+      - password
+    properties:
+      name:
+        type: string
+        example: "John Doe"
+        description: "User's full name"
+        minLength: 2
+        maxLength: 100
+      email:
+        type: string
+        format: email
+        example: "john@example.com"
+        description: "User's email address (must be unique)"
+      password:
+        type: string
+        example: "SecureP@ssw0rd123"
+        description: |
+          User's password. Must contain:
+          - At least 8 characters
+          - Uppercase letter
+          - Lowercase letter
+          - Number
+          - Special character
+        minLength: 8
+
+  LogoutRequest:
+    type: object
+    properties:
+      user_id:
+        type: integer
+        example: 1
+        description: "User ID (optional)"
+      token:
+        type: string
+        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        description: "JWT token to invalidate (optional)"
+
+  # Response Models
+  LoginUserRes:
+    type: object
+    properties:
+      access_token:
+        type: string
+        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        description: "JWT access token (expires in 1 hour)"
+      refresh_token:
+        type: string
+        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        description: "JWT refresh token (expires in 7 days)"
+      user:
+        $ref: "#/definitions/AccountLoginResponse"
+
+  AccountLoginResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1
+        description: "User's unique identifier"
+      branch_id:
+        type: integer
+        example: 1
+        description: "Branch ID associated with user"
+      name:
+        type: string
+        example: "John Doe"
+        description: "User's full name"
+      email:
+        type: string
+        example: "john@example.com"
+        description: "User's email address"
+      avatar:
+        type: string
+        example: "avatar.jpg"
+        description: "User's profile picture filename"
+        nullable: true
+      title:
+        type: string
+        example: "Developer"
+        description: "User's job title"
+        nullable: true
+      role:
+        type: string
+        example: "user"
+        description: "User's role in the system"
+        enum: ["admin", "user", "manager"]
+      owner_id:
+        type: integer
+        example: 1
+        description: "Owner/manager ID"
+
+  RegisterResponse:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1
+        description: "Newly created user ID"
+      name:
+        type: string
+        example: "John Doe"
+        description: "User's full name"
+      email:
+        type: string
+        example: "john@example.com"
+        description: "User's email address"
+      status:
+        type: boolean
+        example: true
+        description: "Registration success status"
+
+  # Error Models
+  ErrorResponse:
+    type: object
+    properties:
+      error:
+        type: string
+        example: "invalid_request"
+        description: "Error code identifier"
+      message:
+        type: string
+        example: "Invalid input data"
+        description: "Human-readable error message"
+      details:
+        type: object
+        description: "Additional error details (field-specific errors)"
+        additionalProperties: true
+        example:
+          email: "Invalid email format"
+          password: "Password too weak"
+
+  ValidationErrorResponse:
+    type: object
+    properties:
+      error:
+        type: string
+        example: "validation_error"
+      message:
+        type: string
+        example: "Validation failed"
+      details:
+        type: object
+        properties:
+          email:
+            type: string
+            example: "Email is required"
+          password:
+            type: string
+            example: "Password must be at least 8 characters"
+
+  # Success Messages
+  LogoutResponse:
+    type: object
+    properties:
+      message:
+        type: string
+        example: "logout successful"
+        description: "Logout confirmation message"
