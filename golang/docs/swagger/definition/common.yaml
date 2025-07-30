@@ -1,6 +1,9 @@
-# docs/swagger/definitions/common.yaml
+# docs/swagger/definitions/common.yaml - Enhanced with comprehensive models
 definitions:
-  # Request Models
+  # ===================
+  # REQUEST MODELS
+  # ===================
+  
   LoginRequest:
     type: object
     required:
@@ -11,12 +14,17 @@ definitions:
         type: string
         format: email
         example: "john@example.com"
-        description: "User's email address"
+        description: "User's email address (case-insensitive)"
+        minLength: 5
+        maxLength: 254
+        pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
       password:
         type: string
-        example: "password123"
+        example: "SecureP@ssw0rd123"
         description: "User's password"
-        minLength: 8
+        minLength: 1
+        maxLength: 128
+    additionalProperties: false
 
   RegisterUserRequest:
     type: object
@@ -31,22 +39,41 @@ definitions:
         description: "User's full name"
         minLength: 2
         maxLength: 100
+        pattern: '^[a-zA-Z\s\'-\.]+$'
       email:
         type: string
         format: email
         example: "john@example.com"
-        description: "User's email address (must be unique)"
+        description: "User's email address (must be unique, case-insensitive)"
+        minLength: 5
+        maxLength: 254
+        pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
       password:
         type: string
         example: "SecureP@ssw0rd123"
         description: |
-          User's password. Must contain:
-          - At least 8 characters
-          - Uppercase letter
-          - Lowercase letter
-          - Number
-          - Special character
+          User's password. Must meet all security requirements:
+          - Minimum 8 characters
+          - At least one uppercase letter (A-Z)
+          - At least one lowercase letter (a-z)
+          - At least one number (0-9)
+          - At least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)
+          - Cannot be a common password
+          - Cannot contain sequential characters
         minLength: 8
+        maxLength: 128
+      confirm_password:
+        type: string
+        example: "SecureP@ssw0rd123"
+        description: "Password confirmation (must match password)"
+        minLength: 8
+        maxLength: 128
+      terms_accepted:
+        type: boolean
+        example: true
+        description: "User must accept terms of service"
+        default: false
+    additionalProperties: false
 
   LogoutRequest:
     type: object
@@ -54,130 +81,720 @@ definitions:
       user_id:
         type: integer
         example: 1
-        description: "User ID (optional)"
+        description: "User ID (optional, extracted from token if not provided)"
+        minimum: 1
       token:
         type: string
         example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-        description: "JWT token to invalidate (optional)"
-
-  # Response Models
-  LoginUserRes:
-    type: object
-    properties:
-      access_token:
+        description: "JWT token to invalidate (optional, can be provided in header)"
+      clear_all_sessions:
+        type: boolean
+        example: false
+        description: "Whether to clear all user sessions across devices"
+        default: false
+      device_id:
         type: string
-        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-        description: "JWT access token (expires in 1 hour)"
+        example: "device_12345"
+        description: "Device identifier for session management"
+    additionalProperties: false
+
+  PasswordResetRequest:
+    type: object
+    required:
+      - email
+    properties:
+      email:
+        type: string
+        format: email
+        example: "john@example.com"
+        description: "Email address for password reset"
+        minLength: 5
+        maxLength: 254
+    additionalProperties: false
+
+  PasswordResetConfirmRequest:
+    type: object
+    required:
+      - token
+      - new_password
+    properties:
+      token:
+        type: string
+        example: "reset_token_12345"
+        description: "Password reset token from email"
+      new_password:
+        type: string
+        example: "NewSecureP@ssw0rd123"
+        description: "New password meeting security requirements"
+        minLength: 8
+        maxLength: 128
+      confirm_password:
+        type: string
+        example: "NewSecureP@ssw0rd123"
+        description: "New password confirmation"
+        minLength: 8
+        maxLength: 128
+    additionalProperties: false
+
+  RefreshTokenRequest:
+    type: object
+    required:
+      - refresh_token
+    properties:
       refresh_token:
         type: string
         example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-        description: "JWT refresh token (expires in 7 days)"
-      user:
-        $ref: "#/definitions/AccountLoginResponse"
+        description: "Valid refresh token"
+    additionalProperties: false
 
-  AccountLoginResponse:
+  ChangePasswordRequest:
+    type: object
+    required:
+      - current_password
+      - new_password
+    properties:
+      current_password:
+        type: string
+        example: "CurrentP@ssw0rd123"
+        description: "User's current password for verification"
+        minLength: 1
+        maxLength: 128
+      new_password:
+        type: string
+        example: "NewSecureP@ssw0rd123"
+        description: "New password meeting security requirements"
+        minLength: 8
+        maxLength: 128
+      confirm_password:
+        type: string
+        example: "NewSecureP@ssw0rd123"
+        description: "New password confirmation"
+        minLength: 8
+        maxLength: 128
+    additionalProperties: false
+
+  UpdateProfileRequest:
     type: object
     properties:
-      id:
-        type: integer
-        example: 1
-        description: "User's unique identifier"
-      branch_id:
-        type: integer
-        example: 1
-        description: "Branch ID associated with user"
       name:
         type: string
-        example: "John Doe"
-        description: "User's full name"
-      email:
-        type: string
-        example: "john@example.com"
-        description: "User's email address"
+        example: "John Doe Updated"
+        description: "Updated full name"
+        minLength: 2
+        maxLength: 100
+        pattern: '^[a-zA-Z\s\'-\.]+$'
       avatar:
         type: string
-        example: "avatar.jpg"
-        description: "User's profile picture filename"
-        nullable: true
+        example: "new_avatar.jpg"
+        description: "Avatar filename or URL"
+        maxLength: 255
       title:
         type: string
-        example: "Developer"
-        description: "User's job title"
-        nullable: true
-      role:
+        example: "Senior Software Engineer"
+        description: "Job title or position"
+        maxLength: 100
+      phone:
         type: string
-        example: "user"
-        description: "User's role in the system"
-        enum: ["admin", "user", "manager"]
-      owner_id:
+        example: "+1234567890"
+        description: "Phone number (optional)"
+        pattern: '^\+?[1-9]\d{1,14}$'
+      timezone:
+        type: string
+        example: "America/New_York"
+        description: "User's timezone"
+        maxLength: 50
+    additionalProperties: false
+
+  # ===================
+  # RESPONSE MODELS
+  # ===================
+
+  LoginUserRes:
+    type: object
+    required:
+      - access_token
+      - refresh_token
+      - expires_in
+      - token_type
+      - user
+    properties:
+      access_token:
+        type: string
+        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNjMwMDAwMDAwLCJleHAiOjE2MzAwMDM2MDB9.signature"
+        description: "JWT access token for API authentication"
+      refresh_token:
+        type: string
+        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE2MzAwMDAwMDAsImV4cCI6MTYzMDYwNDgwMH0.signature"
+        description: "JWT refresh token for obtaining new access tokens"
+      expires_in:
         type: integer
-        example: 1
-        description: "Owner/manager ID"
+        example: 3600
+        description: "Access token expiration time in seconds"
+        minimum: 1
+      token_type:
+        type: string
+        example: "Bearer"
+        description: "Token type for Authorization header"
+        enum: ["Bearer"]
+      user:
+        $ref: "#/definitions/UserProfile"
 
   RegisterResponse:
     type: object
+    required:
+      - id
+      - name
+      - email
+      - status
+      - created_at
     properties:
       id:
         type: integer
         example: 1
-        description: "Newly created user ID"
+        description: "Unique user identifier"
+        minimum: 1
       name:
         type: string
         example: "John Doe"
         description: "User's full name"
       email:
         type: string
+        format: email
         example: "john@example.com"
         description: "User's email address"
       status:
         type: boolean
         example: true
-        description: "Registration success status"
-
-  # Error Models
-  ErrorResponse:
-    type: object
-    properties:
-      error:
+        description: "Account activation status"
+      created_at:
         type: string
-        example: "invalid_request"
-        description: "Error code identifier"
+        format: date-time
+        example: "2024-01-15T10:30:00Z"
+        description: "Account creation timestamp"
+      verification_required:
+        type: boolean
+        example: false
+        description: "Whether email verification is required"
+        default: false
+
+  LogoutResponse:
+    type: object
+    required:
+      - message
+      - timestamp
+    properties:
       message:
         type: string
-        example: "Invalid input data"
-        description: "Human-readable error message"
-      details:
-        type: object
-        description: "Additional error details (field-specific errors)"
-        additionalProperties: true
-        example:
-          email: "Invalid email format"
-          password: "Password too weak"
+        example: "Logout successful"
+        description: "Logout confirmation message"
+      timestamp:
+        type: string
+        format: date-time
+        example: "2024-01-15T10:30:00Z"
+        description: "Logout timestamp"
+      session_cleared:
+        type: boolean
+        example: true
+        description: "Whether server session was cleared"
+        default: false
+      token_invalidated:
+        type: boolean
+        example: true
+        description: "Whether token was blacklisted"
+        default: false
+      note:
+        type: string
+        example: "No active session found"
+        description: "Additional information about logout process"
 
-  ValidationErrorResponse:
+  RefreshTokenResponse:
     type: object
+    required:
+      - access_token
+      - expires_in
+      - token_type
+    properties:
+      access_token:
+        type: string
+        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        description: "New JWT access token"
+      refresh_token:
+        type: string
+        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        description: "New refresh token (if rotation is enabled)"
+      expires_in:
+        type: integer
+        example: 3600
+        description: "New access token expiration time in seconds"
+      token_type:
+        type: string
+        example: "Bearer"
+        description: "Token type"
+        enum: ["Bearer"]
+
+  PasswordResetResponse:
+    type: object
+    required:
+      - message
+      - email_sent
+    properties:
+      message:
+        type: string
+        example: "Password reset instructions sent to your email"
+        description: "Confirmation message"
+      email_sent:
+        type: boolean
+        example: true
+        description: "Whether reset email was sent"
+      expires_in:
+        type: integer
+        example: 3600
+        description: "Reset token expiration time in seconds"
+
+  PasswordResetConfirmResponse:
+    type: object
+    required:
+      - message
+      - password_changed
+    properties:
+      message:
+        type: string
+        example: "Password successfully reset"
+        description: "Confirmation message"
+      password_changed:
+        type: boolean
+        example: true
+        description: "Whether password was changed"
+      timestamp:
+        type: string
+        format: date-time
+        example: "2024-01-15T10:30:00Z"
+        description: "Password change timestamp"
+
+  UserProfile:
+    type: object
+    required:
+      - id
+      - name
+      - email
+      - role
+    properties:
+      id:
+        type: integer
+        example: 1
+        description: "Unique user identifier"
+        minimum: 1
+      branch_id:
+        type: integer
+        example: 1
+        description: "Branch/organization identifier"
+        minimum: 1
+      name:
+        type: string
+        example: "John Doe"
+        description: "User's full name"
+      email:
+        type: string
+        format: email
+        example: "john@example.com"
+        description: "User's email address"
+      avatar:
+        type: string
+        example: "avatar.jpg"
+        description: "Avatar filename or URL"
+      title:
+        type: string
+        example: "Senior Developer"
+        description: "Job title or position"
+      role:
+        type: string
+        example: "user"
+        description: "User role in the system"
+        enum: ["admin", "user", "moderator", "viewer"]
+      owner_id:
+        type: integer
+        example: 1
+        description: "Account owner identifier"
+        minimum: 1
+      last_login:
+        type: string
+        format: date-time
+        example: "2024-01-15T10:30:00Z"
+        description: "Last login timestamp"
+      created_at:
+        type: string
+        format: date-time
+        example: "2024-01-10T09:00:00Z"
+        description: "Account creation timestamp"
+      updated_at:
+        type: string
+        format: date-time
+        example: "2024-01-15T10:30:00Z"
+        description: "Last profile update timestamp"
+      status:
+        type: string
+        example: "active"
+        description: "Account status"
+        enum: ["active", "inactive", "suspended", "pending_verification"]
+      email_verified:
+        type: boolean
+        example: true
+        description: "Whether email is verified"
+        default: false
+      phone:
+        type: string
+        example: "+1234567890"
+        description: "User's phone number"
+      timezone:
+        type: string
+        example: "America/New_York"
+        description: "User's timezone"
+
+  # ===================
+  # ERROR MODELS
+  # ===================
+
+  ErrorResponse:
+    type: object
+    required:
+      - error
+      - message
     properties:
       error:
         type: string
         example: "validation_error"
+        description: "Error code identifier"
+        enum: 
+          - "invalid_request"
+          - "validation_error"
+          - "invalid_credentials"
+          - "weak_password"
+          - "duplicate_email"
+          - "account_disabled"
+          - "account_locked"
+          - "account_not_verified"
+          - "rate_limit_exceeded"
+          - "password_expired"
+          - "token_expired"
+          - "invalid_token"
+          - "missing_auth_header"
+          - "invalid_token_format"
+          - "token_invalid"
+          - "internal_error"
+          - "service_error"
+          - "configuration_error"
       message:
         type: string
         example: "Validation failed"
+        description: "Human-readable error message"
       details:
         type: object
-        properties:
-          email:
-            type: string
-            example: "Email is required"
-          password:
-            type: string
-            example: "Password must be at least 8 characters"
+        description: "Additional error details and validation information"
+        additionalProperties: true
+        example:
+          password: "Password must contain at least one uppercase letter"
+          missing_requirements: ["uppercase", "special_character"]
+      timestamp:
+        type: string
+        format: date-time
+        example: "2024-01-15T10:30:00Z"
+        description: "Error occurrence timestamp"
+      request_id:
+        type: string
+        example: "req_12345"
+        description: "Unique request identifier for debugging"
 
-  # Success Messages
-  LogoutResponse:
+  ValidationError:
     type: object
+    required:
+      - field
+      - message
     properties:
+      field:
+        type: string
+        example: "password"
+        description: "Field name that failed validation"
       message:
         type: string
-        example: "logout successful"
-        description: "Logout confirmation message"
+        example: "Password must be at least 8 characters long"
+        description: "Validation error message"
+      code:
+        type: string
+        example: "min_length"
+        description: "Validation error code"
+        enum:
+          - "required"
+          - "min_length"
+          - "max_length"
+          - "invalid_format"
+          - "invalid_email"
+          - "weak_password"
+          - "password_mismatch"
+          - "duplicate_value"
+      current_value:
+        type: string
+        example: "short"
+        description: "Current field value (for debugging)"
+      expected:
+        type: string
+        example: "minimum 8 characters"
+        description: "Expected value format or constraint"
+
+  # ===================
+  # UTILITY MODELS
+  # ===================
+
+  PasswordStrengthInfo:
+    type: object
+    properties:
+      score:
+        type: integer
+        example: 4
+        description: "Password strength score (0-5)"
+        minimum: 0
+        maximum: 5
+      feedback:
+        type: array
+        items:
+          type: string
+        example: ["Add another word or two", "Uncommon words are better"]
+        description: "Suggestions for improving password strength"
+      missing_requirements:
+        type: array
+        items:
+          type: string
+          enum: ["uppercase", "lowercase", "number", "special_character", "length"]
+        example: ["special_character"]
+        description: "List of unmet password requirements"
+      is_common:
+        type: boolean
+        example: false
+        description: "Whether password is in common password list"
+      has_sequential:
+        type: boolean
+        example: false
+        description: "Whether password contains sequential characters"
+
+  TokenInfo:
+    type: object
+    properties:
+      user_id:
+        type: integer
+        example: 1
+        description: "User ID from token"
+      issued_at:
+        type: string
+        format: date-time
+        example: "2024-01-15T10:00:00Z"
+        description: "Token issued timestamp"
+      expires_at:
+        type: string
+        format: date-time
+        example: "2024-01-15T11:00:00Z"
+        description: "Token expiration timestamp"
+      issuer:
+        type: string
+        example: "auth.example.com"
+        description: "Token issuer"
+      audience:
+        type: string
+        example: "api.example.com"
+        description: "Token audience"
+      scopes:
+        type: array
+        items:
+          type: string
+        example: ["read:profile", "write:profile"]
+        description: "Token permissions/scopes"
+
+  SessionInfo:
+    type: object
+    properties:
+      session_id:
+        type: string
+        example: "sess_12345"
+        description: "Unique session identifier"
+      user_id:
+        type: integer
+        example: 1
+        description: "User associated with session"
+      device_id:
+        type: string
+        example: "device_12345"
+        description: "Device identifier"
+      ip_address:
+        type: string
+        example: "192.168.1.1"
+        description: "Client IP address"
+      user_agent:
+        type: string
+        example: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        description: "Client user agent"
+      created_at:
+        type: string
+        format: date-time
+        example: "2024-01-15T10:00:00Z"
+        description: "Session creation timestamp"
+      last_activity:
+        type: string
+        format: date-time
+        example: "2024-01-15T10:30:00Z"
+        description: "Last activity timestamp"
+      expires_at:
+        type: string
+        format: date-time
+        example: "2024-01-15T18:00:00Z"
+        description: "Session expiration timestamp"
+
+  # ===================
+  # PAGINATION & LISTING
+  # ===================
+
+  PaginationInfo:
+    type: object
+    properties:
+      page:
+        type: integer
+        example: 1
+        description: "Current page number"
+        minimum: 1
+      per_page:
+        type: integer
+        example: 20
+        description: "Items per page"
+        minimum: 1
+        maximum: 100
+      total:
+        type: integer
+        example: 150
+        description: "Total number of items"
+        minimum: 0
+      total_pages:
+        type: integer
+        example: 8
+        description: "Total number of pages"
+        minimum: 0
+      has_next:
+        type: boolean
+        example: true
+        description: "Whether there are more pages"
+      has_prev:
+        type: boolean
+        example: false
+        description: "Whether there are previous pages"
+
+  UserListResponse:
+    type: object
+    required:
+      - users
+      - pagination
+    properties:
+      users:
+        type: array
+        items:
+          $ref: "#/definitions/UserProfile"
+        description: "List of user profiles"
+      pagination:
+        $ref: "#/definitions/PaginationInfo"
+
+  # ===================
+  # AUDIT & LOGGING
+  # ===================
+
+  AuditLogEntry:
+    type: object
+    required:
+      - id
+      - user_id
+      - action
+      - timestamp
+    properties:
+      id:
+        type: integer
+        example: 1
+        description: "Unique audit log entry ID"
+      user_id:
+        type: integer
+        example: 1
+        description: "User who performed the action"
+      action:
+        type: string
+        example: "login"
+        description: "Action performed"
+        enum: ["login", "logout", "register", "password_change", "password_reset", "profile_update", "email_verify"]
+      resource:
+        type: string
+        example: "user_account"
+        description: "Resource affected by the action"
+      resource_id:
+        type: string
+        example: "1"
+        description: "ID of the affected resource"
+      ip_address:
+        type: string
+        example: "192.168.1.1"
+        description: "Client IP address"
+      user_agent:
+        type: string
+        example: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        description: "Client user agent"
+      metadata:
+        type: object
+        additionalProperties: true
+        example:
+          success: true
+          method: "email_password"
+        description: "Additional action metadata"
+      timestamp:
+        type: string
+        format: date-time
+        example: "2024-01-15T10:30:00Z"
+        description: "Action timestamp"
+
+  # ===================
+  # HEALTH & STATUS
+  # ===================
+
+  HealthCheckResponse:
+    type: object
+    required:
+      - status
+      - timestamp
+    properties:
+      status:
+        type: string
+        example: "healthy"
+        description: "Overall system health status"
+        enum: ["healthy", "degraded", "unhealthy"]
+      timestamp:
+        type: string
+        format: date-time
+        example: "2024-01-15T10:30:00Z"
+        description: "Health check timestamp"
+      version:
+        type: string
+        example: "1.0.0"
+        description: "API version"
+      services:
+        type: object
+        additionalProperties: 
+          type: object
+          properties:
+            status:
+              type: string
+              enum: ["up", "down", "degraded"]
+            response_time:
+              type: number
+              description: "Service response time in ms"
+            last_check:
+              type: string
+              format: date-time
+        example:
+          database:
+            status: "up"
+            response_time: 15.2
+            last_check: "2024-01-15T10:30:00Z"
+          redis:
+            status: "up"
+            response_time: 2.1
+            last_check: "2024-01-15T10:30:00Z"

@@ -1,17 +1,15 @@
 // internal/account/account_dto/account_dto_req.go
 package account_dto
 
-
-
 // LoginRequest represents the login request payload
-// swagger:model LoginRequest
+// swagger:model account_dto.LoginRequest
 type LoginRequest struct {
 	Email    string `json:"email" validate:"required,email" example:"user@example.com"`
 	Password string `json:"password" validate:"required" example:"password123"`
 }
 
 // RegisterUserRequest represents the user registration request payload
-// swagger:model RegisterUserRequest
+// swagger:model account_dto.RegisterUserRequest
 type RegisterUserRequest struct {
 	Name     string `json:"name" validate:"required,min=2,max=100" example:"John Doe"`
 	Email    string `json:"email" validate:"required,email,uniqueemail" example:"john.doe@example.com"`

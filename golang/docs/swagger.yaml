@@ -1,42 +1,203 @@
 basePath: /
+definitions:
+  account_dto.AccountLoginResponse:
+    properties:
+      avatar:
+        example: https://example.com/avatar.jpg
+        type: string
+      branch_id:
+        example: 1
+        type: integer
+      email:
+        example: john.doe@example.com
+        type: string
+      id:
+        example: 123
+        type: integer
+      name:
+        example: John Doe
+        type: string
+      owner_id:
+        example: 1
+        type: integer
+      role:
+        example: admin
+        type: string
+      title:
+        example: Manager
+        type: string
+    type: object
+  account_dto.LoginRequest:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: password123
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  account_dto.LoginUserRes:
+    properties:
+      access_token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+      refresh_token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+      user:
+        $ref: '#/definitions/account_dto.AccountLoginResponse'
+    type: object
+  account_dto.LogoutResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  account_dto.RegisterResponse:
+    properties:
+      email:
+        example: john.doe@example.com
+        type: string
+      id:
+        example: 123
+        type: integer
+      name:
+        example: John Doe
+        type: string
+      status:
+        example: true
+        type: boolean
+    type: object
+  account_dto.RegisterUserRequest:
+    properties:
+      email:
+        example: john.doe@example.com
+        type: string
+      name:
+        example: John Doe
+        maxLength: 100
+        minLength: 2
+        type: string
+      password:
+        example: SecurePass123!
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  errorcustom.ErrorResponse:
+    properties:
+      code:
+        example: validation_error
+        type: string
+      details:
+        additionalProperties: true
+        type: object
+      message:
+        example: Validation failed
+        type: string
+    type: object
 host: localhost:8888
 info:
   contact:
     email: support@swagger.io
     name: API Support
     url: http://www.swagger.io/support
-  description: This is a restaurant management system API with account management
+  description: Restaurant management system with account authentication
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
-  termsOfService: http://swagger.io/terms/
   title: Restaurant Management API
   version: "1.0"
 paths:
   /accounts/auth/login:
     post:
-      responses: {}
+      consumes:
+      - application/json
+      description: Authenticate user with email and password
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/account_dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/account_dto.LoginUserRes'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorcustom.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/errorcustom.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errorcustom.ErrorResponse'
       summary: User login
       tags:
       - Authentication
   /accounts/auth/logout:
     post:
-      responses: {}
+      description: Invalidate user session
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/account_dto.LogoutResponse'
       summary: User logout
       tags:
       - Authentication
   /accounts/auth/register:
     post:
-      responses: {}
+      consumes:
+      - application/json
+      description: Create new user account
+      parameters:
+      - description: Registration data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/account_dto.RegisterUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/account_dto.RegisterResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errorcustom.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/errorcustom.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errorcustom.ErrorResponse'
       summary: User registration
       tags:
       - Authentication
-schemes:
-- http
-- https
 securityDefinitions:
   BearerAuth:
-    description: Type "Bearer" followed by a space and JWT token.
     in: header
     name: Authorization
     type: apiKey

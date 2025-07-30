@@ -1,13 +1,11 @@
-
-
-
 package utils
 
 import (
 	"encoding/json"
-	"errors"
+	"net"
+
 	"fmt"
-	"io"
+
 	"log"
 	"net/http"
 	"strconv"
@@ -20,32 +18,31 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+// func DecodeJSON(r io.Reader, v interface{}) error {
+// 	decoder := json.NewDecoder(r)
+// 	decoder.DisallowUnknownFields() // Critical security feature
 
-func DecodeJSON(r io.Reader, v interface{}) error {
-	decoder := json.NewDecoder(r)
-	decoder.DisallowUnknownFields() // Critical security feature
-
-	if err := decoder.Decode(v); err != nil {
-		return errorcustom.NewAPIError(
-			errorcustom.ErrCodeInvalidInput,
-			"Invalid JSON format",
-			http.StatusBadRequest,
-		).WithDetail("error", err.Error())
-	}
-	return nil
-}
+// 	if err := decoder.Decode(v); err != nil {
+// 		return errorcustom.NewAPIError(
+// 			errorcustom.ErrCodeInvalidInput,
+// 			"Invalid JSON format",
+// 			http.StatusBadRequest,
+// 		).WithDetail("error", err.Error())
+// 	}
+// 	return nil
+// }
 
 // Robust JSON response handler
-func RespondWithJSON(w http.ResponseWriter, status int, payload interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	
-	if err := json.NewEncoder(w).Encode(payload); err != nil {
-		log.Printf("JSON encoding error: %v", err)
-		// Critical fallback to prevent incomplete responses
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}
-}
+// func RespondWithJSON(w http.ResponseWriter, status int, payload interface{}) {
+// 	w.Header().Set("Content-Type", "application/json")
+// 	w.WriteHeader(status)
+
+// 	if err := json.NewEncoder(w).Encode(payload); err != nil {
+// 		log.Printf("JSON encoding error: %v", err)
+// 		// Critical fallback to prevent incomplete responses
+// 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+// 	}
+// }
 
 // Structured error response handler
 func RespondWithAPIError(w http.ResponseWriter, apiErr *errorcustom.APIError) {
@@ -58,77 +55,77 @@ func RespondWithAPIError(w http.ResponseWriter, apiErr *errorcustom.APIError) {
 	}
 }
 
-// Centralized error handler with prioritized processing
-func HandleError(w http.ResponseWriter, err error) {
-	log.Printf("Error occurred: %v", err) // Structured logging recommended in production
+// // Centralized error handler with prioritized processing
+// func HandleError(w http.ResponseWriter, err error) {
+// 	log.Printf("Error occurred: %v", err) // Structured logging recommended in production
 
-	// Prioritize validation errors
-	var validatorErr validator.ValidationErrors
-	if errors.As(err, &validatorErr) {
-		HandleValidationErrors(w, validatorErr)
-		return
-	}
+// 	// Prioritize validation errors
+// 	var validatorErr validator.ValidationErrors
+// 	if errors.As(err, &validatorErr) {
+// 		HandleValidationErrors(w, validatorErr)
+// 		return
+// 	}
 
-	// Handle custom error types
-	var (
-		apiErr             *errorcustom.APIError
-		userNotFoundErr    *errorcustom.UserNotFoundError
-		validationErr      *errorcustom.ValidationError
-		authErr            *errorcustom.AuthenticationError
-		authzErr           *errorcustom.AuthorizationError
-		duplicateEmailErr  *errorcustom.DuplicateEmailError
-		invalidTokenErr    *errorcustom.InvalidTokenError
-		branchNotFoundErr  *errorcustom.BranchNotFoundError
-		passwordErr        *errorcustom.PasswordValidationError
-	)
+// 	// Handle custom error types
+// 	var (
+// 		apiErr             *errorcustom.APIError
+// 		userNotFoundErr    *errorcustom.UserNotFoundError
+// 		validationErr      *errorcustom.ValidationError
+// 		authErr            *errorcustom.AuthenticationError
+// 		authzErr           *errorcustom.AuthorizationError
+// 		duplicateEmailErr  *errorcustom.DuplicateEmailError
+// 		invalidTokenErr    *errorcustom.InvalidTokenError
+// 		branchNotFoundErr  *errorcustom.BranchNotFoundError
+// 		passwordErr        *errorcustom.PasswordValidationError
+// 	)
 
-	switch {
-	case errors.As(err, &apiErr):
-		RespondWithAPIError(w, apiErr)
-	case errors.As(err, &userNotFoundErr):
-		RespondWithAPIError(w, userNotFoundErr.ToAPIError())
-	case errors.As(err, &validationErr):
-		RespondWithAPIError(w, validationErr.ToAPIError())
-	case errors.As(err, &authErr):
-		RespondWithAPIError(w, authErr.ToAPIError())
-	case errors.As(err, &authzErr):
-		RespondWithAPIError(w, authzErr.ToAPIError())
-	case errors.As(err, &duplicateEmailErr):
-		RespondWithAPIError(w, duplicateEmailErr.ToAPIError())
-	case errors.As(err, &invalidTokenErr):
-		RespondWithAPIError(w, invalidTokenErr.ToAPIError())
-	case errors.As(err, &branchNotFoundErr):
-		RespondWithAPIError(w, branchNotFoundErr.ToAPIError())
-	case errors.As(err, &passwordErr):
-		RespondWithAPIError(w, passwordErr.ToAPIError())
-	default:
-		// Secure default for unknown errors
-		RespondWithAPIError(w, errorcustom.NewAPIError(
-			errorcustom.ErrCodeInternalError,
-			"An internal error occurred",
-			http.StatusInternalServerError,
-		))
-	}
-}
+// 	switch {
+// 	case errors.As(err, &apiErr):
+// 		RespondWithAPIError(w, apiErr)
+// 	case errors.As(err, &userNotFoundErr):
+// 		RespondWithAPIError(w, userNotFoundErr.ToAPIError())
+// 	case errors.As(err, &validationErr):
+// 		RespondWithAPIError(w, validationErr.ToAPIError())
+// 	case errors.As(err, &authErr):
+// 		RespondWithAPIError(w, authErr.ToAPIError())
+// 	case errors.As(err, &authzErr):
+// 		RespondWithAPIError(w, authzErr.ToAPIError())
+// 	case errors.As(err, &duplicateEmailErr):
+// 		RespondWithAPIError(w, duplicateEmailErr.ToAPIError())
+// 	case errors.As(err, &invalidTokenErr):
+// 		RespondWithAPIError(w, invalidTokenErr.ToAPIError())
+// 	case errors.As(err, &branchNotFoundErr):
+// 		RespondWithAPIError(w, branchNotFoundErr.ToAPIError())
+// 	case errors.As(err, &passwordErr):
+// 		RespondWithAPIError(w, passwordErr.ToAPIError())
+// 	default:
+// 		// Secure default for unknown errors
+// 		RespondWithAPIError(w, errorcustom.NewAPIError(
+// 			errorcustom.ErrCodeInternalError,
+// 			"An internal error occurred",
+// 			http.StatusInternalServerError,
+// 		))
+// 	}
+// }
 
-// Comprehensive validation error handler
-func HandleValidationErrors(w http.ResponseWriter, err validator.ValidationErrors) {
-	validationErrors := make([]map[string]string, 0, len(err))
+// // Comprehensive validation error handler
+// func HandleValidationErrors(w http.ResponseWriter, err validator.ValidationErrors) {
+// 	validationErrors := make([]map[string]string, 0, len(err))
 	
-	for _, fieldErr := range err {
-		validationErrors = append(validationErrors, map[string]string{
-			"field":   strings.ToLower(fieldErr.Field()),
-			"tag":     fieldErr.Tag(),
-			"message": getValidationMessage(fieldErr),
-		})
-	}
+// 	for _, fieldErr := range err {
+// 		validationErrors = append(validationErrors, map[string]string{
+// 			"field":   strings.ToLower(fieldErr.Field()),
+// 			"tag":     fieldErr.Tag(),
+// 			"message": getValidationMessage(fieldErr),
+// 		})
+// 	}
 	
-	RespondWithAPIError(w, errorcustom.NewAPIError(
-		errorcustom.ErrCodeValidationError,
-		"Validation failed",
-		http.StatusBadRequest,
-	).WithDetail("errors", validationErrors))
-}
+// 	RespondWithAPIError(w, errorcustom.NewAPIError(
+// 		errorcustom.ErrCodeValidationError,
+// 		"Validation failed",
+// 		http.StatusBadRequest,
+// 	).WithDetail("errors", validationErrors))
+// }
 
 // Detailed validation messages
 func getValidationMessage(fe validator.FieldError) string {
@@ -398,54 +395,54 @@ func CalculatePagination(total, limit, offset int) (currentPage, totalPages int)
 	return currentPage, totalPages
 }
 
-func ValidatePasswordWithDetails(password string) error {
-	var requirements []string
+// func ValidatePasswordWithDetails(password string) error {
+// 	var requirements []string
 	
-	if len(password) < 8 {
-		requirements = append(requirements, "at least 8 characters")
-	}
+// 	if len(password) < 8 {
+// 		requirements = append(requirements, "at least 8 characters")
+// 	}
 	
-	var (
-		hasUpper   = false
-		hasLower   = false
-		hasDigit   = false
-		hasSpecial = false
-	)
+// 	var (
+// 		hasUpper   = false
+// 		hasLower   = false
+// 		hasDigit   = false
+// 		hasSpecial = false
+// 	)
 	
-	for _, c := range password {
-		switch {
-		case unicode.IsUpper(c):
-			hasUpper = true
-		case unicode.IsLower(c):
-			hasLower = true
-		case unicode.IsDigit(c):
-			hasDigit = true
-		case strings.ContainsRune("!@#$%^&*", c):
-			hasSpecial = true
-		}
-	}
+// 	for _, c := range password {
+// 		switch {
+// 		case unicode.IsUpper(c):
+// 			hasUpper = true
+// 		case unicode.IsLower(c):
+// 			hasLower = true
+// 		case unicode.IsDigit(c):
+// 			hasDigit = true
+// 		case strings.ContainsRune("!@#$%^&*", c):
+// 			hasSpecial = true
+// 		}
+// 	}
 	
-	if !hasUpper {
-		requirements = append(requirements, "at least one uppercase letter")
-	}
-	if !hasLower {
-		requirements = append(requirements, "at least one lowercase letter")
-	}
-	if !hasDigit {
-		requirements = append(requirements, "at least one digit")
-	}
-	if !hasSpecial {
-		requirements = append(requirements, "at least one special character (!@#$%^&*)")
-	}
+// 	if !hasUpper {
+// 		requirements = append(requirements, "at least one uppercase letter")
+// 	}
+// 	if !hasLower {
+// 		requirements = append(requirements, "at least one lowercase letter")
+// 	}
+// 	if !hasDigit {
+// 		requirements = append(requirements, "at least one digit")
+// 	}
+// 	if !hasSpecial {
+// 		requirements = append(requirements, "at least one special character (!@#$%^&*)")
+// 	}
 	
-	if len(requirements) > 0 {
-		return &errorcustom.PasswordValidationError{
-			Requirements: requirements,
-		}
-	}
+// 	if len(requirements) > 0 {
+// 		return &errorcustom.PasswordValidationError{
+// 			Requirements: requirements,
+// 		}
+// 	}
 	
-	return nil
-}
+// 	return nil
+// }
 
 func CalculatePaginationBounds(start, end, total int) (int, int) {
 	if start >= total {
@@ -462,3 +459,26 @@ func RespondWithError(w http.ResponseWriter, status int, message string) {
 }
 
 // new 121312312
+
+
+func GetClientIP(r *http.Request) string {
+    // Get IP from X-Forwarded-For header
+    forwarded := r.Header.Get("X-Forwarded-For")
+    if forwarded != "" {
+        // Take the first IP (client IP)
+        return strings.Split(forwarded, ",")[0]
+    }
+    
+    // Get IP from X-Real-IP header
+    realIP := r.Header.Get("X-Real-IP")
+    if realIP != "" {
+        return realIP
+    }
+    
+    // Get IP from request RemoteAddr
+    ip, _, err := net.SplitHostPort(r.RemoteAddr)
+    if err != nil {
+        return r.RemoteAddr
+    }
+    return ip
+}

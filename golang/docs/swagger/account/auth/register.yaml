@@ -1,0 +1,1733 @@
+# docs/swagger/account/auth/register.yaml - Enhanced Registration with Comprehensive Test Cases
+/account/auth/register:
+  post:
+    summary: "User registration with comprehensive validation"
+    description: |
+      Create a new user account with extensive validation and error handling.
+      
+      **Registration Flow:**
+      1. ✅ **Request validation** - Validates JSON format and required fields
+      2. ✅ **Password strength validation** - Enforces secure password requirements
+      3. ✅ **Email format validation** - Validates email format and domain
+      4. ✅ **Email uniqueness check** - Prevents duplicate registrations
+      5. ✅ **Secure password hashing** - Uses bcrypt for password storage
+      6. ✅ **Database transaction** - Creates user account atomically
+      7. ✅ **Response generation** - Returns user data confirmation
+      
+      **Password Requirements (All Must Be Met):**
+      - ✅ Minimum 8 characters
+      - ✅ At least one uppercase letter (A-Z)
+      - ✅ At least one lowercase letter (a-z)  
+      - ✅ At least one number (0-9)
+      - ✅ At least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)
+      - ❌ No common passwords (password123, admin, etc.)
+      - ❌ No sequential characters (abc123, 123456)
+      
+      **Comprehensive Test Scenarios:**
+      
+      **✅ SUCCESS CASES:**
+      - Valid registration with strong password
+      - Registration with international characters in name
+      - Registration with plus addressing (user+tag@domain.com)
+      
+      **❌ VALIDATION ERROR CASES (400):**
+      - Invalid JSON format
+      - Missing required fields (name, email, password)
+      - Invalid email formats
+      - Password too short (< 8 characters)
+      - Password missing uppercase letters
+      - Password missing lowercase letters
+      - Password missing numbers
+      - Password missing special characters
+      - Password with only letters
+      - Password with only numbers
+      - Common/weak passwords
+      - Sequential character passwords
+      - Name too short (< 2 characters)
+      - Name too long (> 100 characters)
+      
+      **❌ CONFLICT CASES (409):**
+      - Email already registered
+      - Case-insensitive email duplicates
+      
+      **❌ SERVER ERROR CASES (500):**
+      - Password hashing failure
+      - Database connection error
+      - Service unavailable
+      - Transaction rollback error
+      
+    tags:
+      - Authentication
+    consumes:
+      - application/json
+    produces:
+      - application/json
+    parameters:
+      - in: body
+        name: request
+        description: Registration data with validation
+        required: true
+        schema:
+          $ref: "#/definitions/RegisterUserRequest"
+    responses:
+      201:
+        description: "✅ Successful registration"
+        schema:
+          $ref: "#/definitions/RegisterResponse"
+        examples:
+          application/json:
+            id: 1
+            name: "John Doe"
+            email: "john@example.com"
+            status: true
+            created_at: "2024-01-15T10:30:00Z"
+            
+      400:
+        description: "❌ Validation errors - Comprehensive password and input validation"
+        schema:
+          $ref: "#/definitions/ErrorResponse"
+        examples:
+          # JSON Format Errors
+          invalid_json:
+            summary: "Malformed JSON request"
+            value:
+              error: "invalid_request"
+              message: "Invalid JSON format"
+              details:
+                line: 1
+                column: 15
+                
+          empty_request:
+            summary: "Empty request body"
+            value:
+              error: "invalid_request"
+              message: "Request body cannot be empty"
+              
+          # Required Field Errors
+          missing_all_fields:
+            summary: "All required fields missing"
+            value:
+              error: "validation_error"
+              message: "Validation failed - missing required fields"
+              details:
+                name: "Name is required"
+                email: "Email is required"
+                password: "Password is required"
+                
+          missing_name:
+            summary: "Missing name field"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                name: "Name is required and cannot be empty"
+                
+          missing_email:
+            summary: "Missing email field"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                email: "Email is required and cannot be empty"
+                
+          missing_password:
+            summary: "Missing password field"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                password: "Password is required and cannot be empty"
+                
+          # Name Validation Errors
+          name_too_short:
+            summary: "Name too short"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                name: "Name must be at least 2 characters long"
+                
+          name_too_long:
+            summary: "Name exceeds maximum length"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                name: "Name cannot exceed 100 characters"
+                
+          name_invalid_characters:
+            summary: "Name contains invalid characters"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                name: "Name can only contain letters, spaces, hyphens and apostrophes"
+                
+          # Email Validation Errors
+          invalid_email_format:
+            summary: "Invalid email format"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                email: "Invalid email format"
+                
+          email_missing_at:
+            summary: "Email missing @ symbol"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                email: "Email must contain @ symbol"
+                
+          email_missing_domain:
+            summary: "Email missing domain"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                email: "Email must have a valid domain"
+                
+          email_invalid_domain:
+            summary: "Email with invalid domain"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                email: "Email domain format is invalid"
+                
+          # Password Length Errors
+          password_too_short:
+            summary: "Password below minimum length"
+            value:
+              error: "weak_password"
+              message: "Password does not meet security requirements"
+              details:
+                password: "Password must be at least 8 characters long"
+                current_length: 6
+                required_length: 8
+                
+          password_empty:
+            summary: "Empty password"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                password: "Password cannot be empty"
+                
+          # Password Character Requirements
+          password_no_uppercase:
+            summary: "Password missing uppercase letters"
+            value:
+              error: "weak_password"
+              message: "Password does not meet security requirements"
+              details:
+                password: "Password must contain at least one uppercase letter (A-Z)"
+                missing_requirements: ["uppercase"]
+                
+          password_no_lowercase:
+            summary: "Password missing lowercase letters"
+            value:
+              error: "weak_password"
+              message: "Password does not meet security requirements"
+              details:
+                password: "Password must contain at least one lowercase letter (a-z)"
+                missing_requirements: ["lowercase"]
+                
+          password_no_numbers:
+            summary: "Password missing numbers"
+            value:
+              error: "weak_password"
+              message: "Password does not meet security requirements"
+              details:
+                password: "Password must contain at least one number (0-9)"
+                missing_requirements: ["number"]
+                
+          password_no_special_chars:
+            summary: "Password missing special characters"
+            value:
+              error: "weak_password"
+              message: "Password does not meet security requirements"
+              details:
+                password: "Password must contain at least one special character (!@#$%^&*)"
+                missing_requirements: ["special_character"]
+                
+          # Multiple Password Requirements Missing
+          password_multiple_missing:
+            summary: "Password missing multiple requirements"
+            value:
+              error: "weak_password"
+              message: "Password does not meet security requirements"
+              details:
+                password: "Password must contain uppercase, lowercase, number and special character"
+                missing_requirements: ["uppercase", "number", "special_character"]
+                
+          # Common/Weak Password Errors
+          password_too_common:
+            summary: "Common password detected"
+            value:
+              error: "weak_password"
+              message: "Password is too common and easily guessable"
+              details:
+                password: "Please choose a more unique password"
+                reason: "common_password"
+                
+          password_sequential:
+            summary: "Sequential characters detected"
+            value:
+              error: "weak_password"
+              message: "Password contains sequential characters"
+              details:
+                password: "Password cannot contain sequential characters like 'abc' or '123'"
+                reason: "sequential_characters"
+                
+          password_repeated_chars:
+            summary: "Too many repeated characters"
+            value:
+              error: "weak_password"
+              message: "Password contains too many repeated characters"
+              details:
+                password: "Password cannot have more than 2 consecutive identical characters"
+                reason: "repeated_characters"
+                
+          password_personal_info:
+            summary: "Password contains personal information"
+            value:
+              error: "weak_password"
+              message: "Password should not contain personal information"
+              details:
+                password: "Password cannot contain your name or email"
+                reason: "personal_information"
+                
+          # Complex Validation Scenarios
+          password_only_letters:
+            summary: "Password with only letters"
+            value:
+              error: "weak_password"
+              message: "Password does not meet security requirements"
+              details:
+                password: "Password must contain numbers and special characters"
+                missing_requirements: ["number", "special_character"]
+                
+          password_only_numbers:
+            summary: "Password with only numbers"
+            value:
+              error: "weak_password"
+              message: "Password does not meet security requirements"
+              details:
+                password: "Password must contain letters and special characters"
+                missing_requirements: ["uppercase", "lowercase", "special_character"]
+                
+          password_dictionary_word:
+            summary: "Password is dictionary word"
+            value:
+              error: "weak_password"
+              message: "Password is based on a common dictionary word"
+              details:
+                password: "Please use a more complex password"
+                reason: "dictionary_word"
+
+      409:
+        description: "❌ Conflict - Email already exists"
+        schema:
+          $ref: "#/definitions/ErrorResponse"
+        examples:
+          email_already_exists:
+            summary: "Email already registered"
+            value:
+              error: "duplicate_email"
+              message: "An account with this email already exists"
+              details:
+                email: "john@example.com"
+                suggested_action: "Try logging in or use password reset"
+                
+          email_case_insensitive_duplicate:
+            summary: "Case-insensitive email duplicate"
+            value:
+              error: "duplicate_email"
+              message: "An account with this email already exists"
+              details:
+                email: "John@Example.com"
+                existing_email: "john@example.com"
+                note: "Email comparison is case-insensitive"
+
+      500:
+        description: "❌ Internal server errors"
+        schema:
+          $ref: "#/definitions/ErrorResponse"
+        examples:
+          password_hashing_error:
+            summary: "Bcrypt hashing failure"
+            value:
+              error: "internal_error"
+              message: "Password processing failed"
+              details:
+                reason: "hashing_service_error"
+                
+          database_connection_error:
+            summary: "Database unavailable"
+            value:
+              error: "service_error"
+              message: "User registration temporarily unavailable"
+              details:
+                reason: "database_connection_failed"
+                retry_after: 30
+                
+          grpc_service_error:
+            summary: "Backend service error"
+            value:
+              error: "service_error"
+              message: "Registration service unavailable"
+              details:
+                reason: "grpc_connection_failed"
+                service: "account_service"
+                
+          transaction_rollback_error:
+            summary: "Database transaction failed"
+            value:
+              error: "internal_error"
+              message: "Registration failed - please try again"
+              details:
+                reason: "transaction_rollback"
+                
+    x-code-samples:
+      - lang: "curl"
+        source: |
+          # ✅ Successful registration
+          curl -X POST "http://localhost:8888/account/auth/register" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "John Doe",
+              "email": "john@example.com",
+              "password": "SecureP@ssw0rd123"
+            }'
+          
+          # ❌ Test weak password (no uppercase)
+          curl -X POST "http://localhost:8888/account/auth/register" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "John Doe",
+              "email": "john@example.com",
+              "password": "weakpassword123!"
+            }'
+          
+          # ❌ Test password missing special characters
+          curl -X POST "http://localhost:8888/account/auth/register" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "John Doe",
+              "email": "john@example.com",
+              "password": "WeakPassword123"
+            }'
+          
+          # ❌ Test common password
+          curl -X POST "http://localhost:8888/account/auth/register" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "John Doe",
+              "email": "john@example.com",
+              "password": "password123"
+            }'
+            
+      - lang: "JavaScript"
+        source: |
+          // ✅ Successful registration
+          const registerUser = async (userData) => {
+            try {
+              const response = await fetch('/account/auth/register', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(userData)
+              });
+              
+              const data = await response.json();
+              
+              if (!response.ok) {
+                console.error('Registration failed:', data);
+                return { success: false, error: data };
+              }
+              
+              return { success: true, user: data };
+            } catch (error) {
+              console.error('Network error:', error);
+              return { success: false, error: { message: 'Network error' } };
+            }
+          };
+          
+          // Test cases
+          const testCases = [
+            // ✅ Valid registration
+            {
+              name: 'John Doe',
+              email: 'john@example.com',
+              password: 'SecureP@ssw0rd123'
+            },
+            // ❌ Weak password tests
+            {
+              name: 'Jane Doe',
+              email: 'jane@example.com',
+              password: 'weak' // Too short
+            },
+            {
+              name: 'Bob Smith',
+              email: 'bob@example.com',
+              password: 'nouppercase123!' // No uppercase
+            },
+            {
+              name: 'Alice Johnson',
+              email: 'alice@example.com',
+              password: 'NOLOWERCASE123!' // No lowercase
+            },
+            {
+              name: 'Charlie Brown',
+              email: 'charlie@example.com',
+              password: 'NoNumbers!' // No numbers
+            },
+            {
+              name: 'David Wilson',
+              email: 'david@example.com',
+              password: 'NoSpecialChars123' // No special chars
+            }
+          ];
+          
+          // Run tests
+          testCases.forEach(async (testCase, index) => {
+            console.log(`Running test case ${index + 1}:`, testCase);
+            const result = await registerUser(testCase);
+            console.log('Result:', result);
+          });
+          
+      - lang: "Go"
+        source: |
+          package main
+          
+          import (
+              "bytes"
+              "encoding/json"
+              "fmt"
+              "net/http"
+          )
+          
+          type RegisterRequest struct {
+              Name     string `json:"name"`
+              Email    string `json:"email"`
+              Password string `json:"password"`
+          }
+          
+          type TestCase struct {
+              Name        string
+              Request     RegisterRequest
+              ExpectedErr bool
+              Description string
+          }
+          
+          func main() {
+              // Define comprehensive test cases
+              testCases := []TestCase{
+                  // ✅ Success cases
+                  {
+                      Name: "Valid Registration",
+                      Request: RegisterRequest{
+                          Name:     "John Doe",
+                          Email:    "john@example.com", 
+                          Password: "SecureP@ssw0rd123",
+                      },
+                      ExpectedErr: false,
+                      Description: "Should succeed with strong password",
+                  },
+                  
+                  // ❌ Password validation failures
+                  {
+                      Name: "Password Too Short",
+                      Request: RegisterRequest{
+                          Name:     "John Doe",
+                          Email:    "john1@example.com",
+                          Password: "Sh0rt!",
+                      },
+                      ExpectedErr: true,
+                      Description: "Should fail - password less than 8 chars",
+                  },
+                  {
+                      Name: "Password No Uppercase",
+                      Request: RegisterRequest{
+                          Name:     "John Doe", 
+                          Email:    "john2@example.com",
+                          Password: "nouppercase123!",
+                      },
+                      ExpectedErr: true,
+                      Description: "Should fail - no uppercase letters",
+                  },
+                  {
+                      Name: "Password No Lowercase",
+                      Request: RegisterRequest{
+                          Name:     "John Doe",
+                          Email:    "john3@example.com", 
+                          Password: "NOLOWERCASE123!",
+                      },
+                      ExpectedErr: true,
+                      Description: "Should fail - no lowercase letters",
+                  },
+                  {
+                      Name: "Password No Numbers",
+                      Request: RegisterRequest{
+                          Name:     "John Doe",
+                          Email:    "john4@example.com",
+                          Password: "NoNumbers!@#",
+                      },
+                      ExpectedErr: true,
+                      Description: "Should fail - no numbers",
+                  },
+                  {
+                      Name: "Password No Special Characters",
+                      Request: RegisterRequest{
+                          Name:     "John Doe",
+                          Email:    "john5@example.com",
+                          Password: "NoSpecialChars123",
+                      },
+                      ExpectedErr: true,
+                      Description: "Should fail - no special characters",
+                  },
+                  {
+                      Name: "Common Password",
+                      Request: RegisterRequest{
+                          Name:     "John Doe",
+                          Email:    "john6@example.com",
+                          Password: "password123",
+                      },
+                      ExpectedErr: true,
+                      Description: "Should fail - common password",
+                  },
+                  {
+                      Name: "Sequential Characters",
+                      Request: RegisterRequest{
+                          Name:     "John Doe",
+                          Email:    "john7@example.com",
+                          Password: "Abc12345!",
+                      },
+                      ExpectedErr: true,
+                      Description: "Should fail - sequential characters",
+                  },
+              }
+              
+              // Run test cases
+              for _, tc := range testCases {
+                  fmt.Printf("\n🧪 Running test: %s\n", tc.Name)
+                  fmt.Printf("📝 Description: %s\n", tc.Description)
+                  
+                  result := testRegistration(tc.Request)
+                  
+                  if tc.ExpectedErr && result.Success {
+                      fmt.Printf("❌ UNEXPECTED SUCCESS - Expected failure but got success\n")
+                  } else if !tc.ExpectedErr && !result.Success {
+                      fmt.Printf("❌ UNEXPECTED FAILURE - Expected success but got: %s\n", result.Error)
+                  } else if tc.ExpectedErr && !result.Success {
+                      fmt.Printf("✅ EXPECTED FAILURE - %s\n", result.Error)
+                  } else {
+                      fmt.Printf("✅ SUCCESS - Registration completed\n")
+                  }
+              }
+          }
+          
+          type TestResult struct {
+              Success bool
+              Error   string
+              Data    interface{}
+          }
+          
+          func testRegistration(req RegisterRequest) TestResult {
+              jsonData, err := json.Marshal(req)
+              if err != nil {
+                  return TestResult{Success: false, Error: "JSON marshal error"}
+              }
+              
+              resp, err := http.Post(
+                  "http://localhost:8888/account/auth/register",
+                  "application/json", 
+                  bytes.NewBuffer(jsonData),
+              )
+              if err != nil {
+                  return TestResult{Success: false, Error: "Network error"}
+              }
+              defer resp.Body.Close()
+              
+              if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+                  return TestResult{Success: true}
+              }
+              
+              var errorResp map[string]interface{}
+              json.NewDecoder(resp.Body).Decode(&errorResp)
+              
+              return TestResult{
+                  Success: false, 
+                  Error: fmt.Sprintf("HTTP %d: %v", resp.StatusCode, errorResp["message"]),
+              }
+          }
+
+---
+
+# docs/swagger/account/auth/login.yaml - Enhanced Login with More Test Cases
+/account/auth/login:
+  post:
+    summary: "User login with comprehensive error handling"
+    description: |
+      Authenticate user credentials with detailed validation and error scenarios.
+      
+      **Login Flow:**
+      1. ✅ **Request validation** - Validates JSON format and required fields
+      2. ✅ **Credential verification** - Checks email and password against database
+      3. ✅ **Token generation** - Creates JWT access and refresh tokens
+      4. ✅ **Response construction** - Returns tokens with user profile
+      
+      **Comprehensive Test Scenarios:**
+      
+      **✅ SUCCESS CASES:**
+      - Valid login with correct credentials
+      - Login with email in different case
+      - Login after password reset
+      
+      **❌ REQUEST VALIDATION ERRORS (400):**
+      - Invalid JSON format
+      - Missing email field
+      - Missing password field
+      - Empty email string
+      - Empty password string
+      - Invalid email format
+      - Email with invalid characters
+      
+      **❌ AUTHENTICATION ERRORS (401):**
+      - Wrong password
+      - Email not found
+      - Account disabled/suspended
+      - Account not verified
+      - Too many failed attempts (rate limiting)
+      - Password expired (if applicable)
+      
+      **❌ SERVER ERRORS (500):**
+      - JWT token generation failure
+      - Database connection error
+      - gRPC service unavailable
+      - Token signing key missing
+      
+      **Security Features:**
+      - Secure password verification
+      - Rate limiting on failed attempts
+      - Account lockout protection
+      - JWT token expiration
+      - Refresh token rotation
+      
+    tags:
+      - Authentication
+    consumes:
+      - application/json
+    produces:
+      - application/json
+    parameters:
+      - in: body
+        name: request
+        description: Login credentials
+        required: true
+        schema:
+          $ref: "#/definitions/LoginRequest"
+    responses:
+      200:
+        description: "✅ Successful authentication"
+        schema:
+          $ref: "#/definitions/LoginUserRes"
+        examples:
+          application/json:
+            access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNjMwMDAwMDAwLCJleHAiOjE2MzAwMDM2MDB9.signature"
+            refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE2MzAwMDAwMDAsImV4cCI6MTYzMDYwNDgwMH0.signature"
+            expires_in: 3600
+            token_type: "Bearer"
+            user:
+              id: 1
+              branch_id: 1
+              name: "John Doe"
+              email: "john@example.com"
+              avatar: "avatar.jpg"
+              title: "Senior Developer"
+              role: "user"
+              owner_id: 1
+              last_login: "2024-01-15T10:30:00Z"
+              
+      400:
+        description: "❌ Request validation errors"
+        schema:
+          $ref: "#/definitions/ErrorResponse"
+        examples:
+          invalid_json:
+            summary: "Malformed JSON request"
+            value:
+              error: "invalid_request"
+              message: "Invalid JSON format in request body"
+              details:
+                line: 1
+                column: 15
+                expected: "valid JSON object"
+                
+          empty_request_body:
+            summary: "Empty request body"
+            value:
+              error: "invalid_request"
+              message: "Request body cannot be empty"
+              
+          missing_email:
+            summary: "Email field missing"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                email: "Email is required and cannot be empty"
+                
+          missing_password:
+            summary: "Password field missing"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                password: "Password is required and cannot be empty"
+                
+          missing_both_fields:
+            summary: "Both email and password missing"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                email: "Email is required"
+                password: "Password is required"
+                
+          empty_email:
+            summary: "Empty email string"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                email: "Email cannot be empty"
+                
+          empty_password:
+            summary: "Empty password string"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                password: "Password cannot be empty"
+                
+          invalid_email_format:
+            summary: "Invalid email format"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                email: "Invalid email format"
+                provided: "invalid-email"
+                expected: "user@domain.com"
+                
+          email_too_long:
+            summary: "Email exceeds maximum length"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                email: "Email cannot exceed 254 characters"
+                current_length: 300
+                
+          password_too_long:
+            summary: "Password exceeds maximum length"
+            value:
+              error: "validation_error"
+              message: "Validation failed"
+              details:
+                password: "Password cannot exceed 128 characters"
+                current_length: 150
+
+      401:
+        description: "❌ Authentication failures"
+        schema:
+          $ref: "#/definitions/ErrorResponse"
+        examples:
+          invalid_credentials:
+            summary: "Wrong email or password"
+            value:
+              error: "invalid_credentials"
+              message: "Invalid email or password"
+              
+          user_not_found:
+            summary: "Email not registered"
+            value:
+              error: "invalid_credentials"
+              message: "Invalid email or password"
+              details:
+                note: "For security, we don't reveal if email exists"
+                
+          wrong_password:
+            summary: "Correct email, wrong password"
+            value:
+              error: "invalid_credentials"
+              message: "Invalid email or password"
+              attempts_remaining: 2
+              
+          account_disabled:
+            summary: "Account has been disabled"
+            value:
+              error: "account_disabled"
+              message: "Account has been disabled by administrator"
+              details:
+                reason: "Account suspended for policy violation"
+                contact: "support@example.com"
+                
+          account_locked:
+            summary: "Account locked due to failed attempts"
+            value:
+              error: "account_locked"
+              message: "Account temporarily locked due to multiple failed login attempts"
+              details:
+                locked_until: "2024-01-15T11:00:00Z"
+                unlock_in_minutes: 15
+                
+          account_not_verified:
+            summary: "Email not verified"
+            value:
+              error: "account_not_verified"
+              message: "Please verify your email address before logging in"
+              details:
+                verification_sent: true
+                resend_available: true
+                
+          too_many_attempts:
+            summary: "Rate limit exceeded"
+            value:
+              error: "rate_limit_exceeded"
+              message: "Too many login attempts. Please try again later"
+              details:
+                retry_after: 300
+                attempts_made: 5
+                max_attempts: 5
+                
+          password_expired:
+            summary: "Password has expired"
+            value:
+              error: "password_expired"
+              message: "Password has expired and must be reset"
+              details:
+                expired_on: "2024-01-01T00:00:00Z"
+                reset_required: true
+
+      500:
+        description: "❌ Internal server errors"
+        schema:
+          $ref: "#/definitions/ErrorResponse"
+        examples:
+          token_generation_error:
+            summary: "JWT token generation failed"
+            value:
+              error: "internal_error"
+              message: "Authentication processing failed"
+              details:
+                reason: "jwt_signing_error"
+                
+          jwt_secret_missing:
+            summary: "JWT signing key not configured"
+            value:
+              error: "configuration_error"
+              message: "Authentication service misconfigured"
+              details:
+                reason: "missing_jwt_secret"
+                
+          database_connection_error:
+            summary: "Database unavailable"
+            value:
+              error: "service_error"
+              message: "Service temporarily unavailable"
+              details:
+                reason: "database_connection_failed"
+                retry_after: 30
+                
+          grpc_service_error:
+            summary: "Backend authentication service down"
+            value:
+              error: "service_error"
+              message: "Authentication service unavailable"
+              details:
+                reason: "grpc_connection_failed"
+                service: "account_service"
+                
+          password_verification_error:
+            summary: "Password hashing service error"
+            value:
+              error: "internal_error"
+              message: "Authentication processing failed"
+              details:
+                reason: "password_verification_error"
+
+    x-code-samples:
+      - lang: "curl"
+        source: |
+          # ✅ Successful login
+          curl -X POST "http://localhost:8888/account/auth/login" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "email": "john@example.com",
+              "password": "SecureP@ssw0rd123"
+            }'
+          
+          # ❌ Test invalid email format
+          curl -X POST "http://localhost:8888/account/auth/login" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "email": "invalid-email",
+              "password": "password123"
+            }'
+          
+          # ❌ Test missing password
+          curl -X POST "http://localhost:8888/account/auth/login" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "email": "john@example.com"
+            }'
+          
+          # ❌ Test empty request body
+          curl -X POST "http://localhost:8888/account/auth/login" \
+            -H "Content-Type: application/json" \
+            -d '{}'
+          
+          # ❌ Test malformed JSON
+          curl -X POST "http://localhost:8888/account/auth/login" \
+            -H "Content-Type: application/json" \
+            -d '{"email": "john@example.com", "password": "test"'
+            
+      - lang: "JavaScript"
+        source: |
+          // Comprehensive login test suite
+          class LoginTester {
+            constructor(baseUrl = '/account/auth/login') {
+              this.baseUrl = baseUrl;
+            }
+            
+            async testLogin(testCase) {
+              try {
+                const response = await fetch(this.baseUrl, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(testCase.data)
+                });
+                
+                const result = await response.json();
+                
+                return {
+                  success: response.ok,
+                  status: response.status,
+                  data: result,
+                  testCase: testCase.name
+                };
+              } catch (error) {
+                return {
+                  success: false,
+                  status: 0,
+                  data: { error: 'Network error', message: error.message },
+                  testCase: testCase.name
+                };
+              }
+            }
+            
+            async runAllTests() {
+              const testCases = [
+                // ✅ Success cases
+                {
+                  name: 'Valid Login',
+                  data: {
+                    email: 'john@example.com',
+                    password: 'SecureP@ssw0rd123'
+                  },
+                  expectedStatus: 200
+                },
+                
+                // ❌ Validation errors (400)
+                {
+                  name: 'Missing Email',
+                  data: {
+                    password: 'password123'
+                  },
+                  expectedStatus: 400
+                },
+                {
+                  name: 'Missing Password', 
+                  data: {
+                    email: 'john@example.com'
+                  },
+                  expectedStatus: 400
+                },
+                {
+                  name: 'Empty Email',
+                  data: {
+                    email: '',
+                    password: 'password123'
+                  },
+                  expectedStatus: 400
+                },
+                {
+                  name: 'Invalid Email Format',
+                  data: {
+                    email: 'invalid-email',
+                    password: 'password123'
+                  },
+                  expectedStatus: 400
+                },
+                {
+                  name: 'Empty Request',
+                  data: {},
+                  expectedStatus: 400
+                },
+                
+                // ❌ Authentication errors (401)
+                {
+                  name: 'Wrong Password',
+                  data: {
+                    email: 'john@example.com',
+                    password: 'wrongpassword'
+                  },
+                  expectedStatus: 401
+                },
+                {
+                  name: 'Non-existent Email',
+                  data: {
+                    email: 'nonexistent@example.com',
+                    password: 'password123'
+                  },
+                  expectedStatus: 401
+                },
+                {
+                  name: 'Completely Wrong Credentials',
+                  data: {
+                    email: 'fake@fake.com',
+                    password: 'fakefake'
+                  },
+                  expectedStatus: 401
+                }
+              ];
+              
+              console.log('🧪 Running comprehensive login tests...\n');
+              
+              for (const testCase of testCases) {
+                console.log(`Testing: ${testCase.name}`);
+                const result = await this.testLogin(testCase);
+                
+                if (result.status === testCase.expectedStatus) {
+                  console.log(`✅ PASS - Expected ${testCase.expectedStatus}, got ${result.status}`);
+                } else {
+                  console.log(`❌ FAIL - Expected ${testCase.expectedStatus}, got ${result.status}`);
+                }
+                
+                if (!result.success) {
+                  console.log(`   Error: ${result.data.message || result.data.error}`);
+                }
+                console.log('');
+              }
+            }
+          }
+          
+          // Run tests
+          const tester = new LoginTester();
+          tester.runAllTests();
+          
+      - lang: "Go"
+        source: |
+          package main
+          
+          import (
+              "bytes"
+              "encoding/json"
+              "fmt"
+              "net/http"
+              "time"
+          )
+          
+          type LoginRequest struct {
+              Email    string `json:"email,omitempty"`
+              Password string `json:"password,omitempty"`
+          }
+          
+          type LoginTestCase struct {
+              Name           string
+              Request        LoginRequest
+              ExpectedStatus int
+              Description    string
+              ShouldSucceed  bool
+          }
+          
+          func main() {
+              // Comprehensive test cases for login
+              testCases := []LoginTestCase{
+                  // ✅ Success cases
+                  {
+                      Name: "Valid Login",
+                      Request: LoginRequest{
+                          Email:    "john@example.com",
+                          Password: "SecureP@ssw0rd123",
+                      },
+                      ExpectedStatus: 200,
+                      Description:    "Should succeed with valid credentials",
+                      ShouldSucceed:  true,
+                  },
+                  
+                  // ❌ Validation errors (400)
+                  {
+                      Name: "Missing Email",
+                      Request: LoginRequest{
+                          Password: "password123",
+                      },
+                      ExpectedStatus: 400,
+                      Description:    "Should fail when email is missing",
+                      ShouldSucceed:  false,
+                  },
+                  {
+                      Name: "Missing Password",
+                      Request: LoginRequest{
+                          Email: "john@example.com",
+                      },
+                      ExpectedStatus: 400,
+                      Description:    "Should fail when password is missing",
+                      ShouldSucceed:  false,
+                  },
+                  {
+                      Name: "Empty Email",
+                      Request: LoginRequest{
+                          Email:    "",
+                          Password: "password123",
+                      },
+                      ExpectedStatus: 400,
+                      Description:    "Should fail when email is empty string",
+                      ShouldSucceed:  false,
+                  },
+                  {
+                      Name: "Empty Password",
+                      Request: LoginRequest{
+                          Email:    "john@example.com",
+                          Password: "",
+                      },
+                      ExpectedStatus: 400,
+                      Description:    "Should fail when password is empty string",
+                      ShouldSucceed:  false,
+                  },
+                  {
+                      Name: "Invalid Email Format",
+                      Request: LoginRequest{
+                          Email:    "invalid-email-format",
+                          Password: "password123",
+                      },
+                      ExpectedStatus: 400,
+                      Description:    "Should fail with invalid email format",
+                      ShouldSucceed:  false,
+                  },
+                  {
+                      Name: "Email Missing @ Symbol",
+                      Request: LoginRequest{
+                          Email:    "johnexample.com",
+                          Password: "password123",
+                      },
+                      ExpectedStatus: 400,
+                      Description:    "Should fail when email missing @ symbol",
+                      ShouldSucceed:  false,
+                  },
+                  {
+                      Name: "Email Missing Domain",
+                      Request: LoginRequest{
+                          Email:    "john@",
+                          Password: "password123",
+                      },
+                      ExpectedStatus: 400,
+                      Description:    "Should fail when email missing domain",
+                      ShouldSucceed:  false,
+                  },
+                  
+                  // ❌ Authentication errors (401)
+                  {
+                      Name: "Wrong Password",
+                      Request: LoginRequest{
+                          Email:    "john@example.com",
+                          Password: "wrongpassword123",
+                      },
+                      ExpectedStatus: 401,
+                      Description:    "Should fail with wrong password",
+                      ShouldSucceed:  false,
+                  },
+                  {
+                      Name: "Non-existent Email",
+                      Request: LoginRequest{
+                          Email:    "nonexistent@example.com",
+                          Password: "password123",
+                      },
+                      ExpectedStatus: 401,
+                      Description:    "Should fail with non-existent email",
+                      ShouldSucceed:  false,
+                  },
+                  {
+                      Name: "Case Sensitive Email Test",
+                      Request: LoginRequest{
+                          Email:    "JOHN@EXAMPLE.COM",
+                          Password: "SecureP@ssw0rd123",
+                      },
+                      ExpectedStatus: 401, // or 200 if case-insensitive
+                      Description:    "Test email case sensitivity",
+                      ShouldSucceed:  false,
+                  },
+                  {
+                      Name: "SQL Injection Attempt",
+                      Request: LoginRequest{
+                          Email:    "john@example.com'; DROP TABLE users; --",
+                          Password: "password123",
+                      },
+                      ExpectedStatus: 400,
+                      Description:    "Should safely handle SQL injection attempts",
+                      ShouldSucceed:  false,
+                  },
+              }
+              
+              fmt.Println("🧪 Starting comprehensive login tests...")
+              fmt.Println("==========================================\n")
+              
+              successCount := 0
+              totalTests := len(testCases)
+              
+              for i, tc := range testCases {
+                  fmt.Printf("Test %d/%d: %s\n", i+1, totalTests, tc.Name)
+                  fmt.Printf("📝 %s\n", tc.Description)
+                  
+                  result := testLogin(tc)
+                  
+                  // Check if test result matches expectation
+                  testPassed := (result.StatusCode == tc.ExpectedStatus)
+                  
+                  if testPassed {
+                      fmt.Printf("✅ PASS - Status: %d (Expected: %d)\n", 
+                          result.StatusCode, tc.ExpectedStatus)
+                      successCount++
+                  } else {
+                      fmt.Printf("❌ FAIL - Status: %d (Expected: %d)\n", 
+                          result.StatusCode, tc.ExpectedStatus)
+                  }
+                  
+                  if result.Error != "" {
+                      fmt.Printf("   Error: %s\n", result.Error)
+                  }
+                  
+                  if result.Response != nil {
+                      if errorMsg, ok := result.Response["message"]; ok {
+                          fmt.Printf("   Response: %v\n", errorMsg)
+                      }
+                  }
+                  
+                  fmt.Println()
+                  
+                  // Small delay between requests to avoid rate limiting
+                  time.Sleep(100 * time.Millisecond)
+              }
+              
+              // Print summary
+              fmt.Println("==========================================")
+              fmt.Printf("📊 Test Summary: %d/%d tests passed (%.1f%%)\n", 
+                  successCount, totalTests, float64(successCount)/float64(totalTests)*100)
+              
+              if successCount == totalTests {
+                  fmt.Println("🎉 All tests passed!")
+              } else {
+                  fmt.Printf("⚠️  %d tests failed\n", totalTests-successCount)
+              }
+          }
+          
+          type LoginTestResult struct {
+              StatusCode int
+              Response   map[string]interface{}
+              Error      string
+          }
+          
+          func testLogin(tc LoginTestCase) LoginTestResult {
+              jsonData, err := json.Marshal(tc.Request)
+              if err != nil {
+                  return LoginTestResult{
+                      StatusCode: 0,
+                      Error:      fmt.Sprintf("JSON marshal error: %v", err),
+                  }
+              }
+              
+              client := &http.Client{
+                  Timeout: 10 * time.Second,
+              }
+              
+              resp, err := client.Post(
+                  "http://localhost:8888/account/auth/login",
+                  "application/json",
+                  bytes.NewBuffer(jsonData),
+              )
+              if err != nil {
+                  return LoginTestResult{
+                      StatusCode: 0,
+                      Error:      fmt.Sprintf("HTTP request error: %v", err),
+                  }
+              }
+              defer resp.Body.Close()
+              
+              var response map[string]interface{}
+              if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+                  return LoginTestResult{
+                      StatusCode: resp.StatusCode,
+                      Error:      fmt.Sprintf("JSON decode error: %v", err),
+                  }
+              }
+              
+              return LoginTestResult{
+                  StatusCode: resp.StatusCode,
+                  Response:   response,
+              }
+          }
+
+---
+
+# docs/swagger/account/auth/logout.yaml - Enhanced Logout with More Scenarios
+/account/auth/logout:
+  post:
+    summary: "User logout with comprehensive session management"
+    description: |
+      Logout current user and invalidate authentication session with enhanced security.
+      
+      **Logout Flow:**
+      1. ✅ **Token validation** - Validates JWT token from Authorization header
+      2. ✅ **Session invalidation** - Invalidates server-side session if exists
+      3. ✅ **Token blacklisting** - Adds token to blacklist to prevent reuse
+      4. ✅ **Cleanup** - Clears any temporary data or cache
+      5. ✅ **Audit logging** - Logs logout event for security monitoring
+      
+      **Test Scenarios Covered:**
+      
+      **✅ SUCCESS CASES:**
+      - Successful logout with valid token
+      - Logout without token (guest logout)
+      - Logout with expired token (cleanup)
+      - Multiple logout attempts (idempotent)
+      
+      **❌ REQUEST VALIDATION ERRORS (400):**
+      - Invalid JSON format
+      - Malformed Authorization header
+      - Invalid token format
+      
+      **❌ AUTHENTICATION ERRORS (401):**
+      - Missing Authorization header
+      - Invalid token signature
+      - Token from different issuer
+      - Corrupted token data
+      
+      **❌ SERVER ERRORS (500):**
+      - Token blacklisting service failure
+      - Session cleanup error
+      - Audit logging failure
+      
+      **Security Features:**
+      - Token blacklisting to prevent reuse
+      - Session cleanup and invalidation
+      - Audit trail for security monitoring
+      - Rate limiting protection
+      - Graceful handling of invalid tokens
+      
+    tags:
+      - Authentication
+    consumes:
+      - application/json
+    produces:
+      - application/json
+    parameters:
+      - in: header
+        name: Authorization
+        description: "Bearer token for authenticated logout"
+        required: false
+        type: string
+        example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      - in: body
+        name: request
+        description: "Optional logout request data"
+        required: false
+        schema:
+          $ref: "#/definitions/LogoutRequest"
+    responses:
+      200:
+        description: "✅ Successful logout"
+        schema:
+          $ref: "#/definitions/LogoutResponse"
+        examples:
+          authenticated_logout:
+            summary: "Logout with valid token"
+            value:
+              message: "Logout successful"
+              timestamp: "2024-01-15T10:30:00Z"
+              session_cleared: true
+              token_invalidated: true
+              
+          guest_logout:
+            summary: "Logout without authentication"
+            value:
+              message: "Logout successful"
+              timestamp: "2024-01-15T10:30:00Z"
+              note: "No active session found"
+              
+          already_logged_out:
+            summary: "Multiple logout attempts"
+            value:
+              message: "Logout successful"
+              timestamp: "2024-01-15T10:30:00Z"
+              note: "Already logged out"
+              
+      400:
+        description: "❌ Bad request - Invalid input data"
+        schema:
+          $ref: "#/definitions/ErrorResponse"
+        examples:
+          invalid_json:
+            summary: "Malformed JSON request"
+            value:
+              error: "invalid_request"
+              message: "Invalid JSON format in request body"
+              
+          malformed_auth_header:
+            summary: "Invalid Authorization header format"
+            value:
+              error: "invalid_request"
+              message: "Invalid Authorization header format"
+              details:
+                expected: "Bearer <token>"
+                received: "Basic abc123"
+                
+          invalid_token_format:
+            summary: "Token is not valid JWT format"
+            value:
+              error: "invalid_token_format"
+              message: "Token format is invalid"
+              details:
+                reason: "Not a valid JWT token"
+                
+      401:
+        description: "❌ Authentication errors"
+        schema:
+          $ref: "#/definitions/ErrorResponse"
+        examples:
+          missing_auth_header:
+            summary: "No Authorization header provided"
+            value:
+              error: "missing_auth_header"
+              message: "Authorization header is required for authenticated logout"
+              details:
+                note: "Use guest logout if no token available"
+                
+          invalid_token_signature:
+            summary: "Token signature verification failed"
+            value:
+              error: "invalid_token"
+              message: "Token signature is invalid"
+              details:
+                reason: "signature_verification_failed"
+                
+          token_expired:
+            summary: "Token has expired"
+            value:
+              error: "token_expired"
+              message: "Token has expired"
+              details:
+                expired_at: "2024-01-15T09:30:00Z"
+                note: "Proceeding with cleanup"
+                
+          token_blacklisted:
+            summary: "Token already invalidated"
+            value:
+              error: "token_invalid"
+              message: "Token has already been invalidated"
+              details:
+                blacklisted_at: "2024-01-15T09:00:00Z"
+                
+          wrong_issuer:
+            summary: "Token from different service"
+            value:
+              error: "invalid_token"
+              message: "Token issuer is not recognized"
+              details:
+                expected_issuer: "auth.example.com"
+                received_issuer: "other.service.com"
+                
+      500:
+        description: "❌ Internal server errors"
+        schema:
+          $ref: "#/definitions/ErrorResponse"
+        examples:
+          blacklist_service_error:
+            summary: "Token blacklisting service failed"
+            value:
+              error: "service_error"
+              message: "Logout processing failed"
+              details:
+                reason: "blacklist_service_unavailable"
+                note: "Logout completed but token may still be valid"
+                
+          session_cleanup_error:
+            summary: "Session cleanup failed"
+            value:
+              error: "internal_error"
+              message: "Session cleanup failed"
+              details:
+                reason: "session_store_error"
+                
+          audit_logging_error:
+            summary: "Audit logging failed"
+            value:
+              error: "internal_error"
+              message: "Logout completed but audit logging failed"
+              details:
+                reason: "audit_service_error"
+                
+    x-code-samples:
+      - lang: "curl"
+        source: |
+          # ✅ Authenticated logout with token
+          curl -X POST "http://localhost:8888/account/auth/logout" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+            -d '{
+              "clear_all_sessions": true
+            }'
+          
+          # ✅ Guest logout (no token)
+          curl -X POST "http://localhost:8888/account/auth/logout" \
+            -H "Content-Type: application/json"
+          
+          # ❌ Test invalid token format
+          curl -X POST "http://localhost:8888/account/auth/logout" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer invalid-token-format"
+          
+          # ❌ Test malformed Authorization header
+          curl -X POST "http://localhost:8888/account/auth/logout" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: NotBearer token123"
+          
+          # ❌ Test malformed JSON
+          curl -X POST "http://localhost:8888/account/auth/logout" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+            -d '{"invalid": json'
+            
+      - lang: "JavaScript"
+        source: |
+          // Comprehensive logout test suite
+          class LogoutTester {
+            constructor(baseUrl = '/account/auth/logout') {
+              this.baseUrl = baseUrl;
+            }
+            
+            async testLogout(testCase) {
+              try {
+                const headers = {
+                  'Content-Type': 'application/json',
+                };
+                
+                if (testCase.token) {
+                  headers['Authorization'] = `Bearer ${testCase.token}`;
+                }
+                
+                const response = await fetch(this.baseUrl, {
+                  method: 'POST',
+                  headers,
+                  body: testCase.body ? JSON.stringify(testCase.body) : undefined
+                });
+                
+                const result = await response.json();
+                
+                return {
+                  success: response.ok,
+                  status: response.status,
+                  data: result,
+                  testCase: testCase.name
+                };
+              } catch (error) {
+                return {
+                  success: false,
+                  status: 0,
+                  data: { error: 'Network error', message: error.message },
+                  testCase: testCase.name
+                };
+              }
+            }
+            
+            async runAllTests() {
+              const validToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNjMwMDAwMDAwLCJleHAiOjk5OTk5OTk5OTl9.signature";
+              const expiredToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNjMwMDAwMDAwLCJleHAiOjE2MzAwMDM2MDB9.signature";
+              
+              const testCases = [
+                // ✅ Success cases
+                {
+                  name: 'Authenticated Logout',
+                  token: validToken,
+                  body: { clear_all_sessions: true },
+                  expectedStatus: 200
+                },
+                {
+                  name: 'Guest Logout (No Token)',
+                  expectedStatus: 200
+                },
+                {
+                  name: 'Simple Logout',
+                  token: validToken,
+                  expectedStatus: 200
+                },
+                
+                // ❌ Bad request errors (400)
+                {
+                  name: 'Invalid Token Format',
+                  token: 'invalid-token-format',
+                  expectedStatus: 400
+                },
+                {
+                  name: 'Empty Token',
+                  token: '',
+                  expectedStatus: 400
+                },
+                
+                // ❌ Authentication errors (401)
+                {
+                  name: 'Expired Token',
+                  token: expiredToken,
+                  expectedStatus: 401
+                },
+                {
+                  name: 'Malformed JWT',
+                  token: 'not.a.jwt',
+                  expectedStatus: 401
+                },
+                {
+                  name: 'Invalid Signature',
+                  token: validToken.slice(0, -10) + 'tampered123',
+                  expectedStatus: 401
+                }
+              ];
+              
+              console.log('🧪 Running comprehensive logout tests...\n');
+              
+              for (const testCase of testCases) {
+                console.log(`Testing: ${testCase.name}`);
+                const result = await this.testLogout(testCase);
+                
+                if (result.status === testCase.expectedStatus) {
+                  console.log(`✅ PASS - Status: ${result.status}`);
+                } else {
+                  console.log(`❌ FAIL - Expected ${testCase.expectedStatus}, got ${result.status}`);
+                }
+                
+                if (!result.success && result.data.message) {
+                  console.log(`   Error: ${result.data.message}`);
+                }
+                console.log('');
+              }
+            }
+          }
+          
+          // Run tests
+          const logoutTester = new LogoutTester();
+          logoutTester.runAllTests();

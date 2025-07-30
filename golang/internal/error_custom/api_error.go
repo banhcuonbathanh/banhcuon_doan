@@ -1,12 +1,12 @@
 // internal/error_custom/errors.go
 
-
 package errorcustom
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 // APIError represents a structured API error with detailed information
@@ -15,6 +15,9 @@ type APIError struct {
 	Message    string                 `json:"message"`
 	Details    map[string]interface{} `json:"details,omitempty"`
 	HTTPStatus int                    `json:"-"`
+	Layer      string                 `json:"layer,omitempty"`      // handler, service, repository
+	Operation  string                 `json:"operation,omitempty"`  // login, register, etc.
+	Cause      error                  `json:"-"`                    // Original error for internal use
 }
 
 // NewAPIError creates a new APIError instance
@@ -92,10 +95,6 @@ func (e *ValidationError) ToAPIError() *APIError {
 		WithDetail("value", e.Value)
 }
 
-// AuthenticationError represents authentication failures
-type AuthenticationError struct {
-	Reason string `json:"reason"`
-}
 
 func (e *AuthenticationError) Error() string {
 	if e.Reason != "" {
@@ -242,6 +241,8 @@ const (
 	// System errors
 	ErrCodeInternalError   = "INTERNAL_ERROR"
 	ErrCodeServiceError    = "SERVICE_ERROR"
+
+
 )
 
 
@@ -280,3 +281,221 @@ func (er ErrorResponse) WithDetail(key string, value interface{}) ErrorResponse 
 	er.Details[key] = value
 	return er
 }
+
+
+
+
+func (e *ServiceError) Error() string {
+	return e.Message
+}
+
+func (e *ServiceError) ToAPIError() *APIError {
+	return NewAPIError(
+		ErrCodeServiceError, 
+		e.Message, 
+		http.StatusInternalServerError,
+	)
+}
+
+// RepositoryError represents an error from the repository/data layer
+type RepositoryError struct {
+	Message string
+	Details map[string]interface{}
+}
+
+func (e *RepositoryError) Error() string {
+	return e.Message
+}
+
+func (e *RepositoryError) ToAPIError() *APIError {
+	return NewAPIError(
+		ErrCodeInternalError, 
+		e.Message, 
+		http.StatusInternalServerError,
+	)
+}
+
+// Add to APIError methods in internal/error_custom/errors.go
+func (e *APIError) GetLogContext() map[string]interface{} {
+    context := map[string]interface{}{
+        "code":        e.Code,
+        "message":     e.Message,
+        "http_status": e.HTTPStatus,
+    }
+    if e.Details != nil {
+        context["details"] = e.Details
+    }
+    return context
+}
+
+
+
+// Add this new function to parse gRPC errors
+
+
+// Add this new constructor for context-rich API errors
+
+
+
+
+
+
+
+// Add these functions to your errorcustom package
+// Make sure to import "strings" at the top of the file
+
+// Helper function to determine if error is related to user not found vs password mismatch
+func IsUserNotFoundError(err error) bool {
+
+	return strings.Contains(err.Error(), "user not found") || strings.Contains(err.Error(), "email not found")
+}
+
+// Helper function to determine if error is password related
+func IsPasswordError(err error) bool {
+
+	return strings.Contains(err.Error(), "password")
+}
+
+// ParseGRPCError parses gRPC error messages and creates appropriate errors
+func ParseGRPCError(err error, operation string, email string) error {
+	if err == nil {
+		return nil
+	}
+	
+	errMsg := err.Error()
+	
+	// Check for specific error patterns
+	switch {
+	case strings.Contains(errMsg, "user not found"):
+		return NewEmailNotFoundError(email).ToAPIError()
+	case strings.Contains(errMsg, "invalid email or password"):
+		// This is ambiguous - we need better error handling from service layer
+		return NewPasswordMismatchError(email).ToAPIError()
+	case strings.Contains(errMsg, "account disabled"):
+		return NewAccountDisabledError(email).ToAPIError()  
+	case strings.Contains(errMsg, "account locked"):
+		return NewAccountLockedError(email, "security policy").ToAPIError()
+	case strings.Contains(errMsg, "already exists"):
+		return NewAPIErrorWithContext(
+			ErrCodeDuplicateEmail,
+			"Email already registered", 
+			http.StatusConflict,
+			"service",
+			operation,
+			err,
+		)
+	case strings.Contains(errMsg, "connection refused") || strings.Contains(errMsg, "unavailable"):
+		return NewServiceError("AccountService", operation, "Service unavailable", err, true).ToAPIError()
+	default:
+		return NewServiceError("AccountService", operation, "Unknown service error", err, false).ToAPIError()
+	}
+}
+
+// Enhanced error creation functions with better context
+// ====================================================
+
+// NewEmailNotFoundError creates an authentication error for email not found
+func NewEmailNotFoundError(email string) *AuthenticationError {
+	return &AuthenticationError{
+		Email:     email,
+		Reason:    "email not found",
+		Step:      "email_check",
+		UserFound: false,
+	}
+}
+
+// NewPasswordMismatchError creates an authentication error for password mismatch
+func NewPasswordMismatchError(email string) *AuthenticationError {
+	return &AuthenticationError{
+		Email:     email,
+		Reason:    "password mismatch", 
+		Step:      "password_check",
+		UserFound: true,
+	}
+}
+
+// NewAccountDisabledError creates an authentication error for disabled account
+func NewAccountDisabledError(email string) *AuthenticationError {
+	return &AuthenticationError{
+		Email:     email,
+		Reason:    "account disabled",
+		Step:      "status_check", 
+		UserFound: true,
+	}
+}
+
+// NewAccountLockedError creates an authentication error for locked account
+func NewAccountLockedError(email string, lockReason string) *AuthenticationError {
+	return &AuthenticationError{
+		Email:     email,
+		Reason:    fmt.Sprintf("account locked: %s", lockReason),
+		Step:      "status_check",
+		UserFound: true,
+	}
+}
+
+
+// Add these type definitions to your errorcustom package
+
+// AuthenticationError represents authentication failures with specific reasons
+type AuthenticationError struct {
+	Email     string `json:"email,omitempty"`
+	Reason    string `json:"reason"`
+	Step      string `json:"step,omitempty"`      // email_check, password_check, token_validation
+	UserFound bool   `json:"user_found,omitempty"` // Whether user exists in system
+}
+
+
+
+
+// ServiceError represents errors from service layer operations
+type ServiceError struct {
+	Service   string `json:"service"`
+	Method    string `json:"method"`
+	Message   string `json:"message"`
+	Cause     error  `json:"-"`
+	Retryable bool   `json:"retryable"`
+}
+
+
+
+
+// NewServiceError creates a new service error
+func NewServiceError(service, method, message string, cause error, retryable bool) *ServiceError {
+	return &ServiceError{
+		Service:   service,
+		Method:    method,
+		Message:   message,
+		Cause:     cause,
+		Retryable: retryable,
+	}
+}
+
+// APIError with enhanced context tracking
+
+
+// WithDetail adds a key-value pair to error details
+
+// NewAPIErrorWithContext creates a new APIError instance with context
+func NewAPIErrorWithContext(code, message string, httpStatus int, layer, operation string, cause error) *APIError {
+	return &APIError{
+		Code:       code,
+		Message:    message,
+		HTTPStatus: httpStatus,
+		Layer:      layer,
+		Operation:  operation,
+		Cause:      cause,
+	}
+}
+
+
+// Error code constants
+const (
+
+	ErrCodeRepositoryError = "REPOSITORY_ERROR"
+)
+
+
+
+
+
