@@ -1,4 +1,4 @@
-// logger/logger.go - Enhanced version
+// logger/logger.go - Enhanced version with improved readability
 package logger
 
 import (
@@ -24,10 +24,17 @@ const (
 var levelNames = map[int]string{
 	DebugLevel:   "DEBUG",
 	InfoLevel:    "INFO",
-	WarningLevel: "WARNING",
+	WarningLevel: "WARN",
 	ErrorLevel:   "ERROR",
 	FatalLevel:   "FATAL",
 }
+
+// Output formats
+const (
+	FormatJSON   = "json"
+	FormatText   = "text"
+	FormatPretty = "pretty"
+)
 
 // LogEntry represents a structured log entry with enhanced metadata
 type LogEntry struct {
@@ -42,9 +49,9 @@ type LogEntry struct {
 	UserID       string                 `json:"user_id,omitempty"`
 	SessionID    string                 `json:"session_id,omitempty"`
 	TraceID      string                 `json:"trace_id,omitempty"`
-	Component    string                 `json:"component,omitempty"`    // handler, service, repository
-	Operation    string                 `json:"operation,omitempty"`    // login, register, etc.
-	Duration     int64                  `json:"duration_ms,omitempty"`  // Operation duration in milliseconds
+	Component    string                 `json:"component,omitempty"`
+	Operation    string                 `json:"operation,omitempty"`
+	Duration     int64                  `json:"duration_ms,omitempty"`
 	ErrorCode    string                 `json:"error_code,omitempty"`
 	Environment  string                 `json:"environment,omitempty"`
 }
@@ -56,13 +63,13 @@ type Logger struct {
 	warningLogger *log.Logger
 	errorLogger   *log.Logger
 	fatalLogger   *log.Logger
-	enableJSON    bool
+	outputFormat  string
 	enableDebug   bool
 	minLevel      int
 	environment   string
 	component     string
 	mutex         sync.RWMutex
-	contextFields map[string]interface{} // Global context fields
+	contextFields map[string]interface{}
 }
 
 // NewLogger creates a new enhanced Logger instance with configuration
@@ -75,7 +82,7 @@ func NewLogger() *Logger {
 		warningLogger: log.New(os.Stdout, "", 0),
 		errorLogger:   log.New(os.Stderr, "", 0),
 		fatalLogger:   log.New(os.Stderr, "", 0),
-		enableJSON:    true,
+		outputFormat:  getOutputFormat(environment),
 		enableDebug:   environment == "development",
 		minLevel:      getMinLogLevel(environment),
 		environment:   environment,
@@ -84,16 +91,16 @@ func NewLogger() *Logger {
 	
 	// Set initial global context
 	logger.contextFields["environment"] = environment
-	logger.contextFields["service"] = "restaurant-api" // Configure as needed
+	logger.contextFields["service"] = "restaurant-api"
 	
 	return logger
 }
 
 // Configuration methods with thread safety
-func (l *Logger) SetJSONLogging(enable bool) {
+func (l *Logger) SetOutputFormat(format string) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
-	l.enableJSON = enable
+	l.outputFormat = format
 }
 
 func (l *Logger) SetDebugLogging(enable bool) {
@@ -114,21 +121,19 @@ func (l *Logger) SetComponent(component string) {
 	l.component = component
 }
 
-// Add global context field
 func (l *Logger) AddGlobalField(key string, value interface{}) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	l.contextFields[key] = value
 }
 
-// Remove global context field
 func (l *Logger) RemoveGlobalField(key string) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	delete(l.contextFields, key)
 }
 
-// Enhanced caller info retrieval with configurable skip levels
+// Enhanced caller info retrieval
 func (l *Logger) getCallerInfo(skip int) (string, string, int) {
 	pc, file, line, ok := runtime.Caller(skip)
 	if !ok {
@@ -137,12 +142,10 @@ func (l *Logger) getCallerInfo(skip int) (string, string, int) {
 	
 	function := runtime.FuncForPC(pc).Name()
 	
-	// Shorten file path for readability
 	if lastSlash := strings.LastIndex(file, "/"); lastSlash >= 0 {
 		file = file[lastSlash+1:]
 	}
 	
-	// Shorten function name
 	if lastDot := strings.LastIndex(function, "."); lastDot >= 0 {
 		function = function[lastDot+1:]
 	}
@@ -150,26 +153,23 @@ func (l *Logger) getCallerInfo(skip int) (string, string, int) {
 	return file, function, line
 }
 
-// Enhanced context merging with conflict resolution
+// Enhanced context merging
 func (l *Logger) mergeContext(baseContext, additionalContext map[string]interface{}) map[string]interface{} {
 	l.mutex.RLock()
 	defer l.mutex.RUnlock()
 	
 	merged := make(map[string]interface{})
 	
-	// Add global context fields first
 	for k, v := range l.contextFields {
 		merged[k] = v
 	}
 	
-	// Add base context (overwrites global if conflict)
 	if baseContext != nil {
 		for k, v := range baseContext {
 			merged[k] = v
 		}
 	}
 	
-	// Add additional context (overwrites all if conflict)
 	if additionalContext != nil {
 		for k, v := range additionalContext {
 			merged[k] = v
@@ -179,22 +179,112 @@ func (l *Logger) mergeContext(baseContext, additionalContext map[string]interfac
 	return merged
 }
 
-// Core logging method with enhanced features
+// Format log entry as pretty text
+func (l *Logger) formatPretty(entry LogEntry) string {
+	timestamp := time.Now().Format("15:04:05.000")
+	
+	// Get level emoji and color
+	levelDisplay := formatLevel(entry.Level)
+	
+	// Build main message
+	var parts []string
+	parts = append(parts, fmt.Sprintf("[%s]", timestamp))
+	parts = append(parts, levelDisplay)
+	
+	// Add component if present
+	if entry.Component != "" {
+		parts = append(parts, fmt.Sprintf("[%s]", strings.ToUpper(entry.Component)))
+	}
+	
+	// Add operation if present
+	if entry.Operation != "" {
+		parts = append(parts, fmt.Sprintf("<%s>", entry.Operation))
+	}
+	
+	parts = append(parts, entry.Message)
+	
+	mainLine := strings.Join(parts, " ")
+	
+	// Add important context on the same line
+	var contextParts []string
+	
+	// Add key identifiers
+	if email, ok := entry.Context["email"]; ok {
+		contextParts = append(contextParts, fmt.Sprintf("user=%v", email))
+	}
+	if ip, ok := entry.Context["ip"]; ok {
+		contextParts = append(contextParts, fmt.Sprintf("ip=%v", ip))
+	}
+	if entry.Duration > 0 {
+		contextParts = append(contextParts, fmt.Sprintf("took=%dms", entry.Duration))
+	}
+	if statusCode, ok := entry.Context["status_code"]; ok {
+		contextParts = append(contextParts, fmt.Sprintf("status=%v", statusCode))
+	}
+	if reason, ok := entry.Context["failure_reason"]; ok {
+		contextParts = append(contextParts, fmt.Sprintf("reason=%v", reason))
+	}
+	if errorMsg, ok := entry.Context["error"]; ok {
+		contextParts = append(contextParts, fmt.Sprintf("error=%v", errorMsg))
+	}
+	
+	if len(contextParts) > 0 {
+		mainLine += " | " + strings.Join(contextParts, " ")
+	}
+	
+	// Add file/line info for debug/error levels
+	if entry.Level == "DEBUG" || entry.Level == "ERROR" {
+		if entry.File != "" {
+			mainLine += fmt.Sprintf(" (%s:%d)", entry.File, entry.Line)
+		}
+	}
+	
+	return mainLine
+}
+
+// Format log entry as simple text
+func (l *Logger) formatText(entry LogEntry) string {
+	timestamp := time.Now().Format("15:04:05")
+	
+	msg := fmt.Sprintf("[%s] %s: %s", timestamp, entry.Level, entry.Message)
+	
+	// Add minimal essential context
+	if entry.Context != nil {
+		var essentials []string
+		
+		// Only show really important stuff
+		if email, ok := entry.Context["email"]; ok {
+			essentials = append(essentials, fmt.Sprintf("user=%v", email))
+		}
+		if entry.Duration > 0 {
+			essentials = append(essentials, fmt.Sprintf("%dms", entry.Duration))
+		}
+		if errorMsg, ok := entry.Context["error"]; ok {
+			essentials = append(essentials, fmt.Sprintf("error=%v", errorMsg))
+		}
+		
+		if len(essentials) > 0 {
+			msg += " (" + strings.Join(essentials, " ") + ")"
+		}
+	}
+	
+	return msg
+}
+
+// Core logging method with multiple output formats
 func (l *Logger) logWithContext(level int, message string, context map[string]interface{}, skip int) {
 	l.mutex.RLock()
-	enableJSON := l.enableJSON
+	outputFormat := l.outputFormat
 	enableDebug := l.enableDebug
 	minLevel := l.minLevel
 	component := l.component
 	environment := l.environment
 	l.mutex.RUnlock()
 	
-	// Check if logging is enabled for this level
 	if level < minLevel {
 		return
 	}
 	
-	// Skip debug logs if not enabled
 	if level == DebugLevel && !enableDebug {
 		return
 	}
@@ -217,63 +307,62 @@ func (l *Logger) logWithContext(level int, message string, context map[string]in
 		logger = l.infoLogger
 	}
 	
-	if enableJSON {
-		file, function, line := l.getCallerInfo(skip + 1) // +1 to account for this method
-		
-		// Merge all context
-		mergedContext := l.mergeContext(context, nil)
-		
-		entry := LogEntry{
-			Timestamp:   time.Now().Format("2006-01-02 15:04:05.000"),
-			Level:       levelStr,
-			Message:     message,
-			Context:     mergedContext,
-			File:        file,
-			Function:    function,
-			Line:        line,
-			Component:   component,
-			Environment: environment,
+	// Create log entry
+	file, function, line := l.getCallerInfo(skip + 1)
+	mergedContext := l.mergeContext(context, nil)
+	
+	entry := LogEntry{
+		Timestamp:   time.Now().Format("2006-01-02 15:04:05.000"),
+		Level:       levelStr,
+		Message:     message,
+		Context:     mergedContext,
+		File:        file,
+		Function:    function,
+		Line:        line,
+		Component:   component,
+		Environment: environment,
+	}
+	
+	// Extract special fields from context
+	if mergedContext != nil {
+		if requestID, ok := mergedContext["request_id"].(string); ok {
+			entry.RequestID = requestID
 		}
-		
-		// Extract special fields from context if present
-		if mergedContext != nil {
-			if requestID, ok := mergedContext["request_id"].(string); ok {
-				entry.RequestID = requestID
-			}
-			if userID, ok := mergedContext["user_id"].(string); ok {
-				entry.UserID = userID
-			}
-			if sessionID, ok := mergedContext["session_id"].(string); ok {
-				entry.SessionID = sessionID
-			}
-			if traceID, ok := mergedContext["trace_id"].(string); ok {
-				entry.TraceID = traceID
-			}
-			if operation, ok := mergedContext["operation"].(string); ok {
-				entry.Operation = operation
-			}
-			if duration, ok := mergedContext["duration_ms"].(int64); ok {
-				entry.Duration = duration
-			}
-			if errorCode, ok := mergedContext["error_code"].(string); ok {
-				entry.ErrorCode = errorCode
-			}
+		if userID, ok := mergedContext["user_id"].(string); ok {
+			entry.UserID = userID
 		}
-		
+		if sessionID, ok := mergedContext["session_id"].(string); ok {
+			entry.SessionID = sessionID
+		}
+		if traceID, ok := mergedContext["trace_id"].(string); ok {
+			entry.TraceID = traceID
+		}
+		if operation, ok := mergedContext["operation"].(string); ok {
+			entry.Operation = operation
+		}
+		if duration, ok := mergedContext["duration_ms"].(int64); ok {
+			entry.Duration = duration
+		}
+		if errorCode, ok := mergedContext["error_code"].(string); ok {
+			entry.ErrorCode = errorCode
+		}
+	}
+	
+	// Output based on format
+	switch outputFormat {
+	case FormatJSON:
 		jsonData, err := json.Marshal(entry)
 		if err != nil {
-			// Fallback to simple logging if JSON fails
-			logger.Printf("[%s] %s | Context: %+v | JSON Error: %v", levelStr, message, mergedContext, err)
+			logger.Printf("[%s] %s | JSON Error: %v", levelStr, message, err)
 		} else {
 			logger.Println(string(jsonData))
 		}
-	} else {
-		// Simple text format with enhanced readability
-		if context != nil && len(context) > 0 {
-			logger.Printf("[%s] %s | %+v", levelStr, message, context)
-		} else {
-			logger.Printf("[%s] %s", levelStr, message)
-		}
+	case FormatPretty:
+		logger.Println(l.formatPretty(entry))
+	case FormatText:
+		logger.Println(l.formatText(entry))
+	default:
+		logger.Println(l.formatPretty(entry)) // Default to pretty
 	}
 	
 	if level == FatalLevel {
@@ -281,7 +370,25 @@ func (l *Logger) logWithContext(level int, message string, context map[string]in
 	}
 }
 
-// Public logging methods with consistent interface
+// Format level with emoji and colors
+func formatLevel(level string) string {
+	switch level {
+	case "DEBUG":
+		return "🔍 DEBUG"
+	case "INFO":
+		return "ℹ️  INFO"
+	case "WARN":
+		return "⚠️  WARN"
+	case "ERROR":
+		return "❌ ERROR"
+	case "FATAL":
+		return "💀 FATAL"
+	default:
+		return level
+	}
+}
+
+// Public logging methods
 func (l *Logger) Debug(message string, context ...map[string]interface{}) {
 	var ctx map[string]interface{}
 	if len(context) > 0 {
@@ -322,19 +429,19 @@ func (l *Logger) Fatal(message string, context ...map[string]interface{}) {
 	l.logWithContext(FatalLevel, message, ctx, 3)
 }
 
-// Specialized logging methods with enhanced context
+// Specialized logging methods (keeping your enhanced functionality)
 
-// Enhanced authentication logging with security considerations
+// Enhanced authentication logging with readable format
 func (l *Logger) LogAuthAttempt(email string, success bool, reason string, additionalContext ...map[string]interface{}) {
 	context := map[string]interface{}{
-		"operation": "authentication",
-		"email":     maskEmail(email), // Mask email for security
-		"success":   success,
-		"reason":    reason,
-		"type":      "auth_attempt",
+		"operation":      "authentication",
+		"email":          maskEmail(email),
+		"success":        success,
+		"reason":         reason,
+		"type":           "auth_attempt",
+		"security_event": !success,
 	}
 	
-	// Merge additional context if provided
 	if len(additionalContext) > 0 {
 		for k, v := range additionalContext[0] {
 			context[k] = v
@@ -342,81 +449,21 @@ func (l *Logger) LogAuthAttempt(email string, success bool, reason string, addit
 	}
 	
 	if success {
-		l.Info("Authentication attempt successful", context)
+		l.Info("Authentication successful", context)
 	} else {
-		// Add security monitoring fields for failed attempts
-		context["security_event"] = true
-		l.Warning("Authentication attempt failed", context)
+		l.Warning("Authentication failed", context)
 	}
 }
 
-// Enhanced database operation logging with performance metrics
-func (l *Logger) LogDBOperation(operation, table string, success bool, err error, context map[string]interface{}) {
-	logContext := map[string]interface{}{
-		"operation": operation,
-		"table":     table,
-		"success":   success,
-		"type":      "db_operation",
-		"component": "repository",
-	}
-	
-	// Merge additional context
-	if context != nil {
-		for k, v := range context {
-			logContext[k] = v
-		}
-	}
-	
-	if err != nil {
-		logContext["error"] = err.Error()
-		logContext["error_type"] = fmt.Sprintf("%T", err)
-		l.Error(fmt.Sprintf("Database %s operation failed on %s", operation, table), logContext)
-	} else if success {
-		l.Debug(fmt.Sprintf("Database %s operation successful on %s", operation, table), logContext)
-	}
-}
-
-// Enhanced service call logging with timeout and retry context
-func (l *Logger) LogServiceCall(service, method string, success bool, err error, context map[string]interface{}) {
-	logContext := map[string]interface{}{
-		"service":   service,
-		"method":    method,
-		"success":   success,
-		"type":      "service_call",
-		"component": "service",
-	}
-	
-	// Merge additional context
-	if context != nil {
-		for k, v := range context {
-			logContext[k] = v
-		}
-	}
-	
-	if err != nil {
-		logContext["error"] = err.Error()
-		logContext["error_type"] = fmt.Sprintf("%T", err)
-		
-		// Check if it's a retryable error
-		if isRetryableError(err) {
-			logContext["retryable"] = true
-		}
-		
-		l.Error(fmt.Sprintf("Service call failed: %s.%s", service, method), logContext)
-	} else {
-		l.Debug(fmt.Sprintf("Service call successful: %s.%s", service, method), logContext)
-	}
-}
-
-// Enhanced API request logging with comprehensive metrics
+// Enhanced API request logging - now much more readable
 func (l *Logger) LogAPIRequest(method, path string, statusCode int, duration time.Duration, context map[string]interface{}) {
 	logContext := map[string]interface{}{
-		"method":       method,
-		"path":         path,
-		"status_code":  statusCode,
-		"duration_ms":  duration.Milliseconds(),
-		"type":         "api_request",
-		"component":    "handler",
+		"method":      method,
+		"path":        path,
+		"status_code": statusCode,
+		"duration_ms": duration.Milliseconds(),
+		"type":        "api_request",
+		"component":   "handler",
 	}
 	
 	// Add performance categories
@@ -431,27 +478,86 @@ func (l *Logger) LogAPIRequest(method, path string, statusCode int, duration tim
 		logContext["performance"] = "fast"
 	}
 	
-	// Merge additional context
 	if context != nil {
 		for k, v := range context {
 			logContext[k] = v
 		}
 	}
 	
-	// Log at appropriate level based on status code and performance
+	// Create readable message
+	message := fmt.Sprintf("%s %s → %d", method, path, statusCode)
+	
 	switch {
 	case statusCode >= 500:
-		l.Error("API request completed with server error", logContext)
+		l.Error(message, logContext)
 	case statusCode >= 400:
-		l.Warning("API request completed with client error", logContext)
+		l.Warning(message, logContext)
 	case duration.Milliseconds() > 2000:
-		l.Warning("API request completed successfully but slowly", logContext)
+		l.Warning(message+" (slow)", logContext)
 	default:
-		l.Info("API request completed successfully", logContext)
+		l.Info(message, logContext)
 	}
 }
 
-// Enhanced validation error logging with field analysis
+// Enhanced service call logging
+func (l *Logger) LogServiceCall(service, method string, success bool, err error, context map[string]interface{}) {
+	logContext := map[string]interface{}{
+		"service":   service,
+		"method":    method,
+		"success":   success,
+		"type":      "service_call",
+		"component": "service",
+	}
+	
+	if context != nil {
+		for k, v := range context {
+			logContext[k] = v
+		}
+	}
+	
+	message := fmt.Sprintf("%s.%s", service, method)
+	
+	if err != nil {
+		logContext["error"] = err.Error()
+		logContext["error_type"] = fmt.Sprintf("%T", err)
+		
+		if isRetryableError(err) {
+			logContext["retryable"] = true
+		}
+		
+		l.Error(message+" failed", logContext)
+	} else {
+		l.Debug(message+" succeeded", logContext)
+	}
+}
+
+// Keep all your other specialized methods with the same logic...
+func (l *Logger) LogDBOperation(operation, table string, success bool, err error, context map[string]interface{}) {
+	logContext := map[string]interface{}{
+		"operation": operation,
+		"table":     table,
+		"success":   success,
+		"type":      "db_operation",
+		"component": "repository",
+	}
+	
+	if context != nil {
+		for k, v := range context {
+			logContext[k] = v
+		}
+	}
+	
+	message := fmt.Sprintf("DB %s on %s", operation, table)
+	
+	if err != nil {
+		logContext["error"] = err.Error()
+		logContext["error_type"] = fmt.Sprintf("%T", err)
+		l.Error(message+" failed", logContext)
+	} else if success {
+		l.Debug(message+" succeeded", logContext)
+	}
+}
+
 func (l *Logger) LogValidationError(field, message string, value interface{}) {
 	context := map[string]interface{}{
 		"field":     field,
@@ -460,7 +566,6 @@ func (l *Logger) LogValidationError(field, message string, value interface{}) {
 		"component": "validator",
 	}
 	
-	// Safely handle the value (mask sensitive fields)
 	fieldLower := strings.ToLower(field)
 	if fieldLower == "password" || fieldLower == "token" || fieldLower == "secret" {
 		context["value"] = "***hidden***"
@@ -470,12 +575,9 @@ func (l *Logger) LogValidationError(field, message string, value interface{}) {
 		context["value_type"] = fmt.Sprintf("%T", value)
 	}
 	
-	l.Warning("Validation error occurred", context)
+	l.Warning(fmt.Sprintf("Validation failed for %s", field), context)
 }
 
-// Business logic logging methods
-
-// Log user activity for audit trails
 func (l *Logger) LogUserActivity(userID, email, action string, resource string, context map[string]interface{}) {
 	logContext := map[string]interface{}{
 		"user_id":   userID,
@@ -492,10 +594,9 @@ func (l *Logger) LogUserActivity(userID, email, action string, resource string, 
 		}
 	}
 	
-	l.Info("User activity logged", logContext)
+	l.Info(fmt.Sprintf("User %s performed %s on %s", maskEmail(email), action, resource), logContext)
 }
 
-// Log security events for monitoring
 func (l *Logger) LogSecurityEvent(eventType, description string, severity string, context map[string]interface{}) {
 	logContext := map[string]interface{}{
 		"event_type":     eventType,
@@ -503,7 +604,7 @@ func (l *Logger) LogSecurityEvent(eventType, description string, severity string
 		"severity":       severity,
 		"type":           "security_event",
 		"component":      "security",
-		"security_event": true, // Flag for security monitoring systems
+		"security_event": true,
 	}
 	
 	if context != nil {
@@ -512,18 +613,18 @@ func (l *Logger) LogSecurityEvent(eventType, description string, severity string
 		}
 	}
 	
-	// Log at appropriate level based on severity
+	message := fmt.Sprintf("Security: %s", description)
+	
 	switch strings.ToLower(severity) {
 	case "critical", "high":
-		l.Error(fmt.Sprintf("Security event: %s", description), logContext)
+		l.Error(message, logContext)
 	case "medium":
-		l.Warning(fmt.Sprintf("Security event: %s", description), logContext)
+		l.Warning(message, logContext)
 	default:
-		l.Info(fmt.Sprintf("Security event: %s", description), logContext)
+		l.Info(message, logContext)
 	}
 }
 
-// Log business metrics and KPIs
 func (l *Logger) LogMetric(metricName string, value interface{}, unit string, context map[string]interface{}) {
 	logContext := map[string]interface{}{
 		"metric_name": metricName,
@@ -539,17 +640,16 @@ func (l *Logger) LogMetric(metricName string, value interface{}, unit string, co
 		}
 	}
 	
-	l.Info(fmt.Sprintf("Metric recorded: %s = %v %s", metricName, value, unit), logContext)
+	l.Info(fmt.Sprintf("Metric: %s = %v %s", metricName, value, unit), logContext)
 }
 
-// Log performance benchmarks
 func (l *Logger) LogPerformance(operation string, duration time.Duration, context map[string]interface{}) {
 	logContext := map[string]interface{}{
-		"operation":    operation,
-		"duration_ms":  duration.Milliseconds(),
-		"duration_ns":  duration.Nanoseconds(),
-		"type":         "performance",
-		"component":    "benchmark",
+		"operation":   operation,
+		"duration_ms": duration.Milliseconds(),
+		"duration_ns": duration.Nanoseconds(),
+		"type":        "performance",
+		"component":   "benchmark",
 	}
 	
 	// Add performance categories
@@ -574,17 +674,16 @@ func (l *Logger) LogPerformance(operation string, duration time.Duration, contex
 		}
 	}
 	
-	// Log at appropriate level based on performance
+	message := fmt.Sprintf("Performance: %s took %v", operation, duration)
+	
 	if duration.Milliseconds() > 5000 {
-		l.Warning(fmt.Sprintf("Performance: %s took %v", operation, duration), logContext)
+		l.Warning(message, logContext)
 	} else {
-		l.Debug(fmt.Sprintf("Performance: %s took %v", operation, duration), logContext)
+		l.Debug(message, logContext)
 	}
 }
 
-// Helper functions for enhanced logging
-
-// Mask email for privacy while keeping it useful for debugging
+// Helper functions (keeping all your existing ones)
 func maskEmail(email string) string {
 	if email == "" {
 		return ""
@@ -598,7 +697,6 @@ func maskEmail(email string) string {
 	username := parts[0]
 	domain := parts[1]
 	
-	// Mask username but keep first and last character if long enough
 	var maskedUsername string
 	if len(username) <= 2 {
 		maskedUsername = "**"
@@ -611,7 +709,6 @@ func maskEmail(email string) string {
 	return maskedUsername + "@" + domain
 }
 
-// Get value length safely
 func getValueLength(value interface{}) int {
 	if value == nil {
 		return 0
@@ -627,7 +724,6 @@ func getValueLength(value interface{}) int {
 	}
 }
 
-// Check if error is retryable (enhance based on your error types)
 func isRetryableError(err error) bool {
 	if err == nil {
 		return false
@@ -653,19 +749,34 @@ func isRetryableError(err error) bool {
 	return false
 }
 
-// Environment detection
 func getEnvironment() string {
 	env := os.Getenv("APP_ENV")
 	if env == "" {
 		env = os.Getenv("ENVIRONMENT")
 	}
 	if env == "" {
-		env = "development" // Default
+		env = "development"
 	}
 	return env
 }
 
-// Get minimum log level based on environment
+func getOutputFormat(environment string) string {
+	format := os.Getenv("LOG_FORMAT")
+	if format != "" {
+		return format
+	}
+	
+	// Default formats based on environment
+	switch strings.ToLower(environment) {
+	case "production", "prod":
+		return FormatJSON
+	case "staging", "stage":
+		return FormatJSON
+	default: // development, testing
+		return FormatPretty
+	}
+}
+
 func getMinLogLevel(environment string) int {
 	switch strings.ToLower(environment) {
 	case "production", "prod":
@@ -679,7 +790,7 @@ func getMinLogLevel(environment string) int {
 	}
 }
 
-// Global logger instance with enhanced initialization
+// Global logger instance
 var GlobalLogger = NewLogger()
 
 // Convenience functions for global logger usage
@@ -740,9 +851,9 @@ func LogPerformance(operation string, duration time.Duration, context map[string
 	GlobalLogger.LogPerformance(operation, duration, context)
 }
 
-// Configuration functions for global logger
-func SetJSONLogging(enable bool) {
-	GlobalLogger.SetJSONLogging(enable)
+// Configuration functions
+func SetOutputFormat(format string) {
+	GlobalLogger.SetOutputFormat(format)
 }
 
 func SetDebugLogging(enable bool) {
@@ -765,14 +876,13 @@ func RemoveGlobalField(key string) {
 	GlobalLogger.RemoveGlobalField(key)
 }
 
-// Logger initialization for different components
+// Component loggers
 func NewComponentLogger(component string) *Logger {
 	logger := NewLogger()
 	logger.SetComponent(component)
 	return logger
 }
 
-// Structured logging for different layers
 func NewHandlerLogger() *Logger {
 	return NewComponentLogger("handler")
 }

@@ -3,7 +3,6 @@ package account_handler
 
 import (
 	"net/http"
-
 	"time"
 
 	"english-ai-full/internal/account/account_dto"
@@ -16,11 +15,6 @@ import (
 
 	"github.com/go-playground/validator/v10"
 )
-
-
-
-
-
 
 // Login handles user authentication with comprehensive error tracking
 func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -86,36 +80,94 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 		// Parse the gRPC error with enhanced context
 		parsedErr := errorcustom.ParseGRPCError(err, "login", req.Email)
 		
-		// Determine specific failure reason for logging
+		// Determine specific failure reason for logging and client response
 		var failureReason string
 		var userExists bool
+		var clientError *errorcustom.APIError
 		
 		if errorcustom.IsUserNotFoundError(parsedErr) {
 			failureReason = "email_not_found"
 			userExists = false
+			
+			// Create detailed error for client
+			clientError = errorcustom.NewAPIErrorWithContext(
+				errorcustom.ErrCodeUserNotFound,
+				"User with this email address was not found",
+				http.StatusNotFound,
+				"handler",
+				"login",
+				err,
+			).WithDetail("email", req.Email).
+			  WithDetail("step", "email_verification").
+			  WithDetail("user_found", false)
+			
 			logger.Warning("Login failed - email not found", map[string]interface{}{
 				"email":         req.Email,
 				"ip":            clientIP,
 				"user_agent":    userAgent,
 				"failure_reason": failureReason,
+				"layer":         "handler",
+				"operation":     "login",
 			})
+			
 		} else if errorcustom.IsPasswordError(parsedErr) {
 			failureReason = "password_mismatch"
 			userExists = true
+			
+			// Create detailed error for client
+			clientError = errorcustom.NewAPIErrorWithContext(
+				errorcustom.ErrCodeAuthFailed,
+				"The password you entered is incorrect",
+				http.StatusUnauthorized,
+				"handler",
+				"login",
+				err,
+			).WithDetail("email", req.Email).
+			  WithDetail("step", "password_verification").
+			  WithDetail("user_found", true)
+			
 			logger.Warning("Login failed - password mismatch", map[string]interface{}{
 				"email":         req.Email,
 				"ip":            clientIP,
 				"user_agent":    userAgent,
 				"failure_reason": failureReason,
+				"layer":         "handler",
+				"operation":     "login",
 			})
+			
 		} else if apiErr, ok := parsedErr.(*errorcustom.APIError); ok {
 			if apiErr.Code == errorcustom.ErrCodeAccessDenied {
 				failureReason = "account_disabled_or_locked"
 				userExists = true
+				
+				// Create detailed error for client
+				clientError = errorcustom.NewAPIErrorWithContext(
+					errorcustom.ErrCodeAccessDenied,
+					"Your account has been disabled or locked. Please contact support.",
+					http.StatusForbidden,
+					"handler",
+					"login",
+					err,
+				).WithDetail("email", req.Email).
+				  WithDetail("step", "account_status_check").
+				  WithDetail("user_found", true)
 			} else {
 				failureReason = "service_error"
 				userExists = false
+				
+				// Create detailed error for client
+				clientError = errorcustom.NewAPIErrorWithContext(
+					errorcustom.ErrCodeServiceError,
+					"Authentication service is temporarily unavailable. Please try again later.",
+					http.StatusServiceUnavailable,
+					"handler",
+					"login",
+					err,
+				).WithDetail("email", req.Email).
+				  WithDetail("step", "service_call").
+				  WithDetail("retryable", true)
 			}
+			
 			logger.Error("Login failed - service error", map[string]interface{}{
 				"email":         req.Email,
 				"ip":            clientIP,
@@ -123,16 +175,33 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 				"failure_reason": failureReason,
 				"error_code":    apiErr.Code,
 				"grpc_error":    err.Error(),
+				"layer":         "handler",
+				"operation":     "login",
 			})
 		} else {
 			failureReason = "unknown_error"
 			userExists = false
+			
+			// Create detailed error for client
+			clientError = errorcustom.NewAPIErrorWithContext(
+				errorcustom.ErrCodeInternalError,
+				"An unexpected error occurred during authentication. Please try again.",
+				http.StatusInternalServerError,
+				"handler",
+				"login",
+				err,
+			).WithDetail("email", req.Email).
+			  WithDetail("step", "authentication_process").
+			  WithDetail("retryable", true)
+			
 			logger.Error("Login failed - unknown error", map[string]interface{}{
 				"email":         req.Email,
 				"ip":            clientIP,
 				"user_agent":    userAgent,
 				"failure_reason": failureReason,
 				"grpc_error":    err.Error(),
+				"layer":         "handler",
+				"operation":     "login",
 			})
 		}
 		
@@ -144,22 +213,24 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 			"email":       req.Email,
 			"user_exists": userExists,
 			"ip":          clientIP,
+			"layer":       "handler",
+			"operation":   "login",
 		})
 		
-		// Record login attempt for rate limiting (if implemented)
-		// h.loginAttemptTracker.RecordAttempt(r.Context(), req.Email, clientIP, userAgent, false, failureReason)
-		
 		// Log API request completion with failure
-		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusUnauthorized, time.Since(startTime), map[string]interface{}{
+		logger.LogAPIRequest(r.Method, r.URL.Path, clientError.HTTPStatus, time.Since(startTime), map[string]interface{}{
 			"email":          req.Email,
 			"failure_reason": failureReason,
 			"ip":             clientIP,
+			"layer":          clientError.Layer,
+			"operation":      clientError.Operation,
 		})
 		
-		// Return generic authentication error to client (security best practice)
-		// We don't want to leak information about whether the email exists or not
-		authErr := errorcustom.NewAuthenticationError("invalid credentials")
-		utils.HandleError(w, authErr, "login")
+		// Log the detailed APIError structure to terminal
+		logger.Error("APIError details", clientError.GetLogContext())
+		
+		// Return the detailed error to client
+		utils.HandleError(w, clientError, "login")
 		return
 	}
 
@@ -167,6 +238,8 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 	logger.LogServiceCall("AccountService", "Login", true, nil, map[string]interface{}{
 		"email":     req.Email,
 		"ip":        clientIP,
+		"layer":     "handler", 
+		"operation": "login",
 	})
 
 	logger.LogAuthAttempt(req.Email, true, "credentials_validated")
@@ -192,12 +265,16 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 		
 		tokenErr := errorcustom.NewAPIErrorWithContext(
 			errorcustom.ErrCodeInternalError,
-			"Authentication processing failed",
+			"Authentication processing failed during token generation",
 			http.StatusInternalServerError,
 			"handler",
 			"access_token_generation",
 			err,
-		)
+		).WithDetail("user_id", user.ID).
+		  WithDetail("email", user.Email).
+		  WithDetail("step", "access_token_generation")
+		
+		logger.Error("APIError details", tokenErr.GetLogContext())
 		
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusInternalServerError, time.Since(startTime), map[string]interface{}{
 			"email": req.Email,
@@ -221,12 +298,16 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 		
 		tokenErr := errorcustom.NewAPIErrorWithContext(
 			errorcustom.ErrCodeInternalError,
-			"Authentication processing failed",
+			"Authentication processing failed during refresh token generation",
 			http.StatusInternalServerError,
 			"handler",
 			"refresh_token_generation",
 			err,
-		)
+		).WithDetail("user_id", user.ID).
+		  WithDetail("email", user.Email).
+		  WithDetail("step", "refresh_token_generation")
+		
+		logger.Error("APIError details", tokenErr.GetLogContext())
 		
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusInternalServerError, time.Since(startTime), map[string]interface{}{
 			"email": req.Email,
@@ -254,9 +335,6 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	// Record successful login attempt for rate limiting (if implemented)
-	// h.loginAttemptTracker.RecordAttempt(r.Context(), req.Email, clientIP, userAgent, true, "")
-
 	// Log successful login completion with full context
 	logger.Info("Login completed successfully", map[string]interface{}{
 		"user_id":    user.ID,
@@ -266,17 +344,22 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 		"ip":         clientIP,
 		"user_agent": userAgent,
 		"duration":   time.Since(startTime).Milliseconds(),
+		"layer":      "handler",
+		"operation":  "login",
 	})
 
 	// Log successful API request
 	logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusOK, time.Since(startTime), map[string]interface{}{
-		"email":   req.Email,
-		"user_id": user.ID,
-		"ip":      clientIP,
+		"email":     req.Email,
+		"user_id":   user.ID,
+		"ip":        clientIP,
+		"layer":     "handler",
+		"operation": "login",
 	})
 
 	utils.RespondWithJSON(w, http.StatusOK, response, "login")
 }
+
 // Register with enhanced error handling
 func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
@@ -326,15 +409,31 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	// Validate password
 	if err := utils.ValidatePasswordWithDetails(req.Password, "register"); err != nil {
 		logger.LogValidationError("password", "Password validation failed", "***hidden***")
+		
+		// Create detailed password validation error
+		passwordErr := errorcustom.NewAPIErrorWithContext(
+			errorcustom.ErrCodeWeakPassword,
+			"Password does not meet security requirements",
+			http.StatusBadRequest,
+			"handler",
+			"register",
+			err,
+		).WithDetail("email", req.Email).
+		  WithDetail("step", "password_validation")
+		
+		logger.Error("APIError details", passwordErr.GetLogContext())
+		
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(startTime), map[string]interface{}{
-			"email": req.Email,
-			"error": "weak_password",
-			"ip":    clientIP,
+			"email":     req.Email,
+			"error":     "weak_password",
+			"ip":        clientIP,
+			"layer":     "handler",
+			"operation": "register",
 		})
-		utils.HandleError(w, err, "register")
+		
+		utils.HandleError(w, passwordErr, "register")
 		return
 	}
-
 
 	// Hash password
 	hashedPassword, err := utils.HashPassword(req.Password)
@@ -347,17 +446,22 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 		
 		hashErr := errorcustom.NewAPIErrorWithContext(
 			errorcustom.ErrCodeInternalError,
-			"Password processing failed",
+			"Password processing failed during hashing",
 			http.StatusInternalServerError,
 			"handler",
 			"password_hashing",
 			err,
-		)
+		).WithDetail("email", req.Email).
+		  WithDetail("step", "password_hashing")
+		
+		logger.Error("APIError details", hashErr.GetLogContext())
 		
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusInternalServerError, time.Since(startTime), map[string]interface{}{
-			"email": req.Email,
-			"error": "password_hashing_failed",
-			"ip":    clientIP,
+			"email":     req.Email,
+			"error":     "password_hashing_failed",
+			"ip":        clientIP,
+			"layer":     "handler",
+			"operation": "register",
 		})
 		
 		utils.HandleError(w, hashErr, "register")
@@ -381,55 +485,92 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Parse the gRPC error with enhanced context
 		parsedErr := errorcustom.ParseGRPCError(err, "register", req.Email)
+		var clientError *errorcustom.APIError
 		
 		if apiErr, ok := parsedErr.(*errorcustom.APIError); ok && apiErr.Code == errorcustom.ErrCodeDuplicateEmail {
+			// Create detailed duplicate email error
+			clientError = errorcustom.NewAPIErrorWithContext(
+				errorcustom.ErrCodeDuplicateEmail,
+				"An account with this email address already exists",
+				http.StatusConflict,
+				"handler",
+				"register",
+				err,
+			).WithDetail("email", req.Email).
+			  WithDetail("step", "email_uniqueness_check").
+			  WithDetail("suggestion", "Try logging in instead or use a different email address")
+			
 			logger.Warning("Registration failed - email already exists", map[string]interface{}{
 				"email":      req.Email,
 				"name":       req.Name,
 				"ip":         clientIP,
 				"user_agent": userAgent,
+				"layer":      "handler",
+				"operation":  "register",
 			})
 			
 			logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusConflict, time.Since(startTime), map[string]interface{}{
-				"email": req.Email,
-				"error": "duplicate_email",
-				"ip":    clientIP,
+				"email":     req.Email,
+				"error":     "duplicate_email",
+				"ip":        clientIP,
+				"layer":     "handler",
+				"operation": "register",
 			})
-			
-			utils.HandleError(w, errorcustom.NewDuplicateEmailError(req.Email), "register")
-			return
 		} else {
+			// Create detailed service error
+			clientError = errorcustom.NewAPIErrorWithContext(
+				errorcustom.ErrCodeServiceError,
+				"Registration service is temporarily unavailable. Please try again later.",
+				http.StatusServiceUnavailable,
+				"handler",
+				"register",
+				err,
+			).WithDetail("email", req.Email).
+			  WithDetail("step", "service_call").
+			  WithDetail("retryable", true)
+			
 			logger.Error("Registration failed - service error", map[string]interface{}{
 				"email":      req.Email,
 				"name":       req.Name,
 				"grpc_error": err.Error(),
 				"ip":         clientIP,
 				"user_agent": userAgent,
+				"layer":      "handler",
+				"operation":  "register",
+			})
+
+			logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusInternalServerError, time.Since(startTime), map[string]interface{}{
+				"email":     req.Email,
+				"error":     "service_error",
+				"ip":        clientIP,
+				"layer":     "handler",
+				"operation": "register",
 			})
 		}
 
 		logger.LogServiceCall("AccountService", "Register", false, err, map[string]interface{}{
-			"email": req.Email,
-			"name":  req.Name,
-			"ip":    clientIP,
+			"email":     req.Email,
+			"name":      req.Name,
+			"ip":        clientIP,
+			"layer":     "handler",
+			"operation": "register",
 		})
 
-		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusInternalServerError, time.Since(startTime), map[string]interface{}{
-			"email": req.Email,
-			"error": "service_error",
-			"ip":    clientIP,
-		})
+		// Log the detailed APIError structure to terminal
+		logger.Error("APIError details", clientError.GetLogContext())
 
-		utils.HandleError(w, parsedErr, "register")
+		utils.HandleError(w, clientError, "register")
 		return
 	}
 
 	// Log successful registration
 	logger.LogServiceCall("AccountService", "Register", true, nil, map[string]interface{}{
-		"email":   req.Email,
-		"name":    req.Name,
-		"user_id": userRes.Id,
-		"ip":      clientIP,
+		"email":     req.Email,
+		"name":      req.Name,
+		"user_id":   userRes.Id,
+		"ip":        clientIP,
+		"layer":     "handler",
+		"operation": "register",
 	})
 
 	logger.Info("Registration completed successfully", map[string]interface{}{
@@ -439,6 +580,8 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 		"ip":         clientIP,
 		"user_agent": userAgent,
 		"duration":   time.Since(startTime).Milliseconds(),
+		"layer":      "handler",
+		"operation":  "register",
 	})
 
 	response := account_dto.RegisterResponse{
@@ -449,9 +592,11 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusCreated, time.Since(startTime), map[string]interface{}{
-		"email":   req.Email,
-		"user_id": userRes.Id,
-		"ip":      clientIP,
+		"email":     req.Email,
+		"user_id":   userRes.Id,
+		"ip":        clientIP,
+		"layer":     "handler",
+		"operation": "register",
 	})
 
 	utils.RespondWithJSON(w, http.StatusCreated, response, "register")
@@ -470,14 +615,18 @@ func (h *AccountHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		"user_id":    userID,
 		"user_email": userEmail,
 		"ip":         clientIP,
+		"layer":      "handler",
+		"operation":  "logout",
 	})
 
 	// Here you could invalidate tokens if you maintain a token blacklist
 	// h.tokenService.InvalidateTokens(userID)
 
 	logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusOK, time.Since(startTime), map[string]interface{}{
-		"user_id": userID,
-		"ip":      clientIP,
+		"user_id":   userID,
+		"ip":        clientIP,
+		"layer":     "handler",
+		"operation": "logout",
 	})
 
 	utils.RespondWithJSON(w, http.StatusOK, map[string]string{

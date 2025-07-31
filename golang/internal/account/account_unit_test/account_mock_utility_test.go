@@ -58,7 +58,7 @@ func setupHandlerTest() (*res.AccountHandler, *MockAccountServiceClient) {
 	mockClient := new(MockAccountServiceClient)
 	
 	// Create handler using the New function
-	handler := res.New(mockClient)
+handler := res.NewAccountHandler(mockClient)
 	
 	// Store original functions if not already stored
 	if originalHashPassword == nil {
@@ -72,7 +72,7 @@ func setupHandlerTest() (*res.AccountHandler, *MockAccountServiceClient) {
 	utils.GenerateJWTToken = mockGenerateJWTToken
 	utils.GenerateRefreshToken = mockGenerateRefreshToken
 	
-	return &handler, mockClient 
+	return handler, mockClient 
 }
 
 // Cleanup function to restore original functions
