@@ -28,7 +28,7 @@ func (h *AccountHandler) FindAccountByID(w http.ResponseWriter, r *http.Request)
 		log.Printf("Find user error: %v", err)
 
 		if strings.Contains(err.Error(), "not found") {
-			utils.HandleError(w, errorcustom.NewUserNotFoundByID(id))
+			utils.HandleError(w, errorcustom.NewUserNotFoundByID(id), "find_account_by_id")
 			return
 		}
 
@@ -36,7 +36,7 @@ func (h *AccountHandler) FindAccountByID(w http.ResponseWriter, r *http.Request)
 			errorcustom.ErrCodeServiceError,
 			"Failed to retrieve user",
 			http.StatusInternalServerError,
-		))
+		), "find_account_by_id")
 		return
 	}
 
@@ -51,11 +51,8 @@ func (h *AccountHandler) FindAccountByID(w http.ResponseWriter, r *http.Request)
 		OwnerID:   res.Account.OwnerId,
 		CreatedAt: res.Account.CreatedAt.AsTime(),
 		UpdatedAt: res.Account.UpdatedAt.AsTime(),
-	})
+	}, "find_account_by_id")
 }
-
-
-
 
 // GetUserProfile handles getting user profile
 func (h *AccountHandler) GetUserProfile(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +65,7 @@ func (h *AccountHandler) GetUserProfile(w http.ResponseWriter, r *http.Request) 
 	if idStr == "" {
 		userID, err := h.getUserIDFromContext(ctx)
 		if err != nil {
-			utils.HandleError(w, err)
+			utils.HandleError(w, err, "get_user_profile")
 			return
 		}
 		id = userID
@@ -79,7 +76,7 @@ func (h *AccountHandler) GetUserProfile(w http.ResponseWriter, r *http.Request) 
 				errorcustom.ErrCodeInvalidInput,
 				"Invalid user ID format",
 				http.StatusBadRequest,
-			).WithDetail("provided_id", idStr))
+			).WithDetail("provided_id", idStr), "get_user_profile")
 			return
 		}
 	}
@@ -87,7 +84,7 @@ func (h *AccountHandler) GetUserProfile(w http.ResponseWriter, r *http.Request) 
 	res, err := h.userClient.FindByID(ctx, &pb.FindByIDReq{Id: id})
 	if err != nil {
 		if strings.Contains(err.Error(), "user not found") {
-			utils.HandleError(w, errorcustom.NewUserNotFoundByID(id))
+			utils.HandleError(w, errorcustom.NewUserNotFoundByID(id), "get_user_profile")
 			return
 		}
 
@@ -96,7 +93,7 @@ func (h *AccountHandler) GetUserProfile(w http.ResponseWriter, r *http.Request) 
 			errorcustom.ErrCodeServiceError,
 			"Failed to retrieve user profile",
 			http.StatusInternalServerError,
-		))
+		), "get_user_profile")
 		return
 	}
 
@@ -113,10 +110,8 @@ func (h *AccountHandler) GetUserProfile(w http.ResponseWriter, r *http.Request) 
 
 	utils.RespondWithJSON(w, http.StatusOK, dto.UserProfileResponse{
 		User: userProfile,
-	})
+	}, "get_user_profile")
 }
-
-// 
 
 // FindAllUsers handles getting all users with pagination
 func (h *AccountHandler) FindAllUsers(w http.ResponseWriter, r *http.Request) {
@@ -135,7 +130,7 @@ func (h *AccountHandler) FindAllUsers(w http.ResponseWriter, r *http.Request) {
 			errorcustom.ErrCodeServiceError,
 			"Failed to retrieve users",
 			http.StatusInternalServerError,
-		))
+		), "find_all_users")
 		return
 	}
 
@@ -178,12 +173,8 @@ func (h *AccountHandler) FindAllUsers(w http.ResponseWriter, r *http.Request) {
 		"page":        page,
 		"page_size":   pageSize,
 		"total_pages": (totalCount + int64(pageSize) - 1) / int64(pageSize),
-	})
+	}, "find_all_users")
 }
-
-//
-
-//
 
 // FindByRole handles finding users by role
 func (h *AccountHandler) FindByRole(w http.ResponseWriter, r *http.Request) {
@@ -203,13 +194,13 @@ func (h *AccountHandler) FindByRole(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.validator.Struct(&req); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			utils.HandleValidationErrors(w, validationErrors)
+			utils.HandleValidationErrors(w, validationErrors, "find_by_role")
 		} else {
 			utils.HandleError(w, errorcustom.NewAPIError(
 				errorcustom.ErrCodeValidationError,
 				"Invalid role",
 				http.StatusBadRequest,
-			))
+			), "find_by_role")
 		}
 		return
 	}
@@ -223,7 +214,7 @@ func (h *AccountHandler) FindByRole(w http.ResponseWriter, r *http.Request) {
 			errorcustom.ErrCodeServiceError,
 			"Failed to retrieve users by role",
 			http.StatusInternalServerError,
-		))
+		), "find_by_role")
 		return
 	}
 
@@ -246,7 +237,7 @@ func (h *AccountHandler) FindByRole(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"users": userResponses,
 		"count": len(userResponses),
-	})
+	}, "find_by_role")
 }
 
 // FindByBranch handles finding users by branch
@@ -268,7 +259,7 @@ func (h *AccountHandler) FindByBranch(w http.ResponseWriter, r *http.Request) {
 			errorcustom.ErrCodeServiceError,
 			"Failed to retrieve users by branch",
 			http.StatusInternalServerError,
-		))
+		), "find_by_branch")
 		return
 	}
 
@@ -291,9 +282,8 @@ func (h *AccountHandler) FindByBranch(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"users": userResponses,
 		"count": len(userResponses),
-	})
+	}, "find_by_branch")
 }
-// Fixed SearchUsers method that matches your protobuf definition
 
 // SearchUsers handles advanced user search
 func (h *AccountHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
@@ -316,7 +306,7 @@ func (h *AccountHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 				errorcustom.ErrCodeInvalidInput,
 				"Invalid branch_id parameter",
 				http.StatusBadRequest,
-			))
+			), "search_users")
 			return
 		}
 	}
@@ -361,7 +351,7 @@ func (h *AccountHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 			errorcustom.ErrCodeServiceError,
 			"Search failed",
 			http.StatusInternalServerError,
-		))
+		), "search_users")
 		return
 	}
 
@@ -398,154 +388,8 @@ func (h *AccountHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 			"has_next": res.Pagination != nil && res.Pagination.HasNext,
 			"has_prev": res.Pagination != nil && res.Pagination.HasPrev,
 		},
-	})
+	}, "search_users")
 }
-
-// Also fix the FindByRole and FindByBranch methods to match the protobuf definition:
-
-// FindByRole handles finding users by role
-// func (h *AccountHandler) FindByRole(w http.ResponseWriter, r *http.Request) {
-// 	ctx := r.Context()
-
-// 	role, apiErr := utils.GetStringParam(r, "role", 1)
-// 	if apiErr != nil {
-// 		utils.RespondWithAPIError(w, apiErr)
-// 		return
-// 	}
-
-// 	// Validate role
-// 	var req struct {
-// 		Role string `validate:"required,role"`
-// 	}
-// 	req.Role = role
-
-// 	if err := h.validator.Struct(&req); err != nil {
-// 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-// 			utils.HandleValidationErrors(w, validationErrors)
-// 		} else {
-// 			utils.HandleError(w, errorcustom.NewAPIError(
-// 				errorcustom.ErrCodeValidationError,
-// 				"Invalid role",
-// 				http.StatusBadRequest,
-// 			))
-// 		}
-// 		return
-// 	}
-
-// 	page, pageSize, apiErr := h.getPaginationParams(r)
-// 	if apiErr != nil {
-// 		utils.RespondWithAPIError(w, apiErr)
-// 		return
-// 	}
-
-// 	res, err := h.userClient.FindByRole(ctx, &pb.FindByRoleReq{
-// 		Role: role,
-// 		Pagination: &pb.PaginationInfo{
-// 			Page:     page,
-// 			PageSize: pageSize,
-// 		},
-// 	})
-// 	if err != nil {
-// 		log.Printf("Find by role error: %v", err)
-// 		utils.HandleError(w, errorcustom.NewAPIError(
-// 			errorcustom.ErrCodeServiceError,
-// 			"Failed to retrieve users by role",
-// 			http.StatusInternalServerError,
-// 		))
-// 		return
-// 	}
-
-// 	var userResponses []dto.UserProfile
-// 	for _, user := range res.Accounts {
-// 		userResponses = append(userResponses, dto.UserProfile{
-// 			ID:        user.Id,
-// 			BranchID:  user.BranchId,
-// 			Name:      user.Name,
-// 			Email:     user.Email,
-// 			Avatar:    user.Avatar,
-// 			Title:     user.Title,
-// 			Role:      user.Role,
-// 			OwnerID:   user.OwnerId,
-// 			CreatedAt: user.CreatedAt.AsTime(),
-// 			UpdatedAt: user.UpdatedAt.AsTime(),
-// 		})
-// 	}
-
-// 	utils.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
-// 		"users": userResponses,
-// 		"count": len(userResponses),
-// 		"total": res.Total,
-// 		"pagination": map[string]interface{}{
-// 			"page":      page,
-// 			"page_size": pageSize,
-// 			"has_next":  res.Pagination != nil && res.Pagination.HasNext,
-// 			"has_prev":  res.Pagination != nil && res.Pagination.HasPrev,
-// 		},
-// 	})
-// }
-
-// FindByBranch handles finding users by branch
-// func (h *AccountHandler) FindByBranch(w http.ResponseWriter, r *http.Request) {
-// 	ctx := r.Context()
-
-// 	branchID, apiErr := utils.ParseIDParam(r, "branch_id")
-// 	if apiErr != nil {
-// 		utils.RespondWithAPIError(w, apiErr)
-// 		return
-// 	}
-
-// 	page, pageSize, apiErr := h.getPaginationParams(r)
-// 	if apiErr != nil {
-// 		utils.RespondWithAPIError(w, apiErr)
-// 		return
-// 	}
-
-// 	res, err := h.userClient.FindByBranch(ctx, &pb.FindByBranchReq{
-// 		BranchId: branchID,
-// 		Pagination: &pb.PaginationInfo{
-// 			Page:     page,
-// 			PageSize: pageSize,
-// 		},
-// 	})
-// 	if err != nil {
-// 		log.Printf("Find by branch error: %v", err)
-// 		utils.HandleError(w, errorcustom.NewAPIError(
-// 			errorcustom.ErrCodeServiceError,
-// 			"Failed to retrieve users by branch",
-// 			http.StatusInternalServerError,
-// 		))
-// 		return
-// 	}
-
-// 	var userResponses []dto.UserProfile
-// 	for _, user := range res.Accounts {
-// 		userResponses = append(userResponses, dto.UserProfile{
-// 			ID:        user.Id,
-// 			BranchID:  user.BranchId,
-// 			Name:      user.Name,
-// 			Email:     user.Email,
-// 			Avatar:    user.Avatar,
-// 			Title:     user.Title,
-// 			Role:      user.Role,
-// 			OwnerID:   user.OwnerId,
-// 			CreatedAt: user.CreatedAt.AsTime(),
-// 			UpdatedAt: user.UpdatedAt.AsTime(),
-// 		})
-// 	}
-
-// 	utils.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
-// 		"users": userResponses,
-// 		"count": len(userResponses),
-// 		"total": res.Total,
-// 		"pagination": map[string]interface{}{
-// 			"page":      page,
-// 			"page_size": pageSize,
-// 			"has_next":  res.Pagination != nil && res.Pagination.HasNext,
-// 			"has_prev":  res.Pagination != nil && res.Pagination.HasPrev,
-// 		},
-// 	})
-// }
-
 
 func (h *AccountHandler) GetUsersByBranch(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -578,7 +422,7 @@ func (h *AccountHandler) GetUsersByBranch(w http.ResponseWriter, r *http.Request
 			errorcustom.ErrCodeServiceError,
 			"Failed to get users by branch",
 			http.StatusInternalServerError,
-		))
+		), "get_users_by_branch")
 		return
 	}
 
@@ -588,5 +432,5 @@ func (h *AccountHandler) GetUsersByBranch(w http.ResponseWriter, r *http.Request
 		"total":      res.Total,
 		"pagination": res.Pagination,
 	}
-	utils.RespondWithJSON(w, http.StatusOK, response)
+	utils.RespondWithJSON(w, http.StatusOK, response, "get_users_by_branch")
 }

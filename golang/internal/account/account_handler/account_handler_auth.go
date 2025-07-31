@@ -22,9 +22,6 @@ import (
 
 
 
-// new 
-
-
 // Login handles user authentication with comprehensive error tracking
 func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
@@ -41,13 +38,13 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 
 	var req account_dto.LoginRequest
-	if err := utils.DecodeJSON(r.Body, &req); err != nil {
+	if err := utils.DecodeJSON(r.Body, &req, "login", false); err != nil {
 		logger.Error("Failed to decode login request", map[string]interface{}{
 			"error":      err.Error(),
 			"ip":         clientIP,
 			"user_agent": userAgent,
 		})
-		utils.HandleError(w, err)
+		utils.HandleError(w, err, "login")
 		return
 	}
 
@@ -62,13 +59,13 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if err := h.validator.Struct(&req); err != nil {
 		logger.LogValidationError("login_request", "Request validation failed", req)
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			utils.HandleValidationErrors(w, validationErrors)
+			utils.HandleValidationErrors(w, validationErrors, "login")
 		} else {
 			utils.HandleError(w, errorcustom.NewAPIError(
 				errorcustom.ErrCodeValidationError,
 				"Validation failed",
 				http.StatusBadRequest,
-			))
+			), "login")
 		}
 		return
 	}
@@ -162,15 +159,13 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 		// Return generic authentication error to client (security best practice)
 		// We don't want to leak information about whether the email exists or not
 		authErr := errorcustom.NewAuthenticationError("invalid credentials")
-		utils.HandleError(w, authErr)
+		utils.HandleError(w, authErr, "login")
 		return
 	}
 
 	// Authentication successful - log detailed success information
 	logger.LogServiceCall("AccountService", "Login", true, nil, map[string]interface{}{
 		"email":     req.Email,
-	
-	
 		"ip":        clientIP,
 	})
 
@@ -210,7 +205,7 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 			"ip":    clientIP,
 		})
 		
-		utils.HandleError(w, tokenErr)
+		utils.HandleError(w, tokenErr, "login")
 		return
 	}
 
@@ -239,7 +234,7 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 			"ip":    clientIP,
 		})
 		
-		utils.HandleError(w, tokenErr)
+		utils.HandleError(w, tokenErr, "login")
 		return
 	}
 
@@ -280,9 +275,8 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 		"ip":      clientIP,
 	})
 
-	utils.RespondWithJSON(w, http.StatusOK, response)
+	utils.RespondWithJSON(w, http.StatusOK, response, "login")
 }
-
 // Register with enhanced error handling
 func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
@@ -297,13 +291,13 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	})
 
 	var req account_dto.RegisterUserRequest
-	if err := utils.DecodeJSON(r.Body, &req); err != nil {
+	if err := utils.DecodeJSON(r.Body, &req, "register", false); err != nil {
 		logger.Error("Failed to decode registration request", map[string]interface{}{
 			"error":      err.Error(),
 			"ip":         clientIP,
 			"user_agent": userAgent,
 		})
-		utils.HandleError(w, err)
+		utils.HandleError(w, err, "register")
 		return
 	}
 
@@ -318,28 +312,29 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if err := h.validator.Struct(req); err != nil {
 		logger.LogValidationError("register_request", "Request validation failed", req)
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			utils.HandleValidationErrors(w, validationErrors)
+			utils.HandleValidationErrors(w, validationErrors, "register")
 		} else {
 			utils.HandleError(w, errorcustom.NewAPIError(
 				errorcustom.ErrCodeValidationError,
 				"Validation failed",
 				http.StatusBadRequest,
-			))
+			), "register")
 		}
 		return
 	}
 
 	// Validate password
-	if err := utils.ValidatePasswordWithDetails(req.Password); err != nil {
+	if err := utils.ValidatePasswordWithDetails(req.Password, "register"); err != nil {
 		logger.LogValidationError("password", "Password validation failed", "***hidden***")
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(startTime), map[string]interface{}{
 			"email": req.Email,
 			"error": "weak_password",
 			"ip":    clientIP,
 		})
-		utils.HandleError(w, err)
+		utils.HandleError(w, err, "register")
 		return
 	}
+
 
 	// Hash password
 	hashedPassword, err := utils.HashPassword(req.Password)
@@ -365,7 +360,7 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 			"ip":    clientIP,
 		})
 		
-		utils.HandleError(w, hashErr)
+		utils.HandleError(w, hashErr, "register")
 		return
 	}
 
@@ -401,7 +396,7 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 				"ip":    clientIP,
 			})
 			
-			utils.HandleError(w, errorcustom.NewDuplicateEmailError(req.Email))
+			utils.HandleError(w, errorcustom.NewDuplicateEmailError(req.Email), "register")
 			return
 		} else {
 			logger.Error("Registration failed - service error", map[string]interface{}{
@@ -425,7 +420,7 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 			"ip":    clientIP,
 		})
 
-		utils.HandleError(w, parsedErr)
+		utils.HandleError(w, parsedErr, "register")
 		return
 	}
 
@@ -459,7 +454,7 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 		"ip":      clientIP,
 	})
 
-	utils.RespondWithJSON(w, http.StatusCreated, response)
+	utils.RespondWithJSON(w, http.StatusCreated, response, "register")
 }
 
 // Logout with detailed logging
@@ -487,6 +482,5 @@ func (h *AccountHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	utils.RespondWithJSON(w, http.StatusOK, map[string]string{
 		"message": "logout successful",
-	})
+	}, "logout")
 }
-// new done 

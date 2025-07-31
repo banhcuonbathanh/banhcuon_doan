@@ -17,26 +17,26 @@ import (
 // CreateAccount handles user creation
 func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateUserRequest
-	if err := utils.DecodeJSON(r.Body, &req); err != nil {
-		utils.HandleError(w, err)
+	if err := utils.DecodeJSON(r.Body, &req, "create_account", false); err != nil {
+		utils.HandleError(w, err, "create_account")
 		return
 	}
 
 	if err := h.validator.Struct(req); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			utils.HandleValidationErrors(w, validationErrors)
+			utils.HandleValidationErrors(w, validationErrors, "create_account")
 		} else {
 			utils.HandleError(w, errorcustom.NewAPIError(
 				errorcustom.ErrCodeValidationError,
 				"Validation failed",
 				http.StatusBadRequest,
-			))
+			), "create_account")
 		}
 		return
 	}
 
-	if err := utils.ValidatePasswordWithDetails(req.Password); err != nil {
-		utils.HandleError(w, err)
+	if err := utils.ValidatePasswordWithDetails(req.Password, "create_account"); err != nil {
+		utils.HandleError(w, err, "create_account")
 		return
 	}
 
@@ -47,7 +47,7 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 			errorcustom.ErrCodeInternalError,
 			"Password processing failed",
 			http.StatusInternalServerError,
-		))
+		), "create_account")
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		log.Printf("User creation error: %v", err)
 
 		if strings.Contains(err.Error(), "already exists") {
-			utils.HandleError(w, errorcustom.NewDuplicateEmailError(req.Email))
+			utils.HandleError(w, errorcustom.NewDuplicateEmailError(req.Email), "create_account")
 			return
 		}
 
@@ -73,7 +73,7 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 			errorcustom.ErrCodeServiceError,
 			"User creation failed",
 			http.StatusInternalServerError,
-		))
+		), "create_account")
 		return
 	}
 
@@ -85,11 +85,8 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		Title:    userRes.Title,
 		Role:     userRes.Role,
 		OwnerID:  userRes.OwnerId,
-	})
+	}, "create_account")
 }
-
-// FindAccountByID handles finding user by ID
-
 
 // UpdateUserByID handles user updates
 func (h *AccountHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) {
@@ -100,20 +97,20 @@ func (h *AccountHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req dto.UpdateUserRequest
-	if err := utils.DecodeJSON(r.Body, &req); err != nil {
-		utils.HandleError(w, err)
+	if err := utils.DecodeJSON(r.Body, &req, "update_user", false); err != nil {
+		utils.HandleError(w, err, "update_user")
 		return
 	}
 
 	if err := h.validator.Struct(req); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			utils.HandleValidationErrors(w, validationErrors)
+			utils.HandleValidationErrors(w, validationErrors, "update_user")
 		} else {
 			utils.HandleError(w, errorcustom.NewAPIError(
 				errorcustom.ErrCodeValidationError,
 				"Validation failed",
 				http.StatusBadRequest,
-			))
+			), "update_user")
 		}
 		return
 	}
@@ -132,7 +129,7 @@ func (h *AccountHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) 
 		log.Printf("Update user error: %v", err)
 
 		if strings.Contains(err.Error(), "not found") {
-			utils.HandleError(w, errorcustom.NewUserNotFoundByID(id))
+			utils.HandleError(w, errorcustom.NewUserNotFoundByID(id), "update_user")
 			return
 		}
 
@@ -140,7 +137,7 @@ func (h *AccountHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) 
 			errorcustom.ErrCodeServiceError,
 			"User update failed",
 			http.StatusInternalServerError,
-		))
+		), "update_user")
 		return
 	}
 
@@ -159,7 +156,7 @@ func (h *AccountHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) 
 		},
 		Success: true,
 		Message: "User updated successfully",
-	})
+	}, "update_user")
 }
 
 // DeleteUser handles user deletion
@@ -175,7 +172,7 @@ func (h *AccountHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Delete user error: %v", err)
 
 		if strings.Contains(err.Error(), "not found") {
-			utils.HandleError(w, errorcustom.NewUserNotFoundByID(id))
+			utils.HandleError(w, errorcustom.NewUserNotFoundByID(id), "delete_user")
 			return
 		}
 
@@ -183,13 +180,12 @@ func (h *AccountHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 			errorcustom.ErrCodeServiceError,
 			"User deletion failed",
 			http.StatusInternalServerError,
-		))
+		), "delete_user")
 		return
 	}
 
 	utils.RespondWithJSON(w, http.StatusOK, dto.DeleteUserResponse{
 		Success: res.Success,
 		Message: "User deleted successfully",
-	})
+	}, "delete_user")
 }
-

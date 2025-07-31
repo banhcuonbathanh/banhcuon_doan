@@ -20,21 +20,13 @@ type APIError struct {
 	Cause      error                  `json:"-"`                   // Original error for internal use
 }
 
-// WithDetail adds a key-value pair to error details and returns the APIError for chaining
-func (e *APIError) WithDetail(key string, value interface{}) *APIError {
-	if e.Details == nil {
-		e.Details = make(map[string]interface{})
-	}
-	e.Details[key] = value
-	return e
-}
-
 // NewAPIError creates a new APIError instance
 func NewAPIError(code, message string, httpStatus int) *APIError {
 	return &APIError{
 		Code:       code,
 		Message:    message,
 		HTTPStatus: httpStatus,
+		Details:    make(map[string]interface{}),
 	}
 }
 
@@ -47,6 +39,7 @@ func NewAPIErrorWithContext(code, message string, httpStatus int, layer, operati
 		Layer:      layer,
 		Operation:  operation,
 		Cause:      cause,
+		Details:    make(map[string]interface{}),
 	}
 }
 
@@ -70,6 +63,21 @@ func (e *APIError) WithOperation(operation string) *APIError {
 	return e
 }
 
+// WithDetail adds a detail to the error and returns the APIError for chaining
+func (e *APIError) WithDetail(key string, value interface{}) *APIError {
+	if e.Details == nil {
+		e.Details = make(map[string]interface{})
+	}
+	e.Details[key] = value
+	return e
+}
+
+// WithCause sets the underlying cause and returns the APIError for chaining
+func (e *APIError) WithCause(cause error) *APIError {
+	e.Cause = cause
+	return e
+}
+
 // GetLogContext returns context information suitable for logging
 func (e *APIError) GetLogContext() map[string]interface{} {
 	context := map[string]interface{}{
@@ -87,7 +95,7 @@ func (e *APIError) GetLogContext() map[string]interface{} {
 	if e.Cause != nil {
 		context["cause"] = e.Cause.Error()
 	}
-	if e.Details != nil {
+	if e.Details != nil && len(e.Details) > 0 {
 		context["details"] = e.Details
 	}
 
@@ -119,7 +127,7 @@ func (e *UserNotFoundError) Error() string {
 }
 
 func (e *UserNotFoundError) ToAPIError() *APIError {
-	apiErr := NewAPIError("USER_NOT_FOUND", e.Error(), http.StatusNotFound)
+	apiErr := NewAPIError(ErrCodeUserNotFound, e.Error(), http.StatusNotFound)
 	if e.ID != 0 {
 		apiErr.WithDetail("user_id", e.ID)
 	}
@@ -141,7 +149,7 @@ func (e *ValidationError) Error() string {
 }
 
 func (e *ValidationError) ToAPIError() *APIError {
-	return NewAPIError("VALIDATION_ERROR", e.Error(), http.StatusBadRequest).
+	return NewAPIError(ErrCodeValidationError, e.Error(), http.StatusBadRequest).
 		WithDetail("field", e.Field).
 		WithDetail("value", e.Value)
 }
@@ -163,7 +171,7 @@ func (e *AuthenticationError) Error() string {
 
 func (e *AuthenticationError) ToAPIError() *APIError {
 	apiErr := NewAPIErrorWithContext(
-		"AUTHENTICATION_ERROR",
+		ErrCodeAuthFailed,
 		"Invalid credentials",
 		http.StatusUnauthorized,
 		"handler",
@@ -195,7 +203,7 @@ func (e *AuthorizationError) Error() string {
 }
 
 func (e *AuthorizationError) ToAPIError() *APIError {
-	return NewAPIError("AUTHORIZATION_ERROR", "Access denied", http.StatusForbidden).
+	return NewAPIError(ErrCodeAccessDenied, "Access denied", http.StatusForbidden).
 		WithDetail("action", e.Action).
 		WithDetail("resource", e.Resource)
 }
@@ -210,7 +218,7 @@ func (e *DuplicateEmailError) Error() string {
 }
 
 func (e *DuplicateEmailError) ToAPIError() *APIError {
-	return NewAPIError("DUPLICATE_EMAIL", "Email already registered", http.StatusConflict).
+	return NewAPIError(ErrCodeDuplicateEmail, "Email already registered", http.StatusConflict).
 		WithDetail("email", e.Email)
 }
 
@@ -225,7 +233,7 @@ func (e *InvalidTokenError) Error() string {
 }
 
 func (e *InvalidTokenError) ToAPIError() *APIError {
-	return NewAPIError("INVALID_TOKEN", "Token is invalid or expired", http.StatusUnauthorized).
+	return NewAPIError(ErrCodeInvalidToken, "Token is invalid or expired", http.StatusUnauthorized).
 		WithDetail("token_type", e.TokenType).
 		WithDetail("reason", e.Reason)
 }
@@ -240,7 +248,7 @@ func (e *BranchNotFoundError) Error() string {
 }
 
 func (e *BranchNotFoundError) ToAPIError() *APIError {
-	return NewAPIError("BRANCH_NOT_FOUND", e.Error(), http.StatusNotFound).
+	return NewAPIError(ErrCodeNotFound, e.Error(), http.StatusNotFound).
 		WithDetail("branch_id", e.ID)
 }
 
@@ -254,7 +262,7 @@ func (e *PasswordValidationError) Error() string {
 }
 
 func (e *PasswordValidationError) ToAPIError() *APIError {
-	return NewAPIError("WEAK_PASSWORD", "Password does not meet security requirements", http.StatusBadRequest).
+	return NewAPIError(ErrCodeWeakPassword, "Password does not meet security requirements", http.StatusBadRequest).
 		WithDetail("requirements", e.Requirements)
 }
 
@@ -272,7 +280,7 @@ func (e *ServiceError) Error() string {
 }
 
 func (e *ServiceError) ToAPIError() *APIError {
-	code := "SERVICE_ERROR"
+	code := ErrCodeServiceError
 	if e.Retryable {
 		code = "SERVICE_TEMPORARILY_UNAVAILABLE"
 	}
@@ -302,7 +310,7 @@ func (e *RepositoryError) Error() string {
 
 func (e *RepositoryError) ToAPIError() *APIError {
 	return NewAPIErrorWithContext(
-		"REPOSITORY_ERROR",
+		ErrCodeRepositoryError,
 		"Database operation failed",
 		http.StatusInternalServerError,
 		"repository",
@@ -418,7 +426,7 @@ func NewAccountLockedError(email string, lockReason string) *AuthenticationError
 // Helper functions for error detection
 // ====================================
 
-// Helper function to determine if error is related to user not found vs password mismatch
+// IsUserNotFoundError determines if error is related to user not found
 func IsUserNotFoundError(err error) bool {
 	if err == nil {
 		return false
@@ -441,7 +449,7 @@ func IsUserNotFoundError(err error) bool {
 		strings.Contains(errMsg, "user_not_found")
 }
 
-// Helper function to determine if error is password related
+// IsPasswordError determines if error is password related
 func IsPasswordError(err error) bool {
 	if err == nil {
 		return false
@@ -461,6 +469,28 @@ func IsPasswordError(err error) bool {
 		strings.Contains(errMsg, "authentication failed")
 }
 
+// IsRetryableError determines if an error is retryable
+func IsRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check if it's a ServiceError with retryable flag
+	if serviceErr, ok := err.(*ServiceError); ok {
+		return serviceErr.Retryable
+	}
+
+	// Check if it's an APIError with retryable status codes
+	if apiErr, ok := err.(*APIError); ok {
+		return apiErr.HTTPStatus == http.StatusServiceUnavailable ||
+			apiErr.HTTPStatus == http.StatusRequestTimeout ||
+			apiErr.HTTPStatus == http.StatusTooManyRequests ||
+			(apiErr.HTTPStatus >= 500 && apiErr.HTTPStatus < 600)
+	}
+
+	return false
+}
+
 // ParseGRPCError parses gRPC error messages and creates appropriate errors
 func ParseGRPCError(err error, operation string, email string) error {
 	if err == nil {
@@ -472,55 +502,76 @@ func ParseGRPCError(err error, operation string, email string) error {
 	// Return APIErrors with specific codes that the helper functions can detect
 	switch {
 	case strings.Contains(errMsg, "user not found") || strings.Contains(errMsg, "email not found"):
-		return &APIError{
-			Code:       ErrCodeUserNotFound,
-			Message:    "User not found",
-			HTTPStatus: http.StatusNotFound,
-		}
+		return NewAPIErrorWithContext(
+			ErrCodeUserNotFound,
+			"User not found",
+			http.StatusNotFound,
+			"service",
+			operation,
+			err,
+		).WithDetail("email", email)
 
 	case strings.Contains(errMsg, "invalid password") ||
 		strings.Contains(errMsg, "password") ||
 		strings.Contains(errMsg, "invalid email or password"):
-		return &APIError{
-			Code:       ErrCodeAuthFailed,
-			Message:    "Invalid credentials",
-			HTTPStatus: http.StatusUnauthorized,
-		}
+		return NewAPIErrorWithContext(
+			ErrCodeAuthFailed,
+			"Invalid credentials",
+			http.StatusUnauthorized,
+			"service",
+			operation,
+			err,
+		).WithDetail("email", email)
 
 	case strings.Contains(errMsg, "account disabled"):
-		return &APIError{
-			Code:       ErrCodeAccessDenied,
-			Message:    "Account disabled",
-			HTTPStatus: http.StatusForbidden,
-		}
+		return NewAPIErrorWithContext(
+			ErrCodeAccessDenied,
+			"Account disabled",
+			http.StatusForbidden,
+			"service",
+			operation,
+			err,
+		).WithDetail("email", email)
 
 	case strings.Contains(errMsg, "account locked"):
-		return &APIError{
-			Code:       ErrCodeAccessDenied,
-			Message:    "Account locked",
-			HTTPStatus: http.StatusForbidden,
-		}
+		return NewAPIErrorWithContext(
+			ErrCodeAccessDenied,
+			"Account locked",
+			http.StatusForbidden,
+			"service",
+			operation,
+			err,
+		).WithDetail("email", email)
 
 	case strings.Contains(errMsg, "already exists"):
-		return &APIError{
-			Code:       ErrCodeDuplicateEmail,
-			Message:    "Email already registered",
-			HTTPStatus: http.StatusConflict,
-		}
+		return NewAPIErrorWithContext(
+			ErrCodeDuplicateEmail,
+			"Email already registered",
+			http.StatusConflict,
+			"service",
+			operation,
+			err,
+		).WithDetail("email", email)
 
 	case strings.Contains(errMsg, "connection refused") || strings.Contains(errMsg, "unavailable"):
-		return &APIError{
-			Code:       ErrCodeServiceError,
-			Message:    "Service temporarily unavailable",
-			HTTPStatus: http.StatusServiceUnavailable,
-		}
+		return NewAPIErrorWithContext(
+			ErrCodeServiceError,
+			"Service temporarily unavailable",
+			http.StatusServiceUnavailable,
+			"service",
+			operation,
+			err,
+		)
 
 	default:
-		return &APIError{
-			Code:       ErrCodeInternalError,
-			Message:    "Internal server error",
-			HTTPStatus: http.StatusInternalServerError,
-		}
+		return NewAPIErrorWithContext(
+			ErrCodeInternalError,
+			"Internal server error",
+			http.StatusInternalServerError,
+			"service",
+			operation,
+			err,
+		)
 	}
 }
 
@@ -569,6 +620,7 @@ func NewErrorResponse(code, message string) ErrorResponse {
 	return ErrorResponse{
 		Code:    code,
 		Message: message,
+		Details: make(map[string]interface{}),
 	}
 }
 

@@ -3,9 +3,10 @@ package account_unit_test
 
 
 import (
+
 	"context"
 	"errors"
-	res "english-ai-full/internal/account" 
+	res "english-ai-full/internal/account/account_handler" 
 	"english-ai-full/internal/model"
 	pb "english-ai-full/internal/proto_qr/account"
 	"english-ai-full/utils"
@@ -53,7 +54,7 @@ func mockGenerateRefreshToken(user model.Account) (string, error) {
 }
 
 // Setup function to create handler with mocks
-func setupHandlerTest() (*res.Handler, *MockAccountServiceClient) {
+func setupHandlerTest() (*res.AccountHandler, *MockAccountServiceClient) {
 	mockClient := new(MockAccountServiceClient)
 	
 	// Create handler using the New function

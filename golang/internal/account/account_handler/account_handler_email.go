@@ -28,7 +28,7 @@ func (h *AccountHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "expired") {
-			utils.HandleError(w, errorcustom.NewInvalidTokenError("verification", "invalid or expired verification token"))
+			utils.HandleError(w, errorcustom.NewInvalidTokenError("verification", "invalid or expired verification token"), "verify_email")
 			return
 		}
 		log.Printf("Error verifying email: %v", err)
@@ -36,14 +36,14 @@ func (h *AccountHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 			errorcustom.ErrCodeServiceError,
 			"Email verification failed",
 			http.StatusInternalServerError,
-		))
+		), "verify_email")
 		return
 	}
 
 	utils.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"success": res.Success,
 		"message": res.Message,
-	})
+	}, "verify_email")
 }
 
 // ResendVerification handles resend verification email requests
@@ -54,20 +54,20 @@ func (h *AccountHandler) ResendVerification(w http.ResponseWriter, r *http.Reque
 		Email string `json:"email" validate:"required,email"`
 	}
 
-	if err := utils.DecodeJSON(r.Body, &req); err != nil {
-		utils.HandleError(w, err)
+	if err := utils.DecodeJSON(r.Body, &req, "resend_verification", false); err != nil {
+		utils.HandleError(w, err, "resend_verification")
 		return
 	}
 
 	if err := h.validator.Struct(&req); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			utils.HandleValidationErrors(w, validationErrors)
+			utils.HandleValidationErrors(w, validationErrors, "resend_verification")
 		} else {
 			utils.HandleError(w, errorcustom.NewAPIError(
 				errorcustom.ErrCodeValidationError,
 				"Validation failed",
 				http.StatusBadRequest,
-			))
+			), "resend_verification")
 		}
 		return
 	}
@@ -79,7 +79,7 @@ func (h *AccountHandler) ResendVerification(w http.ResponseWriter, r *http.Reque
 		if strings.Contains(err.Error(), "user not found") {
 			utils.RespondWithJSON(w, http.StatusOK, map[string]string{
 				"message": "If the email exists and is unverified, a verification email has been sent",
-			})
+			}, "resend_verification")
 			return
 		}
 		log.Printf("Error resending verification: %v", err)
@@ -87,16 +87,15 @@ func (h *AccountHandler) ResendVerification(w http.ResponseWriter, r *http.Reque
 			errorcustom.ErrCodeServiceError,
 			"Failed to resend verification email",
 			http.StatusInternalServerError,
-		))
+		), "resend_verification")
 		return
 	}
 
 	utils.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"success": res.Success,
 		"message": res.Message,
-	})
+	}, "resend_verification")
 }
-
 
 func (h *AccountHandler) FindByEmail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -115,13 +114,13 @@ func (h *AccountHandler) FindByEmail(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.validator.Struct(&req); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			utils.HandleValidationErrors(w, validationErrors)
+			utils.HandleValidationErrors(w, validationErrors, "find_by_email")
 		} else {
 			utils.HandleError(w, errorcustom.NewAPIError(
 				errorcustom.ErrCodeValidationError,
 				"Invalid email format",
 				http.StatusBadRequest,
-			))
+			), "find_by_email")
 		}
 		return
 	}
@@ -135,7 +134,7 @@ func (h *AccountHandler) FindByEmail(w http.ResponseWriter, r *http.Request) {
 				errorcustom.ErrCodeNotFound,
 				"User not found with provided email",
 				http.StatusNotFound,
-			))
+			), "find_by_email")
 			return
 		}
 		log.Printf("Find user by email error: %v", err)
@@ -143,7 +142,7 @@ func (h *AccountHandler) FindByEmail(w http.ResponseWriter, r *http.Request) {
 			errorcustom.ErrCodeServiceError,
 			"Failed to retrieve user",
 			http.StatusInternalServerError,
-		))
+		), "find_by_email")
 		return
 	}
 
@@ -158,5 +157,5 @@ func (h *AccountHandler) FindByEmail(w http.ResponseWriter, r *http.Request) {
 		OwnerID:   res.Account.OwnerId,
 		CreatedAt: res.Account.CreatedAt.AsTime(),
 		UpdatedAt: res.Account.UpdatedAt.AsTime(),
-	})
+	}, "find_by_email")
 }

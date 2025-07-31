@@ -12,7 +12,6 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// UpdateAccountStatus handles account status updates
 func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -26,20 +25,20 @@ func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Requ
 		Status string `json:"status" validate:"required,oneof=active inactive suspended pending"`
 	}
 
-	if err := utils.DecodeJSON(r.Body, &req); err != nil {
-		utils.HandleError(w, err)
+	if err := utils.DecodeJSON(r.Body, &req, "update_account_status", false); err != nil {
+		utils.HandleError(w, err, "update_account_status")
 		return
 	}
 
 	if err := h.validator.Struct(&req); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			utils.HandleValidationErrors(w, validationErrors)
+			utils.HandleValidationErrors(w, validationErrors, "update_account_status")
 		} else {
 			utils.HandleError(w, errorcustom.NewAPIError(
 				errorcustom.ErrCodeValidationError,
 				"Validation failed",
 				http.StatusBadRequest,
-			))
+			), "update_account_status")
 		}
 		return
 	}
@@ -50,7 +49,7 @@ func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Requ
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			utils.HandleError(w, errorcustom.NewUserNotFoundByID(id))
+			utils.HandleError(w, errorcustom.NewUserNotFoundByID(id), "update_account_status")
 			return
 		}
 		log.Printf("Error updating account status: %v", err)
@@ -58,7 +57,7 @@ func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Requ
 			errorcustom.ErrCodeServiceError,
 			"Failed to update account status",
 			http.StatusInternalServerError,
-		))
+		), "update_account_status")
 		return
 	}
 
@@ -70,5 +69,5 @@ func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Requ
 	utils.RespondWithJSON(w, status, map[string]interface{}{
 		"success": res.Success,
 		"message": res.Message,
-	})
+	}, "update_account_status")
 }
