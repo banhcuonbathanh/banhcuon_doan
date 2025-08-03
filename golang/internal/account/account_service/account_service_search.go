@@ -259,3 +259,129 @@ func (s *ServiceStruct) SearchUsers(ctx context.Context, req *account.SearchUser
 		Pagination: paginationInfo,
 	}, nil
 }
+
+
+// GetUserProfile handles user profile requests (current user or specific user)
+func (s *ServiceStruct) GetUserProfile(ctx context.Context, req *account.GetUserProfileReq) (*account.AccountRes, error) {
+	s.logServiceCall("GetUserProfile", map[string]interface{}{
+		"user_id":    req.UserId,
+		"request_id": req.RequestId, // if available
+	})
+
+	// If no user ID provided, this should get current user from context
+	// You'll need to implement getCurrentUserFromContext helper
+	var targetUserID int64
+	if req.UserId != 0 {
+		targetUserID = req.UserId
+	} else {
+		// Get current user ID from context (JWT token, session, etc.)
+		currentUserID, err := s.getCurrentUserFromContext(ctx)
+		if err != nil {
+			return nil, s.handleServiceError("GetUserProfile", "Failed to get current user from context", err, false)
+		}
+		targetUserID = currentUserID
+	}
+
+	// Find user by ID
+	user, err := s.userRepo.FindByID(ctx, targetUserID)
+	if err != nil {
+		return nil, s.handleRepositoryError(err, "find_user_profile", "users", map[string]interface{}{
+			"user_id": targetUserID,
+		})
+	}
+
+	return &account.AccountRes{
+		Account: s.modelToProto(user),
+	}, nil
+}
+
+
+
+// GetUsersByBranch handles getting users by branch with pagination
+func (s *ServiceStruct) GetUsersByBranch(ctx context.Context, req *account.GetUsersByBranchReq) (*account.AccountList, error) {
+	s.logServiceCall("GetUsersByBranch", map[string]interface{}{
+		"branch_id": req.BranchId,
+		"page":      req.Pagination.Page,
+		"pageSize":  req.Pagination.PageSize,
+	})
+
+	// Validate and normalize pagination parameters
+	page, pageSize, err := s.validatePaginationParams(
+		req.Pagination.Page,
+		req.Pagination.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get users by branch with pagination
+	users, totalCount, err := s.userRepo.FindByBranchIDWithPagination(ctx, req.BranchId, page, pageSize)
+	if err != nil {
+		return nil, s.handleRepositoryError(err, "find_users_by_branch", "users", map[string]interface{}{
+			"branch_id": req.BranchId,
+			"page":      page,
+			"pageSize":  pageSize,
+		})
+	}
+
+	// Convert to protobuf format
+	accounts := s.modelsToProtoAccounts(users)
+
+	// Create pagination info
+	paginationInfo := s.createPaginationInfo(page, pageSize, totalCount)
+
+	return &account.AccountList{
+		Accounts:   accounts,
+		Total:      int32(totalCount),
+		Pagination: paginationInfo,
+	}, nil
+}
+
+
+
+// getCurrentUserFromContext extracts current user ID from context
+// This implementation depends on your authentication middleware
+func (s *ServiceStruct) getCurrentUserFromContext(ctx context.Context) (int64, error) {
+	// Option 1: If you store user ID directly in context
+	if userID := ctx.Value("user_id"); userID != nil {
+		if id, ok := userID.(int64); ok {
+			return id, nil
+		}
+		if id, ok := userID.(int); ok {
+			return int64(id), nil
+		}
+	}
+
+	// Option 2: If you store user claims/token in context
+	if claims := ctx.Value("user_claims"); claims != nil {
+		// Extract user ID from JWT claims
+		// This depends on your JWT token structure
+		// Example implementation:
+		/*
+		if userClaims, ok := claims.(*TokenClaims); ok {
+			return userClaims.UserID, nil
+		}
+		*/
+	}
+
+	// Option 3: If you store user object in context
+	if user := ctx.Value("user"); user != nil {
+		if userObj, ok := user.(*model.Account); ok {
+			return userObj.ID, nil
+		}
+	}
+
+	return 0, errorcustom.NewAuthenticationError("No user found in context")
+}
+
+// ========================================
+// Update account_service_main.go - Enhanced GetUsersByBranch
+// ========================================
+
+// Replace existing GetUsersByBranch business logic method with:
+// GetUsersByBranchSimple - simplified version for internal use
+func (s *ServiceStruct) GetUsersByBranchSimple(ctx context.Context, branchID int64) ([]model.Account, error) {
+	return s.userRepo.FindByBranchID(ctx, branchID)
+}
+
+
