@@ -27,6 +27,7 @@ type AccountRepositoryInterface interface {
 	
 	// Enhanced search and filtering
 	FindByBranchID(ctx context.Context, branchID int64) ([]model.Account, error)
+	FindByBranchWithPagination(ctx context.Context, branchID int64, offset, limit int) ([]model.Account, int64, error)
 	FindByRole(ctx context.Context, role string) ([]model.Account, error)
 	FindByOwnerID(ctx context.Context, ownerID int64) ([]model.Account, error)
 
@@ -81,7 +82,10 @@ SearchUsers(ctx context.Context, req *account.SearchUsersReq) (*account.SearchUs
 	// Additional business logic methods
 	ValidateUserCredentials(ctx context.Context, email, password string) (model.Account, error)
 	DeactivateUser(ctx context.Context, userID int64) error
-	GetUsersByBranch(ctx context.Context, branchID int64) ([]model.Account, error)
+
+GetUsersByBranch(ctx context.Context, req *account.FindByBranchReq) (*account.AccountList, error)
+
+
 }
 
 // ===== HANDLER LAYER INTERFACE =====

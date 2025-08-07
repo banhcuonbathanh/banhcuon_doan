@@ -6,7 +6,7 @@ import (
 	_ "english-ai-full/docs" // Add this line at the top of imports
 	"english-ai-full/internal/account/account_handler" // Add this import
 	"context"
-
+"english-ai-full/utils/config" 
 	"english-ai-full/internal/branch"
 	branchpb "english-ai-full/internal/proto_qr/branch"
 	"log"
@@ -21,7 +21,7 @@ import (
 	"english-ai-full/utils"
 
 
-	"github.com/swaggo/http-swagger"
+	// "github.com/swaggo/http-swagger"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/cors"
@@ -56,6 +56,17 @@ func main() {
 	}
 
 	r := chi.NewRouter()
+	// Initialize configuration manager
+		ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	configManager := utils_config.NewConfigManager()
+
+	// Load configuration - you can specify a config file path or leave empty for default paths
+	configPath := os.Getenv("CONFIG_PATH") // Optional: specify config file path via env var
+	config, err := configManager.Load(ctx, configPath)
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins: []string{
@@ -78,18 +89,17 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
-
 	// Use environment variable with a default value
-	if getEnvWithDefault("GO_ENV", "development") == "development" {
+	if config.Environment != utils_config.EnvProduction { // Use config instead of getEnvWithDefault
 		r.Use(debugMiddleware)
 	}
 
 	setupGlobalMiddleware(r, cfg)
 
-	// Add Swagger UI route
-	r.Get("/swagger/*", httpSwagger.Handler(
-		httpSwagger.URL("http://localhost:8888/swagger/doc.json"), // The url pointing to API definition
-	))
+	// // Add Swagger UI route
+	// r.Get("/swagger/*", httpSwagger.Handler(
+	// 	httpSwagger.URL("http://localhost:8888/swagger/doc.json"), // The url pointing to API definition
+	// ))
 
 	/**
 	python server

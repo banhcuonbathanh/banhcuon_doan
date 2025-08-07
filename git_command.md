@@ -1,6 +1,6 @@
 # Create feature branch
 
-git checkout -b account_handler_test
+git checkout -b config_8Au
 
 # Commit changes
 

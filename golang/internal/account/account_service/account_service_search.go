@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	errorcustom "english-ai-full/internal/error_custom"
+	"english-ai-full/internal/model"
 	"english-ai-full/internal/proto_qr/account"
 
 	pkgerrors "github.com/pkg/errors"
@@ -262,17 +263,15 @@ func (s *ServiceStruct) SearchUsers(ctx context.Context, req *account.SearchUser
 
 
 // GetUserProfile handles user profile requests (current user or specific user)
-func (s *ServiceStruct) GetUserProfile(ctx context.Context, req *account.GetUserProfileReq) (*account.AccountRes, error) {
+func (s *ServiceStruct) GetUserProfile(ctx context.Context, req *account.FindByIDReq) (*account.FindByIDRes, error) {
 	s.logServiceCall("GetUserProfile", map[string]interface{}{
-		"user_id":    req.UserId,
-		"request_id": req.RequestId, // if available
+		"user_id": req.Id,
 	})
 
-	// If no user ID provided, this should get current user from context
-	// You'll need to implement getCurrentUserFromContext helper
+	// If no user ID provided, get current user from context
 	var targetUserID int64
-	if req.UserId != 0 {
-		targetUserID = req.UserId
+	if req.Id != 0 {
+		targetUserID = req.Id
 	} else {
 		// Get current user ID from context (JWT token, session, etc.)
 		currentUserID, err := s.getCurrentUserFromContext(ctx)
@@ -290,50 +289,89 @@ func (s *ServiceStruct) GetUserProfile(ctx context.Context, req *account.GetUser
 		})
 	}
 
-	return &account.AccountRes{
+	return &account.FindByIDRes{
+		Account: s.modelToProto(user),
+	}, nil
+}
+
+// Alternative: GetCurrentUserProfile for getting current user only
+func (s *ServiceStruct) GetCurrentUserProfile(ctx context.Context, req *emptypb.Empty) (*account.FindByIDRes, error) {
+	s.logServiceCall("GetCurrentUserProfile", map[string]interface{}{})
+
+	// Get current user ID from context (JWT token, session, etc.)
+	currentUserID, err := s.getCurrentUserFromContext(ctx)
+	if err != nil {
+		return nil, s.handleServiceError("GetCurrentUserProfile", "Failed to get current user from context", err, false)
+	}
+
+	// Find user by ID
+	user, err := s.userRepo.FindByID(ctx, currentUserID)
+	if err != nil {
+		return nil, s.handleRepositoryError(err, "find_current_user_profile", "users", map[string]interface{}{
+			"user_id": currentUserID,
+		})
+	}
+
+	return &account.FindByIDRes{
 		Account: s.modelToProto(user),
 	}, nil
 }
 
 
 
-// GetUsersByBranch handles getting users by branch with pagination
-func (s *ServiceStruct) GetUsersByBranch(ctx context.Context, req *account.GetUsersByBranchReq) (*account.AccountList, error) {
+func (s *ServiceStruct) GetUsersByBranch(ctx context.Context, req *account.FindByBranchReq) (*account.AccountList, error) {
 	s.logServiceCall("GetUsersByBranch", map[string]interface{}{
 		"branch_id": req.BranchId,
 		"page":      req.Pagination.Page,
-		"pageSize":  req.Pagination.PageSize,
+		"page_size": req.Pagination.PageSize,
 	})
 
-	// Validate and normalize pagination parameters
-	page, pageSize, err := s.validatePaginationParams(
-		req.Pagination.Page,
-		req.Pagination.PageSize,
-	)
-	if err != nil {
-		return nil, err
+	// Set default pagination if not provided
+	page := int32(1)
+	pageSize := int32(10)
+	if req.Pagination != nil {
+		if req.Pagination.Page > 0 {
+			page = req.Pagination.Page
+		}
+		if req.Pagination.PageSize > 0 {
+			pageSize = req.Pagination.PageSize
+		}
 	}
 
-	// Get users by branch with pagination
-	users, totalCount, err := s.userRepo.FindByBranchIDWithPagination(ctx, req.BranchId, page, pageSize)
+	// Calculate offset for database query
+	offset := (page - 1) * pageSize
+
+	// Get users by branch ID with pagination
+	users, total, err := s.userRepo.FindByBranchWithPagination(ctx, req.BranchId, int(offset), int(pageSize))
 	if err != nil {
 		return nil, s.handleRepositoryError(err, "find_users_by_branch", "users", map[string]interface{}{
 			"branch_id": req.BranchId,
 			"page":      page,
-			"pageSize":  pageSize,
+			"page_size": pageSize,
 		})
 	}
 
-	// Convert to protobuf format
-	accounts := s.modelsToProtoAccounts(users)
+	// Convert model accounts to protobuf accounts
+	var protoAccounts []*account.Account
+	for _, user := range users {
+		protoAccounts = append(protoAccounts, s.modelToProto(user))
+	}
 
-	// Create pagination info
-	paginationInfo := s.createPaginationInfo(page, pageSize, totalCount)
+	// Calculate pagination info
+	totalPages := int32((total + int64(pageSize) - 1) / int64(pageSize))
+	hasNext := page < totalPages
+	hasPrev := page > 1
 
 	return &account.AccountList{
-		Accounts:   accounts,
-		Total:      int32(totalCount),
-		Pagination: paginationInfo,
+		Accounts: protoAccounts,
+		Total:    int32(total),
+		Pagination: &account.PaginationInfo{
+			Page:       page,
+			PageSize:   pageSize,
+			TotalPages: totalPages,
+			HasNext:    hasNext,
+			HasPrev:    hasPrev,
+		},
 	}, nil
 }
 

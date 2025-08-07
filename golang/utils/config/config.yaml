@@ -1,0 +1,106 @@
+# Development configuration
+environment: development
+app_name: "English AI"
+version: "1.0.0"
+debug: true
+
+server:
+  address: "localhost"
+  port: 8888
+  grpc_address: "localhost" 
+  grpc_port: 50051
+  read_timeout: "30s"
+  write_timeout: "30s"
+  idle_timeout: "120s"
+  tls_enabled: false
+
+database:
+  host: "localhost"
+  port: 5432
+  name: "english_ai_dev"
+  user: "postgres"
+  # password set via environment variable: ENGLISH_AI_DATABASE_PASSWORD
+  ssl_mode: "disable"
+  max_connections: 25
+  max_idle_conns: 10
+  conn_max_lifetime: "1h"
+  conn_max_idle_time: "10m"
+
+security:
+  max_login_attempts: 5
+  account_lockout_minutes: 15
+  session_timeout: "24h"
+  csrf_enabled: true
+  cors_enabled: true
+  allowed_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8080"
+    - "http://localhost:8888"
+  require_https: false
+
+password:
+  min_length: 8
+  max_length: 128
+  require_uppercase: true
+  require_lowercase: true
+  require_numbers: true
+  require_special: true
+  special_chars: "!@#$%^&*()_+-=[]{}|;:,.<>?/"
+
+pagination:
+  default_size: 10
+  max_size: 100
+  limit: 1000
+
+jwt:
+  # secret_key set via environment variable: ENGLISH_AI_JWT_SECRET_KEY
+  expiration_hours: 24
+  refresh_token_expiration_days: 30
+  issuer: "english-ai-dev"
+  algorithm: "HS256"
+  refresh_threshold: "2h"
+
+email:
+  verification_enabled: true
+  verification_expiry_hours: 24
+  require_verification: false
+  smtp_host: "localhost"
+  smtp_port: 1025
+  from_address: "noreply@english-ai.dev"
+  from_name: "English AI Development"
+  templates:
+    verification_template: "./templates/email/verification.html"
+    welcome_template: "./templates/email/welcome.html"
+    reset_password_template: "./templates/email/reset_password.html"
+
+rate_limit:
+  enabled: true
+  per_minute: 60
+  per_hour: 3600
+  burst_size: 10
+  window_size: "1m"
+
+external_apis:
+  anthropic:
+    # api_key set via environment variable: ENGLISH_AI_EXTERNAL_APIS_ANTHROPIC_API_KEY
+    api_url: "https://api.anthropic.com"
+    timeout: "30s"
+    max_retries: 3
+  quan_an:
+    address: "localhost:8081"
+    timeout: "10s"
+    max_retries: 3
+
+logging:
+  level: "debug"
+  format: "text"
+  output: "stdout"
+  max_size: 100
+  max_backups: 3
+  max_age: 28
+  compress: false
+
+valid_roles:
+  - "admin"
+  - "user"
+  - "manager"

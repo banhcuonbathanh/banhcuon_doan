@@ -696,9 +696,56 @@ func (s *ServiceStruct) DeactivateUser(ctx context.Context, userID int64) error 
 	return s.userRepo.UpdateAccountStatus(ctx, userID, "inactive")
 }
 
-func (s *ServiceStruct) GetUsersByBranch(ctx context.Context, branchID int64) ([]model.Account, error) {
-	return s.userRepo.FindByBranchID(ctx, branchID)
+
+func (s *ServiceStruct) GetUsersByBranch(ctx context.Context, req *account.FindByBranchReq) (*account.AccountList, error) {
+
+
+	// Set default pagination if not provided
+	page := int32(1)
+	pageSize := int32(10)
+	if req.Pagination != nil {
+		if req.Pagination.Page > 0 {
+			page = req.Pagination.Page
+		}
+		if req.Pagination.PageSize > 0 {
+			pageSize = req.Pagination.PageSize
+		}
+	}
+
+	// Calculate offset for database query
+	offset := (page - 1) * pageSize
+
+	// Get users by branch ID with pagination
+	users, total, err := s.userRepo.FindByBranchWithPagination(ctx, req.BranchId, int(offset), int(pageSize))
+	if err != nil {
+	return nil, errors.New("invalid refresh token")
+	}
+
+	// Convert model accounts to protobuf accounts
+	var protoAccounts []*account.Account
+	for _, user := range users {
+		protoAccounts = append(protoAccounts, s.modelToProto(user))
+	}
+
+	// Calculate pagination info
+	totalPages := int32((total + int64(pageSize) - 1) / int64(pageSize))
+	hasNext := page < totalPages
+	hasPrev := page > 1
+
+	return &account.AccountList{
+		Accounts: protoAccounts,
+		Total:    int32(total),
+		Pagination: &account.PaginationInfo{
+			Page:       page,
+			PageSize:   pageSize,
+			TotalPages: totalPages,
+			HasNext:    hasNext,
+			HasPrev:    hasPrev,
+		},
+	}, nil
 }
+
+
 
 // Helper method to convert model.Account to protobuf Account
 func (s *ServiceStruct) modelToProto(user model.Account) *account.Account {

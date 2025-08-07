@@ -385,92 +385,7 @@ func (r *Repository) SearchUsers(ctx context.Context, query, role string, branch
 	
 	return users, totalCount, nil
 }
-// func (r *Repository) SearchUsers(ctx context.Context, query, role string, branchId int64, statusFilter []string, page, pageSize int32, sortBy, sortOrder string) (users []account.Account, totalCount int64, err error) {
-// 	// Build query modifiers
-// 	var queryMods []qm.QueryMod
-	
-// 	// Always exclude soft deleted records
-// 	queryMods = append(queryMods, orm.AccountWhere.DeletedAt.IsNull())
-	
-// 	// Add search query filter
-// 	if query != "" {
-// 		searchPattern := "%" + strings.ToLower(query) + "%"
-// 		queryMods = append(queryMods, qm.Where("(LOWER(name) LIKE ? OR LOWER(email) LIKE ?)", searchPattern, searchPattern))
-// 	}
-	
-// 	// Add role filter
-// 	if role != "" {
-// 		queryMods = append(queryMods, orm.AccountWhere.Role.EQ(role))
-// 	}
-	
-// 	// Add branch filter
-// 	if branchId > 0 {
-// 		queryMods = append(queryMods, orm.AccountWhere.BranchID.EQ(null.Int64{Int64: branchId, Valid: true}))
-// 	}
-	
-// 	// Add status filter (if you have a status column)
-// 	if len(statusFilter) > 0 {
-// 		// Assuming you have a status column in your accounts table
-// 		// queryMods = append(queryMods, qm.WhereIn("status IN ?", statusFilter))
-// 		// For now, we'll skip this since the schema doesn't show a status column
-// 	}
-	
-// 	// Get total count first
-// 	countQueryMods := make([]qm.QueryMod, len(queryMods))
-// 	copy(countQueryMods, queryMods)
-	
-// 	totalCount, err = orm.Accounts(countQueryMods...).Count(ctx, r.db)
-// 	if err != nil {
-// 		return nil, 0, pkgerrors.WithStack(err)
-// 	}
-	
-// 	// Add sorting
-// 	if sortBy == "" {
-// 		sortBy = "created_at"
-// 	}
-// 	if sortOrder == "" {
-// 		sortOrder = "DESC"
-// 	}
-	
 
-
-	
-// 	// Add pagination
-// 	if page < 1 {
-// 		page = 1
-// 	}
-// 	if pageSize < 1 {
-// 		pageSize = 10
-// 	}
-	
-// 	offset := (page - 1) * pageSize
-// 	queryMods = append(queryMods, qm.Limit(int(pageSize)), qm.Offset(int(offset)))
-	
-// 	// Execute the query
-// 	ormUsers, err := orm.Accounts(queryMods...).All(ctx, r.db)
-// 	if err != nil {
-// 		return nil, 0, pkgerrors.WithStack(err)
-// 	}
-	
-// 	// Convert ORM models to proto models
-// 	users = make([]account.Account, len(ormUsers))
-// 	for i, user := range ormUsers {
-// 		users[i] = account.Account{
-// 			Id:        user.ID,
-// 			BranchId:  user.BranchID.Int64,
-// 			Name:      user.Name,
-// 			Email:     user.Email,
-// 			Avatar:    user.Avatar.String,
-// 			Title:     user.Title.String,
-// 			Role:      user.Role,
-// 			OwnerId:   user.OwnerID.Int64,
-// 			CreatedAt: timestamppb.New(user.CreatedAt.Time),
-// 			UpdatedAt: timestamppb.New(user.UpdatedAt.Time),
-// 		}
-// 	}
-	
-// 	return users, totalCount, nil
-// }
 
 func (r *Repository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
 	exists, err := orm.Accounts(
@@ -730,3 +645,60 @@ func (r *Repository) ormToModel(user *orm.Account) model.Account {
 		UpdatedAt: user.UpdatedAt.Time,
 	}
 }
+
+//. new wewewewew start
+
+
+// Add these methods to your Repository struct
+
+
+
+
+func (r *Repository) FindByBranchWithPagination(ctx context.Context, branchID int64, offset, limit int) ([]model.Account, int64, error) {
+	// Get total count
+	total, err := orm.Accounts(qm.Where("branch_id = ?", branchID)).Count(ctx, r.db)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated results
+	users, err := orm.Accounts(
+		qm.Where("branch_id = ?", branchID),
+		qm.Offset(offset),
+		qm.Limit(limit),
+		qm.OrderBy("created_at DESC"),
+	).All(ctx, r.db)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var accounts []model.Account
+	for _, user := range users {
+		accounts = append(accounts, model.Account{
+			ID:        user.ID,
+			BranchID:  user.BranchID.Int64,
+			Name:      user.Name,
+			Email:     user.Email,
+			Password:  user.Password,
+			Avatar:    user.Avatar.String,
+			Title:     user.Title.String,
+			Role:      model.Role(user.Role),
+			OwnerID:   user.OwnerID.Int64,
+			CreatedAt: user.CreatedAt.Time,
+			UpdatedAt: user.UpdatedAt.Time,
+		})
+	}
+
+	return accounts, total, nil
+}
+
+
+
+
+// Note: The following methods require additional tables for token storage
+// You'll need to create tables for reset_tokens and verification_tokens
+
+
+
+
+// eweweweewew end

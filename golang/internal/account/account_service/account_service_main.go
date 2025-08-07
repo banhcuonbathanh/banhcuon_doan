@@ -88,9 +88,6 @@ func (s *ServiceStruct) DeactivateUser(ctx context.Context, userID int64) error 
 	return s.userRepo.UpdateAccountStatus(ctx, userID, "inactive")
 }
 
-func (s *ServiceStruct) GetUsersByBranch(ctx context.Context, branchID int64) ([]model.Account, error) {
-	return s.userRepo.FindByBranchID(ctx, branchID)
-}
 
 // Compile-time check to ensure ServiceStruct implements AccountServiceInterface
 var _ account_interface.AccountServiceInterface = (*ServiceStruct)(nil)

@@ -10,7 +10,7 @@ import (
 	"english-ai-full/internal/model"
 	"english-ai-full/internal/proto_qr/account"
 
-	
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // BaseServiceStruct provides common utilities and methods for account service operations
@@ -77,21 +77,21 @@ func (s *ServiceStruct) modelsToProtoAccounts(users []model.Account) []*account.
 }
 
 // searchResultsToProtoAccounts converts search results to protobuf accounts
-func (s *ServiceStruct) searchResultsToProtoAccounts(users []model.SearchResult) []*account.Account {
+func (s *ServiceStruct) searchResultsToProtoAccounts(users []model.Account) []*account.Account {
 	var accounts []*account.Account
 	for i := range users {
 		user := &users[i] // Get pointer to avoid copying
 		accounts = append(accounts, &account.Account{
-			Id:        user.Id,
-			BranchId:  user.BranchId,
+			Id:        user.ID,        // Note: changed from user.Id to user.ID
+			BranchId:  user.BranchID,  // Note: changed from user.BranchId to user.BranchID
 			Name:      user.Name,
 			Email:     user.Email,
 			Avatar:    user.Avatar,
 			Title:     user.Title,
-			Role:      user.Role,
-			OwnerId:   user.OwnerId,
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
+			Role:      string(user.Role),
+			OwnerId:   user.OwnerID,   // Note: changed from user.OwnerId to user.OwnerID
+			CreatedAt: timestamppb.New(user.CreatedAt),
+			UpdatedAt: timestamppb.New(user.UpdatedAt),
 		})
 	}
 	return accounts
