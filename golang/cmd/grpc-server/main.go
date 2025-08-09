@@ -3,7 +3,7 @@ package main
 import (
 	"english-ai-full/internal/account"
 	"english-ai-full/internal/branch"
-	"fmt"
+
 	"log"
 	"net"
 	"os"
@@ -83,14 +83,3 @@ func getEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
-// Helper function to construct database URL from environment variables
-func constructDatabaseURL() string {
-	host := getEnvOrDefault("DB_HOST", "localhost")
-	port := getEnvOrDefault("DB_PORT", "5432")
-	user := getEnvOrDefault("DB_USER", "postgres")
-	password := getEnvOrDefault("DB_PASSWORD", "")
-	dbname := getEnvOrDefault("DB_NAME", "restaurant")
-	
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
-		user, password, host, port, dbname)
-}
