@@ -78,7 +78,7 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	dbConn, err := db.Connect(cfg.DatabaseURL)
+	dbConn, err := db.ConnectDataBase(cfg.DatabaseURL)
 	if err != nil {
 		defer dbConn.Close()
 		log.Fatalf("Failed to connect to database: %v", err)
