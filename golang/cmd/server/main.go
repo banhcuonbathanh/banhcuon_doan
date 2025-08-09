@@ -6,6 +6,7 @@ import (
 	_ "english-ai-full/docs" // Add this line at the top of imports
 	"english-ai-full/internal/account/account_handler" // Add this import
 	"context"
+	"fmt"
 
 	"english-ai-full/internal/branch"
 	branchpb "english-ai-full/internal/proto_qr/branch"
@@ -18,8 +19,7 @@ import (
 	pb "english-ai-full/internal/proto_qr/account"
 	ws2 "english-ai-full/internal/ws2"
 	"english-ai-full/token"
-	"english-ai-full/utils"
-
+	"english-ai-full/utils/config"
 
 	"github.com/swaggo/http-swagger"
 
@@ -31,12 +31,27 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-
 func main() {
-	cfg, err := utils.LoadServer()
+	// Initialize configuration using the new system
+	configPath := getEnvWithDefault("CONFIG_PATH", "./config.yaml")
+	err := utils_config.InitializeConfig(configPath)
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		log.Printf("Warning: Failed to load config file: %v", err)
+		log.Println("Continuing with environment variables and defaults...")
+		
+		// Initialize with empty path to use defaults and environment variables
+		err = utils_config.InitializeConfig("")
+		if err != nil {
+			log.Fatalf("Failed to initialize config: %v", err)
+		}
 	}
+
+	// Get the configuration
+	cfg := utils_config.GetConfig()
+	if cfg == nil {
+		log.Fatalf("Configuration is nil")
+	}
+
 	envflag.Parse()
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -46,7 +61,7 @@ func main() {
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins: []string{
-			cfg.QuanAnAddress, 
+			cfg.ExternalAPIs.QuanAn.Address, 
 			"http://localhost:*",
 			"http://localhost:8888",
 			"http://localhost:8080",
@@ -67,15 +82,16 @@ func main() {
 	}))
 
 	// Use environment variable with a default value
-	if getEnvWithDefault("GO_ENV", "development") == "development" {
+	if cfg.Environment == "development" {
 		r.Use(debugMiddleware)
 	}
 
 	setupGlobalMiddleware(r, cfg)
 
-	// Add Swagger UI route
+	// Add Swagger UI route - construct the URL properly
+	swaggerURL := fmt.Sprintf("http://%s:%d/swagger/doc.json", cfg.Server.Address, cfg.Server.Port)
 	r.Get("/swagger/*", httpSwagger.Handler(
-		httpSwagger.URL("http://localhost:8888/swagger/doc.json"), // The url pointing to API definition
+		httpSwagger.URL(swaggerURL), // The url pointing to API definition
 	))
 
 	/**
@@ -87,9 +103,12 @@ func main() {
 	}
 	defer pythonConn.Close()
 
+	// Construct gRPC address properly
+	grpcAddress := fmt.Sprintf("%s:%d", cfg.Server.GRPCAddress, cfg.Server.GRPCPort)
+	
 	conn, err := grpc.DialContext(
 		context.Background(),
-		cfg.GRPCAddress,
+		grpcAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -97,7 +116,7 @@ func main() {
 	}
 	defer conn.Close()
 	log.Println("Connection State to GRPC Server: ", conn.GetState())
-	log.Println("Calling to GRPC Server: ", cfg.GRPCAddress)
+	log.Println("Calling to GRPC Server: ", grpcAddress)
 
 	// account start
 	// In your main.go or wherever you're setting up routes
@@ -112,12 +131,12 @@ func main() {
 
 	// websocket
 	//set_client := pb_set.NewSetServiceClient(conn)
-	//set_hdl := set.NewSetHandler(set_client, cfg.JwtSecret)
+	//set_hdl := set.NewSetHandler(set_client, cfg.JWT.SecretKey)
 	//set.RegisterSetRoutes(r, set_hdl)
 
 	// dish
 	//dish_client := pb_dish.NewDishServiceClient(conn)
-	//dish_hdl := dish.NewDishHandler(dish_client, cfg.JwtSecret)
+	//dish_hdl := dish.NewDishHandler(dish_client, cfg.JWT.SecretKey)
 	//dish.RegisterDishRoutes(r, dish_hdl)
 
 	// table
@@ -127,17 +146,17 @@ func main() {
 
 	// guest
 	//guests_client := pb_guests.NewGuestServiceClient(conn)
-	//guests_hdl := guests.NewGuestHandler(guests_client, cfg.JwtSecret)
+	//guests_hdl := guests.NewGuestHandler(guests_client, cfg.JWT.SecretKey)
 	//guests.RegisterGuestRoutes(r, guests_hdl)
 
 	// order
 	//order_client := pb_order.NewOrderServiceClient(conn)
-	//order_hdl := order.NewOrderHandler(order_client, cfg.JwtSecret)
+	//order_hdl := order.NewOrderHandler(order_client, cfg.JWT.SecretKey)
 	//order.RegisterOrderRoutes(r, order_hdl)
 
 	// delivery
 	//delivery_client := pb_delivery.NewDeliveryServiceClient(conn)
-	//delivery_hdl := delivery.NewDeliveryHandler(delivery_client, cfg.JwtSecret)
+	//delivery_hdl := delivery.NewDeliveryHandler(delivery_client, cfg.JWT.SecretKey)
 	//delivery.RegisterDeliveryRoutes(r, delivery_hdl)
 
 	//SetupWs2(r, order_hdl, delivery_hdl, cfg)
@@ -161,18 +180,20 @@ func main() {
 	//	jpeg.Encode(w, img, nil)
 	//})
 	//
-	//hdl_image := image_upload.NewImageHandler(cfg.JwtSecret)
+	//hdl_image := image_upload.NewImageHandler(cfg.JWT.SecretKey)
 	//
 	//image_upload.RegisterImageRoutes(r, hdl_image)
 
-	Start(cfg.ServerAddress, r)
+	// Construct server address properly
+	serverAddress := fmt.Sprintf(":%d", cfg.Server.Port)
+	Start(serverAddress, r)
 }
 
-func setupGlobalMiddleware(r *chi.Mux, cfg *utils.Config) {
+func setupGlobalMiddleware(r *chi.Mux, cfg *utils_config.Config) {
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Set CORS headers for every response
-			w.Header().Set("Access-Control-Allow-Origin", cfg.QuanAnAddress)
+			w.Header().Set("Access-Control-Allow-Origin", cfg.ExternalAPIs.QuanAn.Address)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-CSRF-Token, X-Table-Token")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -203,11 +224,11 @@ func getEnvWithDefault(key, defaultValue string) string {
 	return value
 }
 
-func SetupWs2(r chi.Router, orderHandler *order.OrderHandlerController, deliveryHandler *delivery.DeliveryHandlerController, cfg *utils.Config) {
+func SetupWs2(r chi.Router, orderHandler *order.OrderHandlerController, deliveryHandler *delivery.DeliveryHandlerController, cfg *utils_config.Config) {
 	log.Println("golang/cmd/server/main.go")
 
 	// Initialize the JWT token maker
-	tokenMaker := token.NewJWTMaker(cfg.JwtSecret)
+	tokenMaker := token.NewJWTMaker(cfg.JWT.SecretKey)
 
 	// Create message handlers
 	orderMsgHandler := ws2.NewOrderMessageHandler(orderHandler)
