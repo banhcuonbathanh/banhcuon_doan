@@ -1,81 +1,80 @@
+// Add this to your db package or create a new file: golang/internal/db/connection.go
 package db
 
 import (
 	"database/sql"
 	"fmt"
-
-	utils_config "english-ai-full/utils/config"
-
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/lib/pq"
+	"os"
 )
 
-// ConnectDataBase connects to database using the new config system
+// ConnectDataBase connects to the database using environment variables
 func ConnectDataBase() (*sql.DB, error) {
-	// Use the new config system
-	config := utils_config.GetConfig()
-	if config == nil {
-		// If config is not initialized, try to load it
-		if err := utils_config.InitializeConfig(""); err != nil {
-			return nil, fmt.Errorf("failed to initialize config: %v", err)
-		}
-		config = utils_config.GetConfig()
+	// Get database connection details from environment variables
+	host := getEnvOrDefault("DB_HOST", "localhost")
+	port := getEnvOrDefault("DB_PORT", "5432")
+	user := getEnvOrDefault("DB_USER", "postgres")
+	password := getEnvOrDefault("DB_PASSWORD", "")
+	dbname := getEnvOrDefault("DB_NAME", "restaurant")
+	
+	// Construct connection string
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
+	
+	// Alternative: Use DATABASE_URL if provided
+	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
+		connStr = dbURL
 	}
-
-	// Use the database URL from config
-	databaseURL := config.Database.URL
-	if databaseURL == "" {
-		return nil, fmt.Errorf("database URL is not configured")
-	}
-
-	db, err := sql.Open("postgres", databaseURL)
+	
+	// Open database connection
+	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return nil, fmt.Errorf("unable to open database connection: %v", err)
+		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
-
+	
 	// Test the connection
 	if err := db.Ping(); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("unable to ping database: %v", err)
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
-
-	// Configure connection pool using config values
-	db.SetMaxOpenConns(config.Database.MaxConnections)
-	db.SetMaxIdleConns(config.Database.MaxIdleConns)
-	db.SetConnMaxLifetime(config.Database.ConnMaxLifetime)
-	db.SetConnMaxIdleTime(config.Database.ConnMaxIdleTime)
-
+	
+	fmt.Printf("Successfully connected to database at %s:%s\n", host, port)
 	return db, nil
 }
 
+// getEnvOrDefault gets environment variable or returns default value
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
 // ConnectDataBaseLegacy uses the legacy config system for backward compatibility
-func ConnectDataBaseLegacy() (*sql.DB, error) {
-	// Load legacy configuration
-	cfg, err := utils_config.LoadServerLegacy()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load legacy config: %v", err)
-	}
+// func ConnectDataBaseLegacy() (*sql.DB, error) {
+// 	// Load legacy configuration
+// 	cfg, err := utils_config.LoadServerLegacy()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to load legacy config: %v", err)
+// 	}
 
-	// Use the database URL from legacy config
-	databaseURL := cfg.DatabaseURL
-	if databaseURL == "" {
-		return nil, fmt.Errorf("database URL is not configured")
-	}
+// 	// Use the database URL from legacy config
+// 	databaseURL := cfg.DatabaseURL
+// 	if databaseURL == "" {
+// 		return nil, fmt.Errorf("database URL is not configured")
+// 	}
 
-	db, err := sql.Open("postgres", databaseURL)
-	if err != nil {
-		return nil, fmt.Errorf("unable to open database connection: %v", err)
-	}
+// 	db, err := sql.Open("postgres", databaseURL)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("unable to open database connection: %v", err)
+// 	}
 
-	// Test the connection
-	if err := db.Ping(); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("unable to ping database: %v", err)
-	}
+// 	// Test the connection
+// 	if err := db.Ping(); err != nil {
+// 		db.Close()
+// 		return nil, fmt.Errorf("unable to ping database: %v", err)
+// 	}
 
-	return db, nil
-}
+// 	return db, nil
+// }
 
 // ConnectDataBaseWithURL alternative function if you want to keep the parameter-based approach
 func ConnectDataBaseWithURL(databaseURL string) (*sql.DB, error) {
@@ -98,31 +97,31 @@ func ConnectDataBaseWithURL(databaseURL string) (*sql.DB, error) {
 }
 
 // ConnectDataBaseWithConfig connects using a provided config (useful for testing)
-func ConnectDataBaseWithConfig(config *utils_config.Config) (*sql.DB, error) {
-	if config == nil {
-		return nil, fmt.Errorf("config cannot be nil")
-	}
+// func ConnectDataBaseWithConfig(config *utils_config.Config) (*sql.DB, error) {
+// 	if config == nil {
+// 		return nil, fmt.Errorf("config cannot be nil")
+// 	}
 
-	databaseURL := config.Database.URL
-	if databaseURL == "" {
-		return nil, fmt.Errorf("database URL is not configured")
-	}
+// 	databaseURL := config.Database.URL
+// 	if databaseURL == "" {
+// 		return nil, fmt.Errorf("database URL is not configured")
+// 	}
 
-	db, err := sql.Open("postgres", databaseURL)
-	if err != nil {
-		return nil, fmt.Errorf("unable to open database connection: %v", err)
-	}
+// 	db, err := sql.Open("postgres", databaseURL)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("unable to open database connection: %v", err)
+// 	}
 
-	if err := db.Ping(); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("unable to ping database: %v", err)
-	}
+// 	if err := db.Ping(); err != nil {
+// 		db.Close()
+// 		return nil, fmt.Errorf("unable to ping database: %v", err)
+// 	}
 
-	// Configure connection pool using config values
-	db.SetMaxOpenConns(config.Database.MaxConnections)
-	db.SetMaxIdleConns(config.Database.MaxIdleConns)
-	db.SetConnMaxLifetime(config.Database.ConnMaxLifetime)
-	db.SetConnMaxIdleTime(config.Database.ConnMaxIdleTime)
+// 	// Configure connection pool using config values
+// 	db.SetMaxOpenConns(config.Database.MaxConnections)
+// 	db.SetMaxIdleConns(config.Database.MaxIdleConns)
+// 	db.SetConnMaxLifetime(config.Database.ConnMaxLifetime)
+// 	db.SetConnMaxIdleTime(config.Database.ConnMaxIdleTime)
 
-	return db, nil
-}
+// 	return db, nil
+// }

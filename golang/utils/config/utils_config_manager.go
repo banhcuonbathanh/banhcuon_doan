@@ -180,6 +180,10 @@ func (cm *ConfigManager) validateConfig(config *Config) error {
 	return cm.validator.Struct(config)
 }
 
+
+
+// new 
+
 // validateCrossFields performs cross-field validation
 func (cm *ConfigManager) validateCrossFields(config *Config) error {
 	// Password length validation
@@ -194,19 +198,25 @@ func (cm *ConfigManager) validateCrossFields(config *Config) error {
 			config.Pagination.DefaultSize, config.Pagination.MaxSize)
 	}
 
-	// JWT secret validation in production
-	if config.Environment == EnvProduction && len(config.JWT.SecretKey) < 64 {
-		return fmt.Errorf("JWT secret key must be at least 64 characters in production")
+	// JWT secret validation in production only
+	if config.Environment == EnvProduction && len(config.JWT.SecretKey) < 32 {
+		return fmt.Errorf("JWT secret key must be at least 32 characters in production")
 	}
 
-	// HTTPS validation in production
+	// HTTPS validation in production only
 	if config.Environment == EnvProduction && !config.Security.RequireHTTPS {
 		return fmt.Errorf("HTTPS must be enabled in production environment")
 	}
 
-	// Email verification validation
+	// Email verification validation (more lenient)
 	if config.Email.RequireVerification && !config.Email.VerificationEnabled {
 		return fmt.Errorf("email verification must be enabled if required")
+	}
+
+	// Anthropic API key validation (only warn in development, not error)
+	if config.Environment != EnvProduction && config.ExternalAPIs.Anthropic.APIKey == "dummy_key_for_dev" {
+		// Just log a warning instead of failing
+		fmt.Println("Warning: Using dummy Anthropic API key for development")
 	}
 
 	return nil

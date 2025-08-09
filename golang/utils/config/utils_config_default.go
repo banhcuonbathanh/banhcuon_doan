@@ -23,11 +23,14 @@ func (cm *ConfigManager) setDefaults() {
 	cm.viper.SetDefault("database.port", 5432)
 	cm.viper.SetDefault("database.name", "english_ai")
 	cm.viper.SetDefault("database.user", "postgres")
+	cm.viper.SetDefault("database.password", "")
 	cm.viper.SetDefault("database.ssl_mode", "disable")
 	cm.viper.SetDefault("database.max_connections", 25)
 	cm.viper.SetDefault("database.max_idle_conns", 10)
 	cm.viper.SetDefault("database.conn_max_lifetime", "1h")
 	cm.viper.SetDefault("database.conn_max_idle_time", "10m")
+	// Set a default database URL
+	cm.viper.SetDefault("database.url", "postgres://postgres:@localhost:5432/english_ai?sslmode=disable")
 
 	// Security settings
 	cm.viper.SetDefault("security.max_login_attempts", 5)
@@ -53,6 +56,7 @@ func (cm *ConfigManager) setDefaults() {
 	cm.viper.SetDefault("pagination.limit", 1000)
 
 	// JWT settings
+	cm.viper.SetDefault("jwt.secret_key", "kIOopC3C7wA8DQH6FOF2Jfn+UZP8Q02nGxr/EgFMOmo=")
 	cm.viper.SetDefault("jwt.expiration_hours", 24)
 	cm.viper.SetDefault("jwt.refresh_token_expiration_days", 30)
 	cm.viper.SetDefault("jwt.issuer", "english-ai")
@@ -60,10 +64,14 @@ func (cm *ConfigManager) setDefaults() {
 	cm.viper.SetDefault("jwt.refresh_threshold", "2h")
 
 	// Email settings
-	cm.viper.SetDefault("email.verification_enabled", true)
+	cm.viper.SetDefault("email.verification_enabled", false) // Changed to false for development
 	cm.viper.SetDefault("email.verification_expiry_hours", 24)
 	cm.viper.SetDefault("email.require_verification", false)
+	cm.viper.SetDefault("email.smtp_host", "localhost")
 	cm.viper.SetDefault("email.smtp_port", 587)
+	cm.viper.SetDefault("email.smtp_user", "")
+	cm.viper.SetDefault("email.smtp_password", "")
+	cm.viper.SetDefault("email.from_address", "noreply@english-ai.dev") // Default valid email
 	cm.viper.SetDefault("email.from_name", "English AI")
 
 	// Rate limiting settings
@@ -74,9 +82,11 @@ func (cm *ConfigManager) setDefaults() {
 	cm.viper.SetDefault("rate_limit.window_size", "1m")
 
 	// External API settings
+	cm.viper.SetDefault("external_apis.anthropic.api_key", "dummy_key_for_dev") // Default dummy key
 	cm.viper.SetDefault("external_apis.anthropic.api_url", "https://api.anthropic.com")
 	cm.viper.SetDefault("external_apis.anthropic.timeout", "30s")
 	cm.viper.SetDefault("external_apis.anthropic.max_retries", 3)
+	cm.viper.SetDefault("external_apis.quan_an.address", "localhost:8081") // Default address
 	cm.viper.SetDefault("external_apis.quan_an.timeout", "10s")
 	cm.viper.SetDefault("external_apis.quan_an.max_retries", 3)
 

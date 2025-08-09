@@ -19,12 +19,13 @@ database:
   port: 5432
   name: "english_ai_dev"
   user: "postgres"
-  # password set via environment variable: ENGLISH_AI_DATABASE_PASSWORD
+  password: "" # Set via environment variable: ENGLISH_AI_DATABASE_PASSWORD or DB_PASSWORD
   ssl_mode: "disable"
   max_connections: 25
   max_idle_conns: 10
   conn_max_lifetime: "1h"
   conn_max_idle_time: "10m"
+  # URL will be constructed automatically from above fields or from DB_* environment variables
 
 security:
   max_login_attempts: 5
@@ -53,7 +54,7 @@ pagination:
   limit: 1000
 
 jwt:
-  # secret_key set via environment variable: ENGLISH_AI_JWT_SECRET_KEY
+  secret_key: "kIOopC3C7wA8DQH6FOF2Jfn+UZP8Q02nGxr/EgFMOmo=" # Default secret, override with JWT_SECRET
   expiration_hours: 24
   refresh_token_expiration_days: 30
   issuer: "english-ai-dev"
@@ -61,7 +62,7 @@ jwt:
   refresh_threshold: "2h"
 
 email:
-  verification_enabled: true
+  verification_enabled: false # Disabled by default for development
   verification_expiry_hours: 24
   require_verification: false
   smtp_host: "localhost"
@@ -82,7 +83,7 @@ rate_limit:
 
 external_apis:
   anthropic:
-    # api_key set via environment variable: ENGLISH_AI_EXTERNAL_APIS_ANTHROPIC_API_KEY
+    api_key: "dummy_key_for_dev" # Override with ANTHROPIC_API_KEY environment variable
     api_url: "https://api.anthropic.com"
     timeout: "30s"
     max_retries: 3

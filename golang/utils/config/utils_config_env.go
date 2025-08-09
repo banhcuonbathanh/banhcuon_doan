@@ -6,14 +6,6 @@ import (
 	"strconv"
 )
 
-
-
-
-
-
-
-
-
 // handleEnvironmentOverrides handles environment-specific configuration overrides
 func (cm *ConfigManager) handleEnvironmentOverrides() error {
 	env := cm.viper.GetString("environment")
@@ -23,6 +15,9 @@ func (cm *ConfigManager) handleEnvironmentOverrides() error {
 		env = appEnv
 		cm.viper.Set("environment", env)
 	}
+
+	// Always handle common environment variables first
+	cm.handleCommonEnvironmentVariables()
 
 	switch env {
 	case EnvDocker:
@@ -36,48 +31,88 @@ func (cm *ConfigManager) handleEnvironmentOverrides() error {
 	return nil
 }
 
-// handleDockerOverrides applies Docker-specific configuration
-func (cm *ConfigManager) handleDockerOverrides() error {
-	// Construct database URL from environment variables
+// handleCommonEnvironmentVariables handles environment variables common to all environments
+func (cm *ConfigManager) handleCommonEnvironmentVariables() {
+	// Database configuration
 	if dbHost := os.Getenv("DB_HOST"); dbHost != "" {
-		dbUser := getEnvOrDefault("DB_USER", "postgres")
-		dbPassword := getEnvOrDefault("DB_PASSWORD", "")
-		dbName := getEnvOrDefault("DB_NAME", "english_ai")
-		dbPort := getEnvOrDefault("DB_PORT", "5432")
-
-		dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
-			dbUser, dbPassword, dbHost, dbPort, dbName)
-		cm.viper.Set("database.url", dbURL)
-		
-		// Also set individual database fields
 		cm.viper.Set("database.host", dbHost)
-		cm.viper.Set("database.user", dbUser)
-		cm.viper.Set("database.password", dbPassword)
-		cm.viper.Set("database.name", dbName)
+	}
+	if dbPort := os.Getenv("DB_PORT"); dbPort != "" {
 		if port, err := strconv.Atoi(dbPort); err == nil {
 			cm.viper.Set("database.port", port)
 		}
 	}
+	if dbUser := os.Getenv("DB_USER"); dbUser != "" {
+		cm.viper.Set("database.user", dbUser)
+	}
+	if dbPassword := os.Getenv("DB_PASSWORD"); dbPassword != "" {
+		cm.viper.Set("database.password", dbPassword)
+	}
+	if dbName := os.Getenv("DB_NAME"); dbName != "" {
+		cm.viper.Set("database.name", dbName)
+	}
 
-	// Override server addresses for Docker
-	cm.viper.Set("server.address", "0.0.0.0")
-	cm.viper.Set("server.grpc_address", "0.0.0.0")
+	// Always construct database URL after setting individual fields
+	dbHost := cm.viper.GetString("database.host")
+	dbPort := cm.viper.GetInt("database.port")
+	dbUser := cm.viper.GetString("database.user")
+	dbPassword := cm.viper.GetString("database.password")
+	dbName := cm.viper.GetString("database.name")
+	sslMode := cm.viper.GetString("database.ssl_mode")
 
-	// Handle other environment variables for Docker
+	if dbHost != "" && dbUser != "" && dbName != "" {
+		dbURL := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
+			dbUser, dbPassword, dbHost, dbPort, dbName, sslMode)
+		cm.viper.Set("database.url", dbURL)
+	}
+
+	// JWT configuration
 	if jwtSecret := os.Getenv("JWT_SECRET"); jwtSecret != "" {
 		cm.viper.Set("jwt.secret_key", jwtSecret)
 	}
 
+	// Anthropic API configuration
 	if anthropicKey := os.Getenv("ANTHROPIC_API_KEY"); anthropicKey != "" {
 		cm.viper.Set("external_apis.anthropic.api_key", anthropicKey)
 	}
-
 	if anthropicURL := os.Getenv("ANTHROPIC_API_URL"); anthropicURL != "" {
 		cm.viper.Set("external_apis.anthropic.api_url", anthropicURL)
 	}
 
+	// QuanAn service configuration
 	if quanAnAddr := os.Getenv("QUAN_AN_ADDRESS"); quanAnAddr != "" {
 		cm.viper.Set("external_apis.quan_an.address", quanAnAddr)
+	}
+
+	// Email configuration
+	if smtpHost := os.Getenv("SMTP_HOST"); smtpHost != "" {
+		cm.viper.Set("email.smtp_host", smtpHost)
+	}
+	if smtpPort := os.Getenv("SMTP_PORT"); smtpPort != "" {
+		if port, err := strconv.Atoi(smtpPort); err == nil {
+			cm.viper.Set("email.smtp_port", port)
+		}
+	}
+	if smtpUser := os.Getenv("SMTP_USER"); smtpUser != "" {
+		cm.viper.Set("email.smtp_user", smtpUser)
+	}
+	if smtpPassword := os.Getenv("SMTP_PASSWORD"); smtpPassword != "" {
+		cm.viper.Set("email.smtp_password", smtpPassword)
+	}
+	if fromAddress := os.Getenv("EMAIL_FROM_ADDRESS"); fromAddress != "" {
+		cm.viper.Set("email.from_address", fromAddress)
+	}
+}
+
+// handleDockerOverrides applies Docker-specific configuration
+func (cm *ConfigManager) handleDockerOverrides() error {
+	// Override server addresses for Docker
+	cm.viper.Set("server.address", "0.0.0.0")
+	cm.viper.Set("server.grpc_address", "0.0.0.0")
+
+	// Set default QuanAn address for Docker if not set
+	if cm.viper.GetString("external_apis.quan_an.address") == "localhost:8081" {
+		cm.viper.Set("external_apis.quan_an.address", "quan_an:8081")
 	}
 
 	return nil

@@ -3,8 +3,10 @@ package main
 import (
 	"english-ai-full/internal/account"
 	"english-ai-full/internal/branch"
+	"fmt"
 	"log"
 	"net"
+	"os"
 
 	accountRepo "english-ai-full/internal/account"
 	"english-ai-full/internal/db"
@@ -18,8 +20,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-// new 121212121212
-
 func initializeAccountService(accountRepository *account.Repository) *account.ServiceStruct {
 	// Initialize JWT Token Maker
 	tokenMaker := utils.NewJWTTokenMaker("kIOopC3C7wA8DQH6FOF2Jfn+UZP8Q02nGxr/EgFMOmo=")
@@ -27,19 +27,8 @@ func initializeAccountService(accountRepository *account.Repository) *account.Se
 	// Initialize Password Hasher
 	passwordHasher := utils.NewBcryptPasswordHasher()
 	
-	// Initialize Email Service
-	// Option 1: Real SMTP Email Service
-	emailConfig := utils.EmailConfig{
-		Host:     "smtp.gmail.com",  // or your SMTP server
-		Port:     "587",
-		Username: "your-email@gmail.com",
-		Password: "your-app-password",
-		From:     "your-email@gmail.com",
-	}
-	emailService := utils.NewSMTPEmailService(emailConfig)
-	
-	// Option 2: Mock Email Service (for development/testing)
-	// emailService := email.NewMockEmailService()
+	// Initialize Mock Email Service for now (can be replaced later)
+	emailService := utils.NewMockEmailService()
 	
 	// Create account service with all dependencies
 	accountService := account.NewAccountService(
@@ -52,71 +41,25 @@ func initializeAccountService(accountRepository *account.Repository) *account.Se
 	return accountService
 }
 
-// Alternative: Gradual implementation
-func initializeAccountServiceGradual(accountRepository *account.Repository) *account.ServiceStruct {
-	// Start with just token maker and password hasher
-	tokenMaker := utils.NewJWTTokenMaker("kIOopC3C7wA8DQH6FOF2Jfn+UZP8Q02nGxr/EgFMOmo=")
-	passwordHasher := utils.NewBcryptPasswordHasher()
-	
-	// Use mock email service for now
-	emailService := utils.NewMockEmailService()
-	
-	accountService := account.NewAccountService(
-		accountRepository,
-		tokenMaker,
-		passwordHasher,
-		emailService, // or nil if you don't want any email functionality
-	)
-	
-	return accountService
-}
-
-// new 1212121212
 func main() {
-	cfg, err := utils.LoadServer()
-	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
-	}
-
+	// Set up database connection using environment variables directly
+	// This bypasses the complex config system for now
 	dbConn, err := db.ConnectDataBase()
 	if err != nil {
-		defer dbConn.Close()
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer dbConn.Close()
-// // new 121212121
-// tokenMaker := utils.NewJWTTokenMaker(secretKey) // secretKey should be from config
 
-// // 2. Create the password hasher
-// passwordHasher := utils.NewBcryptPasswordHasher() // or whatever implementation you have
-
-// // 3. Create the email service
-// emailService := email.NewEmailService(emailConfig) 
-// // new 12121212
 	accountRepository := accountRepo.NewAccountRepository(dbConn)
 	accountService := initializeAccountService(accountRepository)
 
 	branchRepository := branch.NewBranchRepository(dbConn)
 	branchService := branch.NewBranchService(branchRepository)
 
-	//dishrepo := dish.NewDishRepository(dbConn)
-	//dishService := dish.NewDishService(dishrepo)
+	// Use gRPC address from environment or default
+	grpcAddress := getEnvOrDefault("GRPC_ADDRESS", "0.0.0.0:50051")
 
-	//guestsrepo := guests.NewGuestRepository(dbConn)
-	//guestsService := guests.NewGuestService(guestsrepo)
-	//
-	//orderrepo := order.NewOrderRepository(dbConn)
-	//orderService := order.NewOrderService(orderrepo)
-	//tablerepo := tables.NewTableRepository(dbConn, "asdfEWQR1234%#$@")
-	//tableService := tables.NewTableService(tablerepo)
-	//
-	//setrepo := set.NewSetRepository(dbConn)
-	//setService := set.NewSetService(setrepo)
-	//
-	//deliveryrepo := delivery.NewDeliveryRepository(dbConn)
-	//deliveryService := delivery.NewDeliveryService(deliveryrepo)
-
-	lis, err := net.Listen("tcp", cfg.GRPCAddress)
+	lis, err := net.Listen("tcp", grpcAddress)
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
@@ -126,14 +69,28 @@ func main() {
 	grpcServer := grpc.NewServer()
 	accountpb.RegisterAccountServiceServer(grpcServer, accountService)
 	branchpb.RegisterBranchServiceServer(grpcServer, branchService)
-	//pb_delivery.RegisterDeliveryServiceServer(grpcServer, deliveryService)
-	//pb_set.RegisterSetServiceServer(grpcServer, setService)
-	//pb_table.RegisterTableServiceServer(grpcServer, tableService)
-	//dishPb.RegisterDishServiceServer(grpcServer, dishService)
-	//pb_guests.RegisterGuestServiceServer(grpcServer, guestsService)
-	//pb_order.RegisterOrderServiceServer(grpcServer, orderService)
+
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve gRPC: %v", err)
 	}
+}
 
+// Helper function to get environment variable or default value
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+// Helper function to construct database URL from environment variables
+func constructDatabaseURL() string {
+	host := getEnvOrDefault("DB_HOST", "localhost")
+	port := getEnvOrDefault("DB_PORT", "5432")
+	user := getEnvOrDefault("DB_USER", "postgres")
+	password := getEnvOrDefault("DB_PASSWORD", "")
+	dbname := getEnvOrDefault("DB_NAME", "restaurant")
+	
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		user, password, host, port, dbname)
 }
