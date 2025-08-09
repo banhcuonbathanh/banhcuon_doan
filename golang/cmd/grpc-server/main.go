@@ -22,7 +22,7 @@ import (
 
 func initializeAccountService(accountRepository *account.Repository) *account.ServiceStruct {
 	// Initialize JWT Token Maker
-	tokenMaker := utils.NewJWTTokenMaker("your-super-secret-jwt-key-here")
+	tokenMaker := utils.NewJWTTokenMaker("kIOopC3C7wA8DQH6FOF2Jfn+UZP8Q02nGxr/EgFMOmo=")
 	
 	// Initialize Password Hasher
 	passwordHasher := utils.NewBcryptPasswordHasher()
@@ -55,7 +55,7 @@ func initializeAccountService(accountRepository *account.Repository) *account.Se
 // Alternative: Gradual implementation
 func initializeAccountServiceGradual(accountRepository *account.Repository) *account.ServiceStruct {
 	// Start with just token maker and password hasher
-	tokenMaker := utils.NewJWTTokenMaker("your-super-secret-jwt-key-here")
+	tokenMaker := utils.NewJWTTokenMaker("kIOopC3C7wA8DQH6FOF2Jfn+UZP8Q02nGxr/EgFMOmo=")
 	passwordHasher := utils.NewBcryptPasswordHasher()
 	
 	// Use mock email service for now
@@ -78,7 +78,7 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	dbConn, err := db.ConnectDataBase(cfg.DatabaseURL)
+	dbConn, err := db.ConnectDataBase()
 	if err != nil {
 		defer dbConn.Close()
 		log.Fatalf("Failed to connect to database: %v", err)

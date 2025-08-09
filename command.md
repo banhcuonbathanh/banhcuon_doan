@@ -1,5 +1,6 @@
 cd golang
 go run cmd/server/main.go
+cd golang
 go run cmd/grpc-server/main.go
 cd golang
 docker-compose up -d mypostgres_ai
