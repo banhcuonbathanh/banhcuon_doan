@@ -2,6 +2,7 @@ package utils
 
 import (
 	"english-ai-full/internal/model"
+	utils_config "english-ai-full/utils/config"
 	"errors"
 	"fmt"
 	"time"
@@ -9,10 +10,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
-var (
 
+// Function variables for easy mocking in tests
+var (
+	HashPassword         = hashPassword
 	GenerateJWTToken     = generateJWTToken
 	GenerateRefreshToken = generateRefreshToken
+	ParseToken           = parseToken
 )
 
 func Compare(hashedPassword, password string) bool {
@@ -20,28 +24,46 @@ func Compare(hashedPassword, password string) bool {
 	return err == nil
 }
 
-func generateJWTToken(user model.Account) (string, error) {
-	claims := jwt.MapClaims{
-		"id":         user.ID,
-		"name":       user.Name,
-		"email":      user.Email,
-		"role":       user.Role,
-		"created_at": user.CreatedAt,
-		"exp":        time.Now().Add(time.Hour * 24).Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	value, err := token.SignedString([]byte(AppConfig.JwtSecret))
+// Actual implementation functions
+func hashPassword(password string) (string, error) {
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", err
 	}
-
-	return value, err
+	return string(hashedBytes), nil
 }
 
-func ParseToken(tokenString string) (jwt.MapClaims, error) {
+func generateJWTToken(user model.Account) (string, error) {
+	config := utils_config.GetConfig()
+	if config == nil {
+		return "", errors.New("configuration not initialized")
+	}
+	
+	tokenMaker := NewJWTTokenMaker(config.JWT.SecretKey)
+	return tokenMaker.CreateToken(user)
+}
+
+func generateRefreshToken(user model.Account) (string, error) {
+	config := utils_config.GetConfig()
+	if config == nil {
+		return "", errors.New("configuration not initialized")
+	}
+	
+	tokenMaker := NewJWTTokenMaker(config.JWT.SecretKey)
+	return tokenMaker.CreateRefreshToken(user)
+}
+
+func parseToken(tokenString string) (jwt.MapClaims, error) {
+	config := utils_config.GetConfig()
+	if config == nil {
+		return nil, errors.New("configuration not initialized")
+	}
+	
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return []byte(AppConfig.JwtSecret), nil
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(config.JWT.SecretKey), nil
 	})
 	if err != nil {
 		return nil, err
@@ -51,30 +73,10 @@ func ParseToken(tokenString string) (jwt.MapClaims, error) {
 		return claims, nil
 	}
 
-	return nil, err
+	return nil, errors.New("invalid token")
 }
 
-func generateRefreshToken(user model.Account) (string, error) {
-	claims := jwt.MapClaims{
-		"user_id":    user.ID,
-		"email":      user.Email,
-		"role":       user.Role,
-		"created_at": user.CreatedAt,
-		"exp":        time.Now().Add(30 * 24 * time.Hour).Unix(), // 30 ngày
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	value, err := token.SignedString([]byte(AppConfig.JwtSecret))
-	if err != nil {
-		return "", err
-	}
-	return value, err
-}
-
-
-// new 2112121212121212
-
-
-
+// JWTTokenMaker handles JWT token operations
 type JWTTokenMaker struct {
 	secretKey                string
 	accessTokenDuration      time.Duration
@@ -213,4 +215,3 @@ func (maker *JWTTokenMaker) CreateVerificationToken(email string) (string, error
 func (maker *JWTTokenMaker) ValidateVerificationToken(tokenString string) (string, error) {
 	return maker.ValidateResetToken(tokenString) // Same validation logic
 }
-// new done 121212121212

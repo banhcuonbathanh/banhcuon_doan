@@ -4,7 +4,7 @@ package account_handler
 import (
 	"net/http"
 	"time"
-
+utils_config "english-ai-full/utils/config"
 	"english-ai-full/internal/account/account_dto"
 	errorcustom "english-ai-full/internal/error_custom"
 	"english-ai-full/internal/mapping"
@@ -252,9 +252,10 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 		"email":   user.Email,
 		"role":    user.Role,
 	})
-
+		config := utils_config.GetConfig()
+tokenMaker := utils.NewJWTTokenMaker(config.JWT.SecretKey)
 	// Generate access token
-	accessToken, err := utils.GenerateJWTToken(user)
+accessToken, err := tokenMaker.CreateToken(user)
 	if err != nil {
 		logger.Error("Failed to generate access token", map[string]interface{}{
 			"user_id": user.ID,
@@ -287,7 +288,7 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate refresh token
-	refreshToken, err := utils.GenerateRefreshToken(user)
+		refreshToken, err := tokenMaker.CreateRefreshToken(user)
 	if err != nil {
 		logger.Error("Failed to generate refresh token", map[string]interface{}{
 			"user_id": user.ID,
