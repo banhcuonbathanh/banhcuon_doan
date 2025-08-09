@@ -1,4 +1,4 @@
-// logger/logger.go - Enhanced version with improved readability
+// logger/logger.go - Enhanced version with improved readability and error tracking
 package logger
 
 import (
@@ -36,6 +36,20 @@ const (
 	FormatPretty = "pretty"
 )
 
+// Layer constants for better organization
+const (
+	LayerHandler    = "handler"
+	LayerService    = "service"
+	LayerRepository = "repository"
+	LayerMiddleware = "middleware"
+	LayerAuth       = "auth"
+	LayerValidation = "validation"
+	LayerCache      = "cache"
+	LayerDatabase   = "database"
+	LayerExternal   = "external"
+	LayerSecurity   = "security"
+)
+
 // LogEntry represents a structured log entry with enhanced metadata
 type LogEntry struct {
 	Timestamp    string                 `json:"timestamp"`
@@ -54,6 +68,9 @@ type LogEntry struct {
 	Duration     int64                  `json:"duration_ms,omitempty"`
 	ErrorCode    string                 `json:"error_code,omitempty"`
 	Environment  string                 `json:"environment,omitempty"`
+	// New fields for enhanced error tracking
+	Cause        string                 `json:"cause,omitempty"`
+	Layer        string                 `json:"layer,omitempty"`
 }
 
 // Logger structure with enhanced capabilities and thread safety
@@ -68,6 +85,8 @@ type Logger struct {
 	minLevel      int
 	environment   string
 	component     string
+	layer         string
+	operation     string
 	mutex         sync.RWMutex
 	contextFields map[string]interface{}
 }
@@ -119,6 +138,18 @@ func (l *Logger) SetComponent(component string) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	l.component = component
+}
+
+func (l *Logger) SetLayer(layer string) {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+	l.layer = layer
+}
+
+func (l *Logger) SetOperation(operation string) {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+	l.operation = operation
 }
 
 func (l *Logger) AddGlobalField(key string, value interface{}) {
@@ -179,7 +210,7 @@ func (l *Logger) mergeContext(baseContext, additionalContext map[string]interfac
 	return merged
 }
 
-// Format log entry as pretty text
+// Format log entry as pretty text with enhanced error info
 func (l *Logger) formatPretty(entry LogEntry) string {
 	timestamp := time.Now().Format("15:04:05.000")
 	
@@ -191,14 +222,19 @@ func (l *Logger) formatPretty(entry LogEntry) string {
 	parts = append(parts, fmt.Sprintf("[%s]", timestamp))
 	parts = append(parts, levelDisplay)
 	
+	// Add layer if present
+	if entry.Layer != "" {
+		parts = append(parts, fmt.Sprintf("[%s]", strings.ToUpper(entry.Layer)))
+	}
+	
 	// Add component if present
 	if entry.Component != "" {
-		parts = append(parts, fmt.Sprintf("[%s]", strings.ToUpper(entry.Component)))
+		parts = append(parts, fmt.Sprintf("<%s>", entry.Component))
 	}
 	
 	// Add operation if present
 	if entry.Operation != "" {
-		parts = append(parts, fmt.Sprintf("<%s>", entry.Operation))
+		parts = append(parts, fmt.Sprintf("{%s}", entry.Operation))
 	}
 	
 	parts = append(parts, entry.Message)
@@ -228,6 +264,11 @@ func (l *Logger) formatPretty(entry LogEntry) string {
 		contextParts = append(contextParts, fmt.Sprintf("error=%v", errorMsg))
 	}
 	
+	// Add cause if present (for errors)
+	if entry.Cause != "" {
+		contextParts = append(contextParts, fmt.Sprintf("cause=%s", entry.Cause))
+	}
+	
 	if len(contextParts) > 0 {
 		mainLine += " | " + strings.Join(contextParts, " ")
 	}
@@ -242,11 +283,21 @@ func (l *Logger) formatPretty(entry LogEntry) string {
 	return mainLine
 }
 
-// Format log entry as simple text
+// Format log entry as simple text with enhanced error info
 func (l *Logger) formatText(entry LogEntry) string {
 	timestamp := time.Now().Format("15:04:05")
 	
-	msg := fmt.Sprintf("[%s] %s: %s", timestamp, entry.Level, entry.Message)
+	// Build message with layer and operation info
+	var msgParts []string
+	if entry.Layer != "" {
+		msgParts = append(msgParts, fmt.Sprintf("[%s]", entry.Layer))
+	}
+	if entry.Operation != "" {
+		msgParts = append(msgParts, fmt.Sprintf("{%s}", entry.Operation))
+	}
+	msgParts = append(msgParts, entry.Message)
+	
+	msg := fmt.Sprintf("[%s] %s: %s", timestamp, entry.Level, strings.Join(msgParts, " "))
 	
 	// Add minimal essential context
 	if entry.Context != nil {
@@ -262,6 +313,9 @@ func (l *Logger) formatText(entry LogEntry) string {
 		if errorMsg, ok := entry.Context["error"]; ok {
 			essentials = append(essentials, fmt.Sprintf("error=%v", errorMsg))
 		}
+		if entry.Cause != "" {
+			essentials = append(essentials, fmt.Sprintf("cause=%s", entry.Cause))
+		}
 		
 		if len(essentials) > 0 {
 			msg += " (" + strings.Join(essentials, " ") + ")"
@@ -271,13 +325,15 @@ func (l *Logger) formatText(entry LogEntry) string {
 	return msg
 }
 
-// Core logging method with multiple output formats
+// Core logging method with multiple output formats and enhanced error tracking
 func (l *Logger) logWithContext(level int, message string, context map[string]interface{}, skip int) {
 	l.mutex.RLock()
 	outputFormat := l.outputFormat
 	enableDebug := l.enableDebug
 	minLevel := l.minLevel
 	component := l.component
+	layer := l.layer
+	operation := l.operation
 	environment := l.environment
 	l.mutex.RUnlock()
 	
@@ -320,6 +376,8 @@ func (l *Logger) logWithContext(level int, message string, context map[string]in
 		Function:    function,
 		Line:        line,
 		Component:   component,
+		Layer:       layer,
+		Operation:   operation,
 		Environment: environment,
 	}
 	
@@ -337,8 +395,14 @@ func (l *Logger) logWithContext(level int, message string, context map[string]in
 		if traceID, ok := mergedContext["trace_id"].(string); ok {
 			entry.TraceID = traceID
 		}
-		if operation, ok := mergedContext["operation"].(string); ok {
-			entry.Operation = operation
+		if contextOperation, ok := mergedContext["operation"].(string); ok {
+			entry.Operation = contextOperation
+		}
+		if contextLayer, ok := mergedContext["layer"].(string); ok {
+			entry.Layer = contextLayer
+		}
+		if cause, ok := mergedContext["cause"].(string); ok {
+			entry.Cause = cause
 		}
 		if duration, ok := mergedContext["duration_ms"].(int64); ok {
 			entry.Duration = duration
@@ -388,7 +452,7 @@ func formatLevel(level string) string {
 	}
 }
 
-// Public logging methods
+// Enhanced logging methods with layer, operation, and cause support
 func (l *Logger) Debug(message string, context ...map[string]interface{}) {
 	var ctx map[string]interface{}
 	if len(context) > 0 {
@@ -429,17 +493,70 @@ func (l *Logger) Fatal(message string, context ...map[string]interface{}) {
 	l.logWithContext(FatalLevel, message, ctx, 3)
 }
 
-// Specialized logging methods (keeping your enhanced functionality)
+// New enhanced error logging methods
+func (l *Logger) ErrorWithCause(message string, cause string, layer string, operation string, context ...map[string]interface{}) {
+	ctx := map[string]interface{}{
+		"cause":     cause,
+		"layer":     layer,
+		"operation": operation,
+	}
+	
+	if len(context) > 0 {
+		for k, v := range context[0] {
+			ctx[k] = v
+		}
+	}
+	
+	l.logWithContext(ErrorLevel, message, ctx, 3)
+}
+
+func (l *Logger) WarningWithCause(message string, cause string, layer string, operation string, context ...map[string]interface{}) {
+	ctx := map[string]interface{}{
+		"cause":     cause,
+		"layer":     layer,
+		"operation": operation,
+	}
+	
+	if len(context) > 0 {
+		for k, v := range context[0] {
+			ctx[k] = v
+		}
+	}
+	
+	l.logWithContext(WarningLevel, message, ctx, 3)
+}
+
+func (l *Logger) InfoWithOperation(message string, layer string, operation string, context ...map[string]interface{}) {
+	ctx := map[string]interface{}{
+		"layer":     layer,
+		"operation": operation,
+	}
+	
+	if len(context) > 0 {
+		for k, v := range context[0] {
+			ctx[k] = v
+		}
+	}
+	
+	l.logWithContext(InfoLevel, message, ctx, 3)
+}
+
+// Specialized logging methods (enhanced with new fields)
 
 // Enhanced authentication logging with readable format
 func (l *Logger) LogAuthAttempt(email string, success bool, reason string, additionalContext ...map[string]interface{}) {
 	context := map[string]interface{}{
 		"operation":      "authentication",
+		"layer":          LayerAuth,
 		"email":          maskEmail(email),
 		"success":        success,
 		"reason":         reason,
 		"type":           "auth_attempt",
 		"security_event": !success,
+	}
+	
+	if !success {
+		context["cause"] = reason
 	}
 	
 	if len(additionalContext) > 0 {
@@ -463,19 +580,29 @@ func (l *Logger) LogAPIRequest(method, path string, statusCode int, duration tim
 		"status_code": statusCode,
 		"duration_ms": duration.Milliseconds(),
 		"type":        "api_request",
-		"component":   "handler",
+		"layer":       LayerHandler,
+		"operation":   fmt.Sprintf("%s_%s", method, strings.ReplaceAll(path, "/", "_")),
 	}
 	
 	// Add performance categories
 	switch {
 	case duration.Milliseconds() > 5000:
 		logContext["performance"] = "very_slow"
+		logContext["cause"] = "performance_issue"
 	case duration.Milliseconds() > 2000:
 		logContext["performance"] = "slow"
+		logContext["cause"] = "performance_degradation"
 	case duration.Milliseconds() > 1000:
 		logContext["performance"] = "moderate"
 	default:
 		logContext["performance"] = "fast"
+	}
+	
+	// Add error causes based on status codes
+	if statusCode >= 500 {
+		logContext["cause"] = "server_error"
+	} else if statusCode >= 400 {
+		logContext["cause"] = "client_error"
 	}
 	
 	if context != nil {
@@ -506,7 +633,8 @@ func (l *Logger) LogServiceCall(service, method string, success bool, err error,
 		"method":    method,
 		"success":   success,
 		"type":      "service_call",
-		"component": "service",
+		"layer":     LayerService,
+		"operation": fmt.Sprintf("%s_%s", service, method),
 	}
 	
 	if context != nil {
@@ -520,6 +648,7 @@ func (l *Logger) LogServiceCall(service, method string, success bool, err error,
 	if err != nil {
 		logContext["error"] = err.Error()
 		logContext["error_type"] = fmt.Sprintf("%T", err)
+		logContext["cause"] = categorizeError(err)
 		
 		if isRetryableError(err) {
 			logContext["retryable"] = true
@@ -531,14 +660,14 @@ func (l *Logger) LogServiceCall(service, method string, success bool, err error,
 	}
 }
 
-// Keep all your other specialized methods with the same logic...
+// Enhanced DB operation logging
 func (l *Logger) LogDBOperation(operation, table string, success bool, err error, context map[string]interface{}) {
 	logContext := map[string]interface{}{
 		"operation": operation,
 		"table":     table,
 		"success":   success,
 		"type":      "db_operation",
-		"component": "repository",
+		"layer":     LayerRepository,
 	}
 	
 	if context != nil {
@@ -552,6 +681,7 @@ func (l *Logger) LogDBOperation(operation, table string, success bool, err error
 	if err != nil {
 		logContext["error"] = err.Error()
 		logContext["error_type"] = fmt.Sprintf("%T", err)
+		logContext["cause"] = categorizeDBError(err)
 		l.Error(message+" failed", logContext)
 	} else if success {
 		l.Debug(message+" succeeded", logContext)
@@ -563,7 +693,9 @@ func (l *Logger) LogValidationError(field, message string, value interface{}) {
 		"field":     field,
 		"message":   message,
 		"type":      "validation_error",
-		"component": "validator",
+		"layer":     LayerValidation,
+		"operation": "validate_" + field,
+		"cause":     "validation_failed",
 	}
 	
 	fieldLower := strings.ToLower(field)
@@ -585,7 +717,8 @@ func (l *Logger) LogUserActivity(userID, email, action string, resource string, 
 		"action":    action,
 		"resource":  resource,
 		"type":      "user_activity",
-		"component": "audit",
+		"layer":     LayerHandler,
+		"operation": fmt.Sprintf("%s_%s", action, resource),
 	}
 	
 	if context != nil {
@@ -603,8 +736,10 @@ func (l *Logger) LogSecurityEvent(eventType, description string, severity string
 		"description":    description,
 		"severity":       severity,
 		"type":           "security_event",
-		"component":      "security",
+		"layer":          LayerSecurity,
+		"operation":      "security_check",
 		"security_event": true,
+		"cause":          eventType,
 	}
 	
 	if context != nil {
@@ -631,7 +766,8 @@ func (l *Logger) LogMetric(metricName string, value interface{}, unit string, co
 		"value":       value,
 		"unit":        unit,
 		"type":        "metric",
-		"component":   "metrics",
+		"layer":       "monitoring",
+		"operation":   "metric_collection",
 	}
 	
 	if context != nil {
@@ -649,19 +785,23 @@ func (l *Logger) LogPerformance(operation string, duration time.Duration, contex
 		"duration_ms": duration.Milliseconds(),
 		"duration_ns": duration.Nanoseconds(),
 		"type":        "performance",
-		"component":   "benchmark",
+		"layer":       "monitoring",
 	}
 	
-	// Add performance categories
+	// Add performance categories and causes
 	switch {
 	case duration.Milliseconds() > 10000:
 		logContext["category"] = "critical_slow"
+		logContext["cause"] = "critical_performance_issue"
 	case duration.Milliseconds() > 5000:
 		logContext["category"] = "very_slow"
+		logContext["cause"] = "severe_performance_issue"
 	case duration.Milliseconds() > 2000:
 		logContext["category"] = "slow"
+		logContext["cause"] = "performance_degradation"
 	case duration.Milliseconds() > 1000:
 		logContext["category"] = "moderate"
+		logContext["cause"] = "minor_performance_issue"
 	case duration.Milliseconds() > 500:
 		logContext["category"] = "acceptable"
 	default:
@@ -683,7 +823,116 @@ func (l *Logger) LogPerformance(operation string, duration time.Duration, contex
 	}
 }
 
-// Helper functions (keeping all your existing ones)
+// Helper functions (enhanced with error categorization)
+func categorizeError(err error) string {
+	if err == nil {
+		return ""
+	}
+	
+	errMsg := strings.ToLower(err.Error())
+	
+	// Network related errors
+	if strings.Contains(errMsg, "connection refused") ||
+		strings.Contains(errMsg, "connection reset") ||
+		strings.Contains(errMsg, "network") {
+		return "network_error"
+	}
+	
+	// Timeout errors
+	if strings.Contains(errMsg, "timeout") ||
+		strings.Contains(errMsg, "deadline exceeded") {
+		return "timeout_error"
+	}
+	
+	// Authentication errors
+	if strings.Contains(errMsg, "unauthorized") ||
+		strings.Contains(errMsg, "authentication") ||
+		strings.Contains(errMsg, "invalid token") {
+		return "auth_error"
+	}
+	
+	// Validation errors
+	if strings.Contains(errMsg, "validation") ||
+		strings.Contains(errMsg, "invalid input") ||
+		strings.Contains(errMsg, "bad request") {
+		return "validation_error"
+	}
+	
+	// Permission errors
+	if strings.Contains(errMsg, "forbidden") ||
+		strings.Contains(errMsg, "permission denied") ||
+		strings.Contains(errMsg, "access denied") {
+		return "permission_error"
+	}
+	
+	// Resource errors
+	if strings.Contains(errMsg, "not found") ||
+		strings.Contains(errMsg, "does not exist") {
+		return "resource_not_found"
+	}
+	
+	// Conflict errors
+	if strings.Contains(errMsg, "already exists") ||
+		strings.Contains(errMsg, "duplicate") ||
+		strings.Contains(errMsg, "conflict") {
+		return "resource_conflict"
+	}
+	
+	// External service errors
+	if strings.Contains(errMsg, "service unavailable") ||
+		strings.Contains(errMsg, "bad gateway") {
+		return "external_service_error"
+	}
+	
+	return "unknown_error"
+}
+
+func categorizeDBError(err error) string {
+	if err == nil {
+		return ""
+	}
+	
+	errMsg := strings.ToLower(err.Error())
+	
+	// Connection errors
+	if strings.Contains(errMsg, "connection") {
+		return "db_connection_error"
+	}
+	
+	// Constraint violations
+	if strings.Contains(errMsg, "duplicate") ||
+		strings.Contains(errMsg, "unique constraint") ||
+		strings.Contains(errMsg, "primary key") {
+		return "db_constraint_violation"
+	}
+	
+	// Syntax errors
+	if strings.Contains(errMsg, "syntax error") ||
+		strings.Contains(errMsg, "invalid sql") {
+		return "db_syntax_error"
+	}
+	
+	// Data errors
+	if strings.Contains(errMsg, "data too long") ||
+		strings.Contains(errMsg, "out of range") {
+		return "db_data_error"
+	}
+	
+	// Transaction errors
+	if strings.Contains(errMsg, "deadlock") ||
+		strings.Contains(errMsg, "lock timeout") {
+		return "db_transaction_error"
+	}
+	
+	// Permission errors
+	if strings.Contains(errMsg, "access denied") ||
+		strings.Contains(errMsg, "permission denied") {
+		return "db_permission_error"
+	}
+	
+	return "db_unknown_error"
+}
+
 func maskEmail(email string) string {
 	if email == "" {
 		return ""
@@ -814,6 +1063,19 @@ func Fatal(message string, context ...map[string]interface{}) {
 	GlobalLogger.Fatal(message, context...)
 }
 
+// Enhanced global convenience functions
+func ErrorWithCause(message string, cause string, layer string, operation string, context ...map[string]interface{}) {
+	GlobalLogger.ErrorWithCause(message, cause, layer, operation, context...)
+}
+
+func WarningWithCause(message string, cause string, layer string, operation string, context ...map[string]interface{}) {
+	GlobalLogger.WarningWithCause(message, cause, layer, operation, context...)
+}
+
+func InfoWithOperation(message string, layer string, operation string, context ...map[string]interface{}) {
+	GlobalLogger.InfoWithOperation(message, layer, operation, context...)
+}
+
 // Global convenience functions for specialized logging
 func LogAuthAttempt(email string, success bool, reason string, additionalContext ...map[string]interface{}) {
 	GlobalLogger.LogAuthAttempt(email, success, reason, additionalContext...)
@@ -868,6 +1130,14 @@ func SetComponent(component string) {
 	GlobalLogger.SetComponent(component)
 }
 
+func SetLayer(layer string) {
+	GlobalLogger.SetLayer(layer)
+}
+
+func SetOperation(operation string) {
+	GlobalLogger.SetOperation(operation)
+}
+
 func AddGlobalField(key string, value interface{}) {
 	GlobalLogger.AddGlobalField(key, value)
 }
@@ -876,25 +1146,85 @@ func RemoveGlobalField(key string) {
 	GlobalLogger.RemoveGlobalField(key)
 }
 
-// Component loggers
+// Enhanced component loggers with layer support
 func NewComponentLogger(component string) *Logger {
 	logger := NewLogger()
 	logger.SetComponent(component)
 	return logger
 }
 
+func NewLayerLogger(layer string) *Logger {
+	logger := NewLogger()
+	logger.SetLayer(layer)
+	return logger
+}
+
 func NewHandlerLogger() *Logger {
-	return NewComponentLogger("handler")
+	logger := NewLogger()
+	logger.SetComponent("handler")
+	logger.SetLayer(LayerHandler)
+	return logger
 }
 
 func NewServiceLogger() *Logger {
-	return NewComponentLogger("service")
+	logger := NewLogger()
+	logger.SetComponent("service")
+	logger.SetLayer(LayerService)
+	return logger
 }
 
 func NewRepositoryLogger() *Logger {
-	return NewComponentLogger("repository")
+	logger := NewLogger()
+	logger.SetComponent("repository")
+	logger.SetLayer(LayerRepository)
+	return logger
 }
 
 func NewMiddlewareLogger() *Logger {
-	return NewComponentLogger("middleware")
+	logger := NewLogger()
+	logger.SetComponent("middleware")
+	logger.SetLayer(LayerMiddleware)
+	return logger
+}
+
+func NewAuthLogger() *Logger {
+	logger := NewLogger()
+	logger.SetComponent("auth")
+	logger.SetLayer(LayerAuth)
+	return logger
+}
+
+func NewValidationLogger() *Logger {
+	logger := NewLogger()
+	logger.SetComponent("validation")
+	logger.SetLayer(LayerValidation)
+	return logger
+}
+
+func NewCacheLogger() *Logger {
+	logger := NewLogger()
+	logger.SetComponent("cache")
+	logger.SetLayer(LayerCache)
+	return logger
+}
+
+func NewDatabaseLogger() *Logger {
+	logger := NewLogger()
+	logger.SetComponent("database")
+	logger.SetLayer(LayerDatabase)
+	return logger
+}
+
+func NewExternalLogger() *Logger {
+	logger := NewLogger()
+	logger.SetComponent("external")
+	logger.SetLayer(LayerExternal)
+	return logger
+}
+
+func NewSecurityLogger() *Logger {
+	logger := NewLogger()
+	logger.SetComponent("security")
+	logger.SetLayer(LayerSecurity)
+	return logger
 }
