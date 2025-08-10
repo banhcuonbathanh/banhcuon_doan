@@ -114,19 +114,7 @@ func (l *Logger) mergeContext(baseContext, additionalContext map[string]interfac
 	for k, v := range l.contextFields {
 		merged[k] = v
 	}
-	
-	if baseContext != nil {
-		for k, v := range baseContext {
-			merged[k] = v
-		}
-	}
-	
-	if additionalContext != nil {
-		for k, v := range additionalContext {
-			merged[k] = v
-		}
-	}
-	
+
 	return merged
 }
 

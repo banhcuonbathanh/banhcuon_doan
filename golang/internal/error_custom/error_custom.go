@@ -1,5 +1,5 @@
 // internal/error_custom/errors.go
-
+// Package errorcustom provides structured error handling for the API
 package errorcustom
 
 import (
@@ -8,6 +8,10 @@ import (
 	"net/http"
 	"strings"
 )
+
+// ============================================================================
+// CORE ERROR TYPES
+// ============================================================================
 
 // APIError represents a structured API error with detailed information
 type APIError struct {
@@ -20,28 +24,113 @@ type APIError struct {
 	Cause      error                  `json:"-"`                   // Original error for internal use
 }
 
-// NewAPIError creates a new APIError instance
-func NewAPIError(code, message string, httpStatus int) *APIError {
-	return &APIError{
-		Code:       code,
-		Message:    message,
-		HTTPStatus: httpStatus,
-		Details:    make(map[string]interface{}),
-	}
+// ErrorResponse represents the standard error format for API responses
+// swagger:model ErrorResponse
+type ErrorResponse struct {
+	Code    string                 `json:"code" example:"validation_error"`
+	Message string                 `json:"message" example:"Validation failed"`
+	Details map[string]interface{} `json:"details,omitempty"`
 }
 
-// NewAPIErrorWithContext creates a new APIError instance with context
-func NewAPIErrorWithContext(code, message string, httpStatus int, layer, operation string, cause error) *APIError {
-	return &APIError{
-		Code:       code,
-		Message:    message,
-		HTTPStatus: httpStatus,
-		Layer:      layer,
-		Operation:  operation,
-		Cause:      cause,
-		Details:    make(map[string]interface{}),
-	}
+// ============================================================================
+// DOMAIN-SPECIFIC ERROR TYPES
+// ============================================================================
+
+// UserNotFoundError represents when a user cannot be found
+type UserNotFoundError struct {
+	ID    int64  `json:"id,omitempty"`
+	Email string `json:"email,omitempty"`
 }
+
+// ValidationError represents validation failures
+type ValidationError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+	Value   string `json:"value,omitempty"`
+}
+
+// AuthenticationError represents authentication failures with specific reasons
+type AuthenticationError struct {
+	Email     string `json:"email,omitempty"`
+	Reason    string `json:"reason"`
+	Step      string `json:"step,omitempty"`       // email_check, password_check, token_validation
+	UserFound bool   `json:"user_found,omitempty"` // Whether user exists in system
+}
+
+// AuthorizationError represents authorization failures
+type AuthorizationError struct {
+	Action   string `json:"action"`
+	Resource string `json:"resource"`
+}
+
+// DuplicateEmailError represents email already exists error
+type DuplicateEmailError struct {
+	Email string `json:"email"`
+}
+
+// InvalidTokenError represents token-related errors
+type InvalidTokenError struct {
+	TokenType string `json:"token_type"`
+	Reason    string `json:"reason"`
+}
+
+// BranchNotFoundError represents when a branch cannot be found
+type BranchNotFoundError struct {
+	ID int64 `json:"id"`
+}
+
+// PasswordValidationError represents password validation failures
+type PasswordValidationError struct {
+	Requirements []string `json:"requirements"`
+}
+
+// ServiceError represents errors from service layer operations
+type ServiceError struct {
+	Service   string `json:"service"`
+	Method    string `json:"method"`
+	Message   string `json:"message"`
+	Cause     error  `json:"-"`
+	Retryable bool   `json:"retryable"`
+}
+
+// RepositoryError represents an error from the repository/data layer
+type RepositoryError struct {
+	Operation string `json:"operation"`
+	Table     string `json:"table"`
+	Message   string `json:"message"`
+	Cause     error  `json:"-"`
+	SQLState  string `json:"sql_state,omitempty"`
+}
+
+// ============================================================================
+// ERROR CODE CONSTANTS
+// ============================================================================
+
+const (
+	// User-related errors
+	ErrCodeUserNotFound   = "USER_NOT_FOUND"
+	ErrCodeDuplicateEmail = "DUPLICATE_EMAIL"
+	ErrCodeWeakPassword   = "WEAK_PASSWORD"
+
+	// Auth-related errors
+	ErrCodeAuthFailed   = "AUTHENTICATION_ERROR"
+	ErrCodeAccessDenied = "AUTHORIZATION_ERROR"
+	ErrCodeInvalidToken = "INVALID_TOKEN"
+	ErrCodeNotFound     = "NOT_FOUND"
+
+	// Validation errors
+	ErrCodeValidationError = "VALIDATION_ERROR"
+	ErrCodeInvalidInput    = "INVALID_INPUT"
+
+	// System errors
+	ErrCodeInternalError   = "INTERNAL_ERROR"
+	ErrCodeServiceError    = "SERVICE_ERROR"
+	ErrCodeRepositoryError = "REPOSITORY_ERROR"
+)
+
+// ============================================================================
+// CORE ERROR METHODS
+// ============================================================================
 
 // Error implements the error interface
 func (e *APIError) Error() string {
@@ -95,9 +184,7 @@ func (e *APIError) GetLogContext() map[string]interface{} {
 	if e.Cause != nil {
 		context["cause"] = e.Cause.Error()
 	}
-	if e.Details != nil && len(e.Details) > 0 {
-		context["details"] = e.Details
-	}
+
 
 	return context
 }
@@ -107,14 +194,18 @@ func (e *APIError) ToJSON() ([]byte, error) {
 	return json.Marshal(e)
 }
 
-// Domain-specific error types
-// =============================
-
-// UserNotFoundError represents when a user cannot be found
-type UserNotFoundError struct {
-	ID    int64  `json:"id,omitempty"`
-	Email string `json:"email,omitempty"`
+// ToErrorResponse converts APIError to Swagger-compatible format
+func (e *APIError) ToErrorResponse() ErrorResponse {
+	return ErrorResponse{
+		Code:    e.Code,
+		Message: e.Message,
+		Details: e.Details,
+	}
 }
+
+// ============================================================================
+// DOMAIN ERROR METHODS
+// ============================================================================
 
 func (e *UserNotFoundError) Error() string {
 	if e.ID != 0 {
@@ -137,13 +228,6 @@ func (e *UserNotFoundError) ToAPIError() *APIError {
 	return apiErr
 }
 
-// ValidationError represents validation failures
-type ValidationError struct {
-	Field   string `json:"field"`
-	Message string `json:"message"`
-	Value   string `json:"value,omitempty"`
-}
-
 func (e *ValidationError) Error() string {
 	return fmt.Sprintf("validation failed for field '%s': %s", e.Field, e.Message)
 }
@@ -152,14 +236,6 @@ func (e *ValidationError) ToAPIError() *APIError {
 	return NewAPIError(ErrCodeValidationError, e.Error(), http.StatusBadRequest).
 		WithDetail("field", e.Field).
 		WithDetail("value", e.Value)
-}
-
-// AuthenticationError represents authentication failures with specific reasons
-type AuthenticationError struct {
-	Email     string `json:"email,omitempty"`
-	Reason    string `json:"reason"`
-	Step      string `json:"step,omitempty"`       // email_check, password_check, token_validation
-	UserFound bool   `json:"user_found,omitempty"` // Whether user exists in system
 }
 
 func (e *AuthenticationError) Error() string {
@@ -192,12 +268,6 @@ func (e *AuthenticationError) ToAPIError() *APIError {
 	return apiErr
 }
 
-// AuthorizationError represents authorization failures
-type AuthorizationError struct {
-	Action   string `json:"action"`
-	Resource string `json:"resource"`
-}
-
 func (e *AuthorizationError) Error() string {
 	return fmt.Sprintf("not authorized to %s %s", e.Action, e.Resource)
 }
@@ -208,11 +278,6 @@ func (e *AuthorizationError) ToAPIError() *APIError {
 		WithDetail("resource", e.Resource)
 }
 
-// DuplicateEmailError represents email already exists error
-type DuplicateEmailError struct {
-	Email string `json:"email"`
-}
-
 func (e *DuplicateEmailError) Error() string {
 	return fmt.Sprintf("email %s already exists", e.Email)
 }
@@ -220,12 +285,6 @@ func (e *DuplicateEmailError) Error() string {
 func (e *DuplicateEmailError) ToAPIError() *APIError {
 	return NewAPIError(ErrCodeDuplicateEmail, "Email already registered", http.StatusConflict).
 		WithDetail("email", e.Email)
-}
-
-// InvalidTokenError represents token-related errors
-type InvalidTokenError struct {
-	TokenType string `json:"token_type"`
-	Reason    string `json:"reason"`
 }
 
 func (e *InvalidTokenError) Error() string {
@@ -238,11 +297,6 @@ func (e *InvalidTokenError) ToAPIError() *APIError {
 		WithDetail("reason", e.Reason)
 }
 
-// BranchNotFoundError represents when a branch cannot be found
-type BranchNotFoundError struct {
-	ID int64 `json:"id"`
-}
-
 func (e *BranchNotFoundError) Error() string {
 	return fmt.Sprintf("branch with ID %d not found", e.ID)
 }
@@ -252,11 +306,6 @@ func (e *BranchNotFoundError) ToAPIError() *APIError {
 		WithDetail("branch_id", e.ID)
 }
 
-// PasswordValidationError represents password validation failures
-type PasswordValidationError struct {
-	Requirements []string `json:"requirements"`
-}
-
 func (e *PasswordValidationError) Error() string {
 	return "password does not meet requirements"
 }
@@ -264,15 +313,6 @@ func (e *PasswordValidationError) Error() string {
 func (e *PasswordValidationError) ToAPIError() *APIError {
 	return NewAPIError(ErrCodeWeakPassword, "Password does not meet security requirements", http.StatusBadRequest).
 		WithDetail("requirements", e.Requirements)
-}
-
-// ServiceError represents errors from service layer operations
-type ServiceError struct {
-	Service   string `json:"service"`
-	Method    string `json:"method"`
-	Message   string `json:"message"`
-	Cause     error  `json:"-"`
-	Retryable bool   `json:"retryable"`
 }
 
 func (e *ServiceError) Error() string {
@@ -295,15 +335,6 @@ func (e *ServiceError) ToAPIError() *APIError {
 	).WithDetail("service", e.Service).WithDetail("retryable", e.Retryable)
 }
 
-// RepositoryError represents an error from the repository/data layer
-type RepositoryError struct {
-	Operation string `json:"operation"`
-	Table     string `json:"table"`
-	Message   string `json:"message"`
-	Cause     error  `json:"-"`
-	SQLState  string `json:"sql_state,omitempty"`
-}
-
 func (e *RepositoryError) Error() string {
 	return fmt.Sprintf("repository error during %s on %s: %s", e.Operation, e.Table, e.Message)
 }
@@ -319,8 +350,54 @@ func (e *RepositoryError) ToAPIError() *APIError {
 	).WithDetail("table", e.Table).WithDetail("sql_state", e.SQLState)
 }
 
-// Helper functions for common error patterns
-// ==========================================
+// ============================================================================
+// ERROR CONSTRUCTORS
+// ============================================================================
+
+// NewAPIError creates a new APIError instance
+func NewAPIError(code, message string, httpStatus int) *APIError {
+	return &APIError{
+		Code:       code,
+		Message:    message,
+		HTTPStatus: httpStatus,
+		Details:    make(map[string]interface{}),
+	}
+}
+
+// NewAPIErrorWithContext creates a new APIError instance with context
+func NewAPIErrorWithContext(code, message string, httpStatus int, layer, operation string, cause error) *APIError {
+	return &APIError{
+		Code:       code,
+		Message:    message,
+		HTTPStatus: httpStatus,
+		Layer:      layer,
+		Operation:  operation,
+		Cause:      cause,
+		Details:    make(map[string]interface{}),
+	}
+}
+
+// NewErrorResponse creates a new ErrorResponse instance
+func NewErrorResponse(code, message string) ErrorResponse {
+	return ErrorResponse{
+		Code:    code,
+		Message: message,
+		Details: make(map[string]interface{}),
+	}
+}
+
+// WithDetail adds a detail to ErrorResponse
+func (er ErrorResponse) WithDetail(key string, value interface{}) ErrorResponse {
+	if er.Details == nil {
+		er.Details = make(map[string]interface{})
+	}
+	er.Details[key] = value
+	return er
+}
+
+// ============================================================================
+// DOMAIN ERROR CONSTRUCTORS
+// ============================================================================
 
 // NewUserNotFoundByID creates a UserNotFoundError with ID
 func NewUserNotFoundByID(id int64) *UserNotFoundError {
@@ -380,8 +457,9 @@ func NewRepositoryError(operation, table, message string, cause error) *Reposito
 	}
 }
 
-// Enhanced error creation functions with better context
-// ====================================================
+// ============================================================================
+// ENHANCED ERROR CONSTRUCTORS WITH CONTEXT
+// ============================================================================
 
 // NewEmailNotFoundError creates an authentication error for email not found
 func NewEmailNotFoundError(email string) *AuthenticationError {
@@ -423,8 +501,9 @@ func NewAccountLockedError(email string, lockReason string) *AuthenticationError
 	}
 }
 
-// Helper functions for error detection
-// ====================================
+// ============================================================================
+// ERROR DETECTION UTILITIES
+// ============================================================================
 
 // IsUserNotFoundError determines if error is related to user not found
 func IsUserNotFoundError(err error) bool {
@@ -490,6 +569,10 @@ func IsRetryableError(err error) bool {
 
 	return false
 }
+
+// ============================================================================
+// GRPC ERROR PARSING
+// ============================================================================
 
 // ParseGRPCError parses gRPC error messages and creates appropriate errors
 func ParseGRPCError(err error, operation string, email string) error {
@@ -573,62 +656,4 @@ func ParseGRPCError(err error, operation string, email string) error {
 			err,
 		)
 	}
-}
-
-// Error code constants
-const (
-	// User-related errors
-	ErrCodeUserNotFound   = "USER_NOT_FOUND"
-	ErrCodeDuplicateEmail = "DUPLICATE_EMAIL"
-	ErrCodeWeakPassword   = "WEAK_PASSWORD"
-
-	// Auth-related errors
-	ErrCodeAuthFailed   = "AUTHENTICATION_ERROR"
-	ErrCodeAccessDenied = "AUTHORIZATION_ERROR"
-	ErrCodeInvalidToken = "INVALID_TOKEN"
-	ErrCodeNotFound     = "NOT_FOUND"
-
-	// Validation errors
-	ErrCodeValidationError = "VALIDATION_ERROR"
-	ErrCodeInvalidInput    = "INVALID_INPUT"
-
-	// System errors
-	ErrCodeInternalError   = "INTERNAL_ERROR"
-	ErrCodeServiceError    = "SERVICE_ERROR"
-	ErrCodeRepositoryError = "REPOSITORY_ERROR"
-)
-
-// ErrorResponse represents the standard error format for API responses
-// swagger:model ErrorResponse
-type ErrorResponse struct {
-	Code    string                 `json:"code" example:"validation_error"`
-	Message string                 `json:"message" example:"Validation failed"`
-	Details map[string]interface{} `json:"details,omitempty"`
-}
-
-// ToErrorResponse converts APIError to Swagger-compatible format
-func (e *APIError) ToErrorResponse() ErrorResponse {
-	return ErrorResponse{
-		Code:    e.Code,
-		Message: e.Message,
-		Details: e.Details,
-	}
-}
-
-// NewErrorResponse creates a new ErrorResponse instance
-func NewErrorResponse(code, message string) ErrorResponse {
-	return ErrorResponse{
-		Code:    code,
-		Message: message,
-		Details: make(map[string]interface{}),
-	}
-}
-
-// WithDetail adds a detail to ErrorResponse
-func (er ErrorResponse) WithDetail(key string, value interface{}) ErrorResponse {
-	if er.Details == nil {
-		er.Details = make(map[string]interface{})
-	}
-	er.Details[key] = value
-	return er
 }

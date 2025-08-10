@@ -5,7 +5,7 @@ import (
 	"log"
 
 	pb "english-ai-full/internal/proto_qr/account"
-	"english-ai-full/utils"
+	errorcustom "english-ai-full/internal/error_custom"
 	"github.com/go-playground/validator/v10"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -13,7 +13,7 @@ import (
 
 // ValidatePassword validates password using utils function
 func ValidatePassword(fl validator.FieldLevel) bool {
-	return utils.ValidatePassword(fl.Field().String()) == nil
+	return errorcustom.ValidatePassword(fl.Field().String()) == nil
 }
 
 // ValidateRole validates if the role is valid

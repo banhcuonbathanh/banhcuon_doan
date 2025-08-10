@@ -12,15 +12,13 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-
-
 // ChangePassword handles password change requests
 func (h *AccountHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	userID, err := h.getUserIDFromContext(ctx)
 	if err != nil {
-		utils.HandleError(w, err, "change_password")
+		errorcustom.HandleError(w, err, "change_password")
 		return
 	}
 
@@ -29,16 +27,16 @@ func (h *AccountHandler) ChangePassword(w http.ResponseWriter, r *http.Request) 
 		NewPassword     string `json:"new_password" validate:"required,password"`
 	}
 
-	if err := utils.DecodeJSON(r.Body, &req, "change_password", false); err != nil {
-		utils.HandleError(w, err, "change_password")
+	if err := errorcustom.DecodeJSON(r.Body, &req, "change_password", false); err != nil {
+		errorcustom.HandleError(w, err, "change_password")
 		return
 	}
 
 	if err := h.validator.Struct(&req); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			utils.HandleValidationErrors(w, validationErrors, "change_password")
+			errorcustom.HandleValidationErrors(w, validationErrors, "change_password")
 		} else {
-			utils.HandleError(w, errorcustom.NewAPIError(
+			errorcustom.HandleError(w, errorcustom.NewAPIError(
 				errorcustom.ErrCodeValidationError,
 				"Validation failed",
 				http.StatusBadRequest,
@@ -47,15 +45,15 @@ func (h *AccountHandler) ChangePassword(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := utils.ValidatePasswordWithDetails(req.NewPassword, "change_password"); err != nil {
-		utils.HandleError(w, err, "change_password")
+	if err := errorcustom.ValidatePasswordWithDetails(req.NewPassword, "change_password"); err != nil {
+		errorcustom.HandleError(w, err, "change_password")
 		return
 	}
 
 	hashedPassword, err := utils.HashPassword(req.NewPassword)
 	if err != nil {
 		log.Printf("Password hashing error: %v", err)
-		utils.HandleError(w, errorcustom.NewAPIError(
+		errorcustom.HandleError(w, errorcustom.NewAPIError(
 			errorcustom.ErrCodeInternalError,
 			"Password processing failed",
 			http.StatusInternalServerError,
@@ -70,7 +68,7 @@ func (h *AccountHandler) ChangePassword(w http.ResponseWriter, r *http.Request) 
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid password") {
-			utils.HandleError(w, errorcustom.NewAPIError(
+			errorcustom.HandleError(w, errorcustom.NewAPIError(
 				errorcustom.ErrCodeInvalidInput,
 				"Current password is incorrect",
 				http.StatusBadRequest,
@@ -78,7 +76,7 @@ func (h *AccountHandler) ChangePassword(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		log.Printf("Change password error: %v", err)
-		utils.HandleError(w, errorcustom.NewAPIError(
+		errorcustom.HandleError(w, errorcustom.NewAPIError(
 			errorcustom.ErrCodeServiceError,
 			"Password change failed",
 			http.StatusInternalServerError,
@@ -86,7 +84,7 @@ func (h *AccountHandler) ChangePassword(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	utils.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
+	errorcustom.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"success": res.Success,
 		"message": res.Message,
 	}, "change_password")
@@ -100,16 +98,16 @@ func (h *AccountHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) 
 		Email string `json:"email" validate:"required,email"`
 	}
 
-	if err := utils.DecodeJSON(r.Body, &req, "forgot_password", false); err != nil {
-		utils.HandleError(w, err, "forgot_password")
+	if err := errorcustom.DecodeJSON(r.Body, &req, "forgot_password", false); err != nil {
+		errorcustom.HandleError(w, err, "forgot_password")
 		return
 	}
 
 	if err := h.validator.Struct(&req); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			utils.HandleValidationErrors(w, validationErrors, "forgot_password")
+			errorcustom.HandleValidationErrors(w, validationErrors, "forgot_password")
 		} else {
-			utils.HandleError(w, errorcustom.NewAPIError(
+			errorcustom.HandleError(w, errorcustom.NewAPIError(
 				errorcustom.ErrCodeValidationError,
 				"Validation failed",
 				http.StatusBadRequest,
@@ -124,13 +122,13 @@ func (h *AccountHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		log.Printf("Forgot password error: %v", err)
 		// Always return success for security reasons
-		utils.RespondWithJSON(w, http.StatusOK, map[string]string{
+		errorcustom.RespondWithJSON(w, http.StatusOK, map[string]string{
 			"message": "If the email exists, a password reset link has been sent",
 		}, "forgot_password")
 		return
 	}
 
-	utils.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
+	errorcustom.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"success": res.Success,
 		"message": res.Message,
 	}, "forgot_password")
@@ -145,16 +143,16 @@ func (h *AccountHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		NewPassword string `json:"new_password" validate:"required,password"`
 	}
 
-	if err := utils.DecodeJSON(r.Body, &req, "reset_password", false); err != nil {
-		utils.HandleError(w, err, "reset_password")
+	if err := errorcustom.DecodeJSON(r.Body, &req, "reset_password", false); err != nil {
+		errorcustom.HandleError(w, err, "reset_password")
 		return
 	}
 
 	if err := h.validator.Struct(&req); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			utils.HandleValidationErrors(w, validationErrors, "reset_password")
+			errorcustom.HandleValidationErrors(w, validationErrors, "reset_password")
 		} else {
-			utils.HandleError(w, errorcustom.NewAPIError(
+			errorcustom.HandleError(w, errorcustom.NewAPIError(
 				errorcustom.ErrCodeValidationError,
 				"Validation failed",
 				http.StatusBadRequest,
@@ -163,15 +161,15 @@ func (h *AccountHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := utils.ValidatePasswordWithDetails(req.NewPassword, "reset_password"); err != nil {
-		utils.HandleError(w, err, "reset_password")
+	if err := errorcustom.ValidatePasswordWithDetails(req.NewPassword, "reset_password"); err != nil {
+		errorcustom.HandleError(w, err, "reset_password")
 		return
 	}
 
 	hashedPassword, err := utils.HashPassword(req.NewPassword)
 	if err != nil {
 		log.Printf("Password hashing error: %v", err)
-		utils.HandleError(w, errorcustom.NewAPIError(
+		errorcustom.HandleError(w, errorcustom.NewAPIError(
 			errorcustom.ErrCodeInternalError,
 			"Password processing failed",
 			http.StatusInternalServerError,
@@ -185,11 +183,11 @@ func (h *AccountHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "expired") {
-			utils.HandleError(w, errorcustom.NewInvalidTokenError("reset", "invalid or expired reset token"), "reset_password")
+			errorcustom.HandleError(w, errorcustom.NewInvalidTokenError("reset", "invalid or expired reset token"), "reset_password")
 			return
 		}
 		log.Printf("Reset password error: %v", err)
-		utils.HandleError(w, errorcustom.NewAPIError(
+		errorcustom.HandleError(w, errorcustom.NewAPIError(
 			errorcustom.ErrCodeServiceError,
 			"Password reset failed",
 			http.StatusInternalServerError,
@@ -197,7 +195,7 @@ func (h *AccountHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
+	errorcustom.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
 		"success": res.Success,
 		"message": res.Message,
 	}, "reset_password")

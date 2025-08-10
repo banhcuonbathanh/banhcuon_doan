@@ -10,8 +10,8 @@ import (
 
 	"english-ai-full/internal/model"
 	"english-ai-full/internal/proto_qr/account"
-	"english-ai-full/utils"
 
+	errorcustom "english-ai-full/internal/error_custom"
 	pkgerrors "github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -82,24 +82,24 @@ func (s *ServiceStruct) UpdateUser(ctx context.Context, req *account.UpdateUserR
 	})
 	if err != nil {
 		// Check if it's a user not found error using the utility function
-		if utils.IsUserNotFoundError(err) {
-			return nil, utils.NewUserNotFoundByID(req.Id)
+		if errorcustom.IsUserNotFoundError(err) {
+			return nil, errorcustom.NewUserNotFoundByID(req.Id)
 		}
 		
 		// Check if it's a duplicate email error
 		if strings.Contains(strings.ToLower(err.Error()), "duplicate") || 
 		   strings.Contains(strings.ToLower(err.Error()), "already exists") {
-			return nil, utils.NewDuplicateEmailError(req.Email)
+			return nil, errorcustom.NewDuplicateEmailError(req.Email)
 		}
 		
 		// For database/repository errors, wrap them appropriately
 		if strings.Contains(strings.ToLower(err.Error()), "database") ||
 		   strings.Contains(strings.ToLower(err.Error()), "sql") {
-			return nil, utils.NewRepositoryError("update", "users", err.Error(), err)
+			return nil, errorcustom.NewRepositoryError("update", "users", err.Error(), err)
 		}
 		
 		// Generic service error for other cases
-		return nil, utils.NewServiceError("UserService", "UpdateUser", err.Error(), err, false)
+		return nil, errorcustom.NewServiceError("UserService", "UpdateUser", err.Error(), err, false)
 	}
 
 	// Return successful response
@@ -125,7 +125,7 @@ func (s *ServiceStruct) DeleteUser(ctx context.Context, req *account.DeleteAccou
 	if s.emailService != nil {
 		var err error
 		user, err = s.userRepo.FindByID(ctx, req.UserID)
-		if err != nil && !utils.IsUserNotFoundError(err) {
+		if err != nil && !errorcustom.IsUserNotFoundError(err) {
 			// Log repository error but don't fail the deletion process
 			s.logger.Error("Failed to get user info before deletion", map[string]interface{}{
 				"user_id": req.UserID,
@@ -138,19 +138,19 @@ func (s *ServiceStruct) DeleteUser(ctx context.Context, req *account.DeleteAccou
 	err := s.userRepo.DeleteUser(ctx, req.UserID)
 	if err != nil {
 		// Check if it's a user not found error using the utility function
-		if utils.IsUserNotFoundError(err) {
-			return nil, utils.NewUserNotFoundByID(req.UserID)
+		if errorcustom.IsUserNotFoundError(err) {
+			return nil, errorcustom.NewUserNotFoundByID(req.UserID)
 		}
 		
 		// For database/repository errors, wrap them appropriately
 		if strings.Contains(strings.ToLower(err.Error()), "database") ||
 		   strings.Contains(strings.ToLower(err.Error()), "sql") ||
 		   strings.Contains(strings.ToLower(err.Error()), "constraint") {
-			return nil, utils.NewRepositoryError("delete", "users", err.Error(), err)
+			return nil, errorcustom.NewRepositoryError("delete", "users", err.Error(), err)
 		}
 		
 		// Generic service error for other cases
-		return nil, utils.NewServiceError("UserService", "DeleteUser", err.Error(), err, false)
+		return nil, errorcustom.NewServiceError("UserService", "DeleteUser", err.Error(), err, false)
 	}
 
 	// Send account deactivation email if email service is available
@@ -177,15 +177,15 @@ func (s *ServiceStruct) UpdateAccountStatus(ctx context.Context, req *account.Up
 	err := s.userRepo.UpdateAccountStatus(ctx, req.UserId, req.Status)
 	if err != nil {
 		// Check if it's a user not found error using the utility function
-		if utils.IsUserNotFoundError(err) {
-			return nil, utils.NewUserNotFoundByID(req.UserId)
+		if errorcustom.IsUserNotFoundError(err) {
+			return nil, errorcustom.NewUserNotFoundByID(req.UserId)
 		}
 		
 		// Check for invalid status errors
 		if strings.Contains(strings.ToLower(err.Error()), "invalid status") ||
 		   strings.Contains(strings.ToLower(err.Error()), "invalid value") {
-			return nil, utils.NewAPIError(
-				utils.ErrCodeInvalidInput,
+			return nil, errorcustom.NewAPIError(
+				errorcustom.ErrCodeInvalidInput,
 				"Invalid account status provided",
 				http.StatusBadRequest,
 			).WithDetail("status", req.Status)
@@ -194,11 +194,11 @@ func (s *ServiceStruct) UpdateAccountStatus(ctx context.Context, req *account.Up
 		// For database/repository errors, wrap them appropriately
 		if strings.Contains(strings.ToLower(err.Error()), "database") ||
 		   strings.Contains(strings.ToLower(err.Error()), "sql") {
-			return nil, utils.NewRepositoryError("update_status", "users", err.Error(), err)
+			return nil, errorcustom.NewRepositoryError("update_status", "users", err.Error(), err)
 		}
 		
 		// Generic service error for other cases
-		return nil, utils.NewServiceError("UserService", "UpdateAccountStatus", err.Error(), err, false)
+		return nil, errorcustom.NewServiceError("UserService", "UpdateAccountStatus", err.Error(), err, false)
 	}
 
 	return &account.UpdateAccountStatusRes{

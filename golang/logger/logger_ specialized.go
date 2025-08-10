@@ -69,11 +69,7 @@ func (l *Logger) LogAPIRequest(method, path string, statusCode int, duration tim
 		logContext["cause"] = "client_error"
 	}
 	
-	if context != nil {
-		for k, v := range context {
-			logContext[k] = v
-		}
-	}
+
 	
 	// Create readable message
 	message := fmt.Sprintf("%s %s → %d", method, path, statusCode)
@@ -101,11 +97,7 @@ func (l *Logger) LogServiceCall(service, method string, success bool, err error,
 		"operation": fmt.Sprintf("%s_%s", service, method),
 	}
 	
-	if context != nil {
-		for k, v := range context {
-			logContext[k] = v
-		}
-	}
+
 	
 	message := fmt.Sprintf("%s.%s", service, method)
 	
@@ -134,11 +126,7 @@ func (l *Logger) LogDBOperation(operation, table string, success bool, err error
 		"layer":     LayerRepository,
 	}
 	
-	if context != nil {
-		for k, v := range context {
-			logContext[k] = v
-		}
-	}
+
 	
 	message := fmt.Sprintf("DB %s on %s", operation, table)
 	
@@ -185,12 +173,7 @@ func (l *Logger) LogUserActivity(userID, email, action string, resource string, 
 		"operation": fmt.Sprintf("%s_%s", action, resource),
 	}
 	
-	if context != nil {
-		for k, v := range context {
-			logContext[k] = v
-		}
-	}
-	
+
 	l.Info(fmt.Sprintf("User %s performed %s on %s", maskEmail(email), action, resource), logContext)
 }
 
@@ -206,11 +189,7 @@ func (l *Logger) LogSecurityEvent(eventType, description string, severity string
 		"cause":          eventType,
 	}
 	
-	if context != nil {
-		for k, v := range context {
-			logContext[k] = v
-		}
-	}
+	
 	
 	message := fmt.Sprintf("Security: %s", description)
 	
@@ -234,12 +213,7 @@ func (l *Logger) LogMetric(metricName string, value interface{}, unit string, co
 		"operation":   "metric_collection",
 	}
 	
-	if context != nil {
-		for k, v := range context {
-			logContext[k] = v
-		}
-	}
-	
+
 	l.Info(fmt.Sprintf("Metric: %s = %v %s", metricName, value, unit), logContext)
 }
 
@@ -271,12 +245,7 @@ func (l *Logger) LogPerformance(operation string, duration time.Duration, contex
 	default:
 		logContext["category"] = "fast"
 	}
-	
-	if context != nil {
-		for k, v := range context {
-			logContext[k] = v
-		}
-	}
+
 	
 	message := fmt.Sprintf("Performance: %s took %v", operation, duration)
 	
