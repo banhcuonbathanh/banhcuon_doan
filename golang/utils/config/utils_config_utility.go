@@ -1,3 +1,5 @@
+//golang/utils/config/utils_config_utility.go
+
 package utils_config
 
 import (
@@ -130,4 +132,178 @@ func (c *Config) GetAnthropicAPIURL() string {
 // GetQuanAnAddress returns the QuanAn service address
 func (c *Config) GetQuanAnAddress() string {
 	return c.ExternalAPIs.QuanAn.Address
+}
+
+
+// Utility methods for domain configuration
+func (c *Config) IsDomainEnabled(domain string) bool {
+	for _, enabledDomain := range c.Domains.Enabled {
+		if enabledDomain == domain {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Config) GetDefaultDomain() string {
+	if c.Domains.Default != "" {
+		return c.Domains.Default
+	}
+	return "system"
+}
+
+func (c *Config) GetEnabledDomains() []string {
+	return c.Domains.Enabled
+}
+
+func (c *Config) GetMaxLoginAttempts() int {
+	return c.Domains.Account.MaxLoginAttempts
+}
+
+func (c *Config) IsPasswordComplexityRequired() bool {
+	return c.Domains.Account.PasswordComplexity
+}
+
+
+
+
+
+// Integration with error handling system
+func (c *Config) GetDomainErrorLogLevel() string {
+	return c.Domains.ErrorTracking.LogLevel
+}
+
+func (c *Config) ShouldIncludeStackTrace() bool {
+	return c.ErrorHandling.IncludeStackTrace
+}
+
+func (c *Config) ShouldSanitizeSensitiveData() bool {
+	return c.ErrorHandling.SanitizeSensitiveData
+}
+
+// example 
+
+
+// Example usage in error handling integration
+func NewDomainAwareErrorHandler(config *Config) *DomainErrorHandler {
+	return &DomainErrorHandler{
+		config:           config,
+		enabledDomains:   config.GetEnabledDomains(),
+		defaultDomain:    config.GetDefaultDomain(),
+		includeStackTrace: config.ShouldIncludeStackTrace(),
+		sanitizeData:     config.ShouldSanitizeSensitiveData(),
+	}
+}
+
+type DomainErrorHandler struct {
+	config            *Config
+	enabledDomains    []string
+	defaultDomain     string
+	includeStackTrace bool
+	sanitizeData      bool
+}
+
+func (deh *DomainErrorHandler) HandleError(domain string, err error) error {
+	// Validate domain is enabled
+	if !deh.config.IsDomainEnabled(domain) {
+		// Use default domain if specified domain is not enabled
+		domain = deh.defaultDomain
+	}
+	
+	// Apply domain-specific error handling logic based on configuration
+	switch domain {
+	case "user":
+		return deh.handleUserError(err)
+
+	default:
+		return deh.handleSystemError(err)
+	}
+}
+
+func (deh *DomainErrorHandler) handleUserError(err error) error {
+	// Apply user-specific configuration
+	if deh.config.IsPasswordComplexityRequired() {
+		// Enhanced password validation
+	}
+	return err
+}
+
+
+
+
+
+func (deh *DomainErrorHandler) handleSystemError(err error) error {
+	// Apply system-level error handling
+	return err
+}
+
+// Example configuration file (config.yaml)
+/*
+domains:
+  enabled:
+    - "user"
+    - "course"
+    - "payment"
+    - "auth"
+    - "admin"
+    - "content"
+    - "system"
+  default: "system"
+  error_tracking:
+    enabled: true
+    log_level: "info"
+  user:
+    max_login_attempts: 5
+    password_complexity: true
+    email_verification: true
+  course:
+    enrollment_validation: true
+    prerequisite_check: true
+  payment:
+    provider_timeout: "30s"
+    retry_attempts: 3
+    webhook_validation: true
+
+error_handling:
+  include_stack_trace: false
+  sanitize_sensitive_data: true
+  request_id_required: true
+*/
+
+// Environment-specific overrides
+func (cm *ConfigManager) setEnvironmentDefaults(env string) {
+	switch env {
+	case "development":
+		cm.viper.SetDefault("error_handling.include_stack_trace", true)
+		cm.viper.SetDefault("domains.error_tracking.log_level", "debug")
+		cm.viper.SetDefault("domains.user.max_login_attempts", 10) // More lenient in dev
+		
+	case "production":
+		cm.viper.SetDefault("error_handling.include_stack_trace", false)
+		cm.viper.SetDefault("domains.error_tracking.log_level", "warn")
+		cm.viper.SetDefault("domains.user.max_login_attempts", 3) // Stricter in prod
+		cm.viper.SetDefault("domains.payment.webhook_validation", true)
+		
+	case "testing":
+		cm.viper.SetDefault("error_handling.include_stack_trace", true)
+		cm.viper.SetDefault("domains.error_tracking.log_level", "debug")
+		cm.viper.SetDefault("domains.user.email_verification", false) // Skip in tests
+	}
+}
+
+// Initialize domain-aware error handling in your application
+func InitializeDomainErrorHandling() {
+	// Load configuration
+	err := InitializeConfig("./config.yaml")
+	if err != nil {
+		panic(err)
+	}
+	
+	config := GetConfig()
+	
+	// Create domain-aware error handler
+	errorHandler := NewDomainAwareErrorHandler(config)
+	
+	// Use in your middleware or handlers
+	_ = errorHandler
 }

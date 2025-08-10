@@ -1,20 +1,3 @@
-package account_handler
-
-import (
-	"fmt"
-	"net/http"
-	"strings"
-	"time"
-
-	errorcustom "english-ai-full/internal/error_custom"
-	pb "english-ai-full/internal/proto_qr/account"
-	"english-ai-full/logger"
-	"english-ai-full/utils"
-
-	"github.com/go-playground/validator/v10"
-)
-
-
 func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	ctx := r.Context()
@@ -63,8 +46,9 @@ func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Requ
 		Status string `json:"status" validate:"required,oneof=active inactive suspended pending"`
 	}
 
-	// Decode request body
-	if err := errorcustom.DecodeJSON(r.Body, &req, "update_account_status", false); err != nil {
+	// FIXED: Decode request body using standard json.Decoder
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&req); err != nil {
 		context := utils.MergeContext(baseContext, map[string]interface{}{
 			"error": err.Error(),
 		})
@@ -80,7 +64,11 @@ func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Requ
 		// Log API request with error
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 		
-		errorcustom.HandleError(w, err, "update_account_status")
+		// Create a validation error and use domain error handling
+		validationErr := errorcustom.NewValidationError(domain, "request_body", "Invalid JSON format", map[string]interface{}{
+			"parse_error": err.Error(),
+		})
+		errorcustom.HandleDomainError(w, validationErr, domain, requestID)
 		return
 	}
 
@@ -96,13 +84,26 @@ func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Requ
 		})
 		
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			// Log each validation error
+			// Create error collection for multiple validation errors
+			errorCollection := errorcustom.NewErrorCollection(domain)
+			
+			// Log each validation error and add to collection
 			for _, validationError := range validationErrors {
 				logger.LogValidationError(
 					validationError.Field(),
 					validationError.Tag(),
 					validationError.Value(),
 				)
+				
+				// Add individual validation error to collection
+				fieldErr := errorcustom.NewValidationError(domain, validationError.Field(), 
+					fmt.Sprintf("Field validation failed: %s", validationError.Tag()), 
+					map[string]interface{}{
+						"field": validationError.Field(),
+						"tag": validationError.Tag(),
+						"value": validationError.Value(),
+					})
+				errorCollection.Add(fieldErr)
 			}
 			
 			logger.WarningWithCause(
@@ -113,7 +114,8 @@ func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Requ
 				context,
 			)
 			
-		   errorcustom.HandleValidationErrors(w, validationErrors, domain, requestID)
+			// FIXED: Use HandleDomainError with error collection
+			errorcustom.HandleDomainError(w, errorCollection.ToAPIError(), domain, requestID)
 		} else {
 			logger.ErrorWithCause(
 				"Unexpected validation error",
@@ -123,11 +125,11 @@ func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Requ
 				context,
 			)
 			
-			errorcustom.HandleError(w, errorcustom.NewAPIError(
-				errorcustom.ErrCodeValidationError,
-				"Validation failed",
-				http.StatusBadRequest,
-			), "update_account_status")
+			// FIXED: Create validation error and use domain error handling
+			validationErr := errorcustom.NewValidationError(domain, "system", "Validation failed", map[string]interface{}{
+				"system_error": err.Error(),
+			})
+			errorcustom.HandleDomainError(w, validationErr, domain, requestID)
 		}
 		
 		// Log API request with validation error
@@ -168,7 +170,9 @@ func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Requ
 			// Log API request with not found error
 			logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusNotFound, time.Since(start), baseContext)
 			
-			errorcustom.HandleError(w, errorcustom.NewUserNotFoundByID(id), "update_account_status")
+			// FIXED: Use domain-specific not found error
+			notFoundErr := errorcustom.NewAccountNotFoundError(id) // or NewUserNotFoundByID if that's more appropriate
+			errorcustom.HandleDomainError(w, notFoundErr, domain, requestID)
 			return
 		}
 		
@@ -188,11 +192,9 @@ func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Requ
 		// Log API request with service error
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusInternalServerError, time.Since(start), baseContext)
 		
-		errorcustom.HandleError(w, errorcustom.NewAPIError(
-			errorcustom.ErrCodeServiceError,
-			"Failed to update account status",
-			http.StatusInternalServerError,
-		), "update_account_status")
+		// FIXED: Create external service error and use domain error handling
+		serviceErr := errorcustom.NewExternalServiceError(domain, "user-service", "UpdateAccountStatus", err, true)
+		errorcustom.HandleDomainError(w, serviceErr, domain, requestID)
 		return
 	}
 
@@ -242,9 +244,20 @@ func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Requ
 		"response_message": res.Message,
 	}))
 
-	// Send response
-	errorcustom.RespondWithJSON(w, status, map[string]interface{}{
+	// FIXED: Send response using domain success response
+	responseData := map[string]interface{}{
 		"success": res.Success,
 		"message": res.Message,
-	}, "update_account_status")
+	}
+	
+	if status == http.StatusOK {
+		errorcustom.RespondWithDomainSuccess(w, responseData, domain, requestID)
+	} else {
+		// For business logic failures, create appropriate error
+		businessErr := errorcustom.NewBusinessLogicError(domain, "status_update_failed", res.Message, map[string]interface{}{
+			"requested_status": req.Status,
+			"user_id": id,
+		})
+		errorcustom.HandleDomainError(w, businessErr, domain, requestID)
+	}
 }

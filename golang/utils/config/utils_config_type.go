@@ -51,6 +51,10 @@ type Config struct {
 
 	// Valid user roles
 	ValidRoles []string `mapstructure:"valid_roles" json:"valid_roles" validate:"required,min=1,dive,required"`
+
+	// Domain configuration
+	Domains       DomainConfig        `mapstructure:"domains" json:"domains"`
+	ErrorHandling ErrorHandlingConfig `mapstructure:"error_handling" json:"error_handling"`
 }
 
 // ServerConfig holds server-related configuration
@@ -182,4 +186,30 @@ type LoggingConfig struct {
 	MaxBackups int    `mapstructure:"max_backups" json:"max_backups" validate:"min=0"`
 	MaxAge     int    `mapstructure:"max_age" json:"max_age" validate:"min=0"`
 	Compress   bool   `mapstructure:"compress" json:"compress"`
+}
+
+
+// Domain configuration structure to add to your Config type
+type DomainConfig struct {
+	Enabled       []string                    `mapstructure:"enabled" json:"enabled"`
+	Default       string                     `mapstructure:"default" json:"default"`
+	ErrorTracking DomainErrorTrackingConfig  `mapstructure:"error_tracking" json:"error_tracking"`
+	Account          DomainAccountConfig           `mapstructure:"account" json:"account"`
+
+}
+
+type DomainErrorTrackingConfig struct {
+	Enabled  bool   `mapstructure:"enabled" json:"enabled"`
+	LogLevel string `mapstructure:"log_level" json:"log_level" validate:"oneof=debug info warn error"`
+}
+
+type DomainAccountConfig struct {
+	MaxLoginAttempts    int  `mapstructure:"max_login_attempts" json:"max_login_attempts" validate:"min=1,max=10"`
+	PasswordComplexity  bool `mapstructure:"password_complexity" json:"password_complexity"`
+	EmailVerification   bool `mapstructure:"email_verification" json:"email_verification"`
+}
+type ErrorHandlingConfig struct {
+	IncludeStackTrace      bool `mapstructure:"include_stack_trace" json:"include_stack_trace"`
+	SanitizeSensitiveData  bool `mapstructure:"sanitize_sensitive_data" json:"sanitize_sensitive_data"`
+	RequestIDRequired      bool `mapstructure:"request_id_required" json:"request_id_required"`
 }

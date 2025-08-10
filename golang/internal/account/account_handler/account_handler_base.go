@@ -7,21 +7,28 @@ import (
 	"time"
 
 	errorcustom "english-ai-full/internal/error_custom"
-	"english-ai-full/logger"
 	pb "english-ai-full/internal/proto_qr/account"
+	"english-ai-full/logger"
 	"english-ai-full/utils"
 
 	"github.com/go-playground/validator/v10"
+
+	utils_config "english-ai-full/utils/config"
 )
 
 type BaseAccountHandler struct {
 	userClient pb.AccountServiceClient
 	validator  *validator.Validate
 	logger     *logger.Logger // Base logger for this handler
+
+   config     *utils_config.Config  // Add config for domain configuration
+    domain     string                // Domain for this handler
 }
 
 // NewBaseHandler creates a new base account handler with comprehensive logging setup
-func NewBaseHandler(userClient pb.AccountServiceClient) *BaseAccountHandler {
+func NewBaseHandler(userClient pb.AccountServiceClient,   config *utils_config.Config,) *BaseAccountHandler {
+
+	  domain := "Account" // Account handlers primarily work with user domain
 	// Create handler-specific logger
 	handlerLogger := logger.NewHandlerLogger()
 	handlerLogger.AddGlobalField("component", "account_handler")
@@ -44,8 +51,12 @@ func NewBaseHandler(userClient pb.AccountServiceClient) *BaseAccountHandler {
 		userClient: userClient,
 		validator:  v,
 		logger:     handlerLogger,
-	}
 
+		   config:     config,
+        domain:     domain,
+	}
+  // Register custom validators with domain context
+  
 	logger.Info("Base account handler initialized successfully", map[string]interface{}{
 		"component":          "account_handler",
 		"validator_setup":    true,
@@ -447,4 +458,9 @@ func (h *BaseAccountHandler) GetLogger() *logger.Logger {
 // Helper method to set operation context for the logger
 func (h *BaseAccountHandler) SetLoggerOperation(operation string) {
 	h.logger.SetOperation(operation)
+}
+
+func (bah *BaseAccountHandler) handleDomainError(w http.ResponseWriter, r *http.Request, err error) {
+    requestID := errorcustom.GetRequestIDFromContext(r.Context())
+    errorcustom.HandleDomainError(w, err, bah.domain, requestID)
 }

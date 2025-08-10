@@ -101,4 +101,19 @@ func (cm *ConfigManager) setDefaults() {
 
 	// Valid roles
 	cm.viper.SetDefault("valid_roles", []string{"admin", "user", "manager"})
+
+	// Domain configuration for multi-domain error handling
+	cm.viper.SetDefault("domains.enabled", []string{
+		"account",
+	
+		"auth",
+		"admin",
+		
+		"system",
+	})
+
+		// Domain-specific settings
+	cm.viper.SetDefault("domains.default", "system")
+	cm.viper.SetDefault("domains.error_tracking.enabled", true)
+	cm.viper.SetDefault("domains.error_tracking.log_level", "info")
 }

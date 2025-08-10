@@ -89,7 +89,7 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 				context,
 			)
 			
-			errorcustom.HandleValidationErrors(w, validationErrors, "login")
+			errorcustom.HandleValidationErrors(w, validationErrors, "login", req.Email)
 		} else {
 			logger.ErrorWithCause(
 				"Unexpected validation error during login",
@@ -128,7 +128,13 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		// Parse the gRPC error with enhanced context
-		parsedErr := errorcustom.ParseGRPCError(err, "login", req.Email)
+	parsedErr := errorcustom.ParseGRPCError(err, "login", req.Email, map[string]interface{}{
+	"service":     "AccountService",
+	"method":      "Login",
+	"duration_ms": serviceDuration.Milliseconds(),
+	"client_ip":   clientIP,
+	"user_agent":  userAgent,
+})
 		
 		// Determine specific failure reason for logging and client response
 		var failureReason string
