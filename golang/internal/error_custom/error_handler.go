@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -659,3 +660,162 @@ func GetClientIP(r *http.Request) string {
 	}
 	return ip
 }
+
+
+// new start
+
+// Email validation regex pattern
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+
+// IsValidEmail validates email format using regex
+func IsValidEmail(email string) bool {
+	if email == "" {
+		return false
+	}
+	
+	// Basic length check
+	if len(email) > 254 {
+		return false
+	}
+	
+	// Check for basic format
+	if !strings.Contains(email, "@") {
+		return false
+	}
+	
+	// Split into local and domain parts
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 {
+		return false
+	}
+	
+	local, domain := parts[0], parts[1]
+	
+	// Validate local part
+	if len(local) == 0 || len(local) > 64 {
+		return false
+	}
+	
+	// Validate domain part
+	if len(domain) == 0 || len(domain) > 253 {
+		return false
+	}
+	
+	// Use regex for final validation
+	return emailRegex.MatchString(email)
+}
+
+// ValidateEmail performs comprehensive email validation with detailed error reporting
+func ValidateEmail(email string, requestID string) *APIError {
+	if email == "" {
+		return NewAPIError(
+			ErrCodeValidationError,
+			"Email is required",
+			http.StatusBadRequest,
+		).WithDetail("field", "email")
+	}
+	
+	// Trim whitespace
+	email = strings.TrimSpace(email)
+	
+	// Length validation
+	if len(email) > 254 {
+		return NewAPIError(
+			ErrCodeValidationError,
+			"Email address is too long (maximum 254 characters)",
+			http.StatusBadRequest,
+		).WithDetail("field", "email").WithDetail("max_length", 254)
+	}
+	
+	// Basic @ symbol check
+	if !strings.Contains(email, "@") {
+		return NewAPIError(
+			ErrCodeValidationError,
+			"Email must contain @ symbol",
+			http.StatusBadRequest,
+		).WithDetail("field", "email")
+	}
+	
+	// Split validation
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 {
+		return NewAPIError(
+			ErrCodeValidationError,
+			"Email format is invalid",
+			http.StatusBadRequest,
+		).WithDetail("field", "email")
+	}
+	
+	local, domain := parts[0], parts[1]
+	
+	// Local part validation
+	if len(local) == 0 {
+		return NewAPIError(
+			ErrCodeValidationError,
+			"Email local part cannot be empty",
+			http.StatusBadRequest,
+		).WithDetail("field", "email")
+	}
+	
+	if len(local) > 64 {
+		return NewAPIError(
+			ErrCodeValidationError,
+			"Email local part is too long (maximum 64 characters)",
+			http.StatusBadRequest,
+		).WithDetail("field", "email").WithDetail("max_local_length", 64)
+	}
+	
+	// Domain part validation
+	if len(domain) == 0 {
+		return NewAPIError(
+			ErrCodeValidationError,
+			"Email domain cannot be empty",
+			http.StatusBadRequest,
+		).WithDetail("field", "email")
+	}
+	
+	if len(domain) > 253 {
+		return NewAPIError(
+			ErrCodeValidationError,
+			"Email domain is too long (maximum 253 characters)",
+			http.StatusBadRequest,
+		).WithDetail("field", "email").WithDetail("max_domain_length", 253)
+	}
+	
+	// Final regex validation
+	if !emailRegex.MatchString(email) {
+		return NewAPIError(
+			ErrCodeValidationError,
+			"Email format is invalid",
+			http.StatusBadRequest,
+		).WithDetail("field", "email").WithDetail("expected_format", "user@domain.com")
+	}
+	
+	return nil
+}
+
+// Fixed ValidateEmailFormat function for validator with logging
+func ValidateEmailFormat(fl validator.FieldLevel) bool {
+	fieldName := fl.FieldName()
+	email := fl.Field().String()
+	
+	
+
+	// Use the IsValidEmail function we just created
+	isValid := IsValidEmail(email)
+
+	if !isValid {
+		// Log validation failure using your existing logger
+		logger.Warning("Email format validation failed", map[string]interface{}{
+			"field":           fieldName,
+			"email":           email,
+			"is_valid":        false,
+			"expected_format": "user@domain.com",
+			"layer":           "validation",
+			"operation":       "validate_email_format",
+		})
+	}
+
+	return isValid
+}
+// new end

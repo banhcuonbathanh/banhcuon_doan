@@ -1,0 +1,1264 @@
+{
+	"info": {
+		"_postman_id": "14612249-7a96-4888-be2f-51c3b2f42d32",
+		"name": "english",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "37760297"
+	},
+	"item": [
+		{
+			"name": "user",
+			"item": [
+				{
+					"name": "add new users",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const users = [",
+									"    // Add your user data here",
+									"];",
+									"",
+									"let userIndex = pm.environment.get(\"userIndex\") || 0;",
+									"",
+									"if (userIndex < users.length) {",
+									"    pm.environment.set(\"user\", JSON.stringify(users[userIndex]));",
+									"    pm.environment.set(\"userIndex\", userIndex + 1);",
+									"} else {",
+									"    postman.setNextRequest(null);",
+									"}",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "    {\n        \"name\": \"vu1\",\n        \"email\": \"vu8.johnson@example.com\",\n        \"password\": \"password1231234\",\n        \"role\": \"Employee\",\n        \"phone\": \"1234567890\",\n        \"image\": \"alice.jpg\",\n        \"address\": \"123 Main St, Anytown, USA\",\n        \"created_at\": \"2024-08-19T16:17:16+07:00\",\n        \"updated_at\": \"2024-08-19T16:17:16+07:00\"\n\n    }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/users",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get all users",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhbGljZS5qb2huc29uQGV4YW1wbGUuY29tMTIzNCIsImlzX2FkbWluIjp0cnVlLCJzdWIiOiJhbGljZS5qb2huc29uQGV4YW1wbGUuY29tMTIzNCIsImV4cCI6MTcyNDkwNzk3NywiaWF0IjoxNzI0OTA3MDc3LCJqdGkiOiI2YmQ2ZjhhZi01ZGZmLTQ1YzYtYjhhYS1kNTc1NjM5ZTFhNjQifQ.4yUcWfwJ7IZ_8rQxaAEH9e59DT-Mv6joJpAgyixNo9E",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/users",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get user by email",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhbGljZS5qb2huc29uQGV4YW1wbGUuY29tMTIzNCIsImlzX2FkbWluIjpmYWxzZSwic3ViIjoiYWxpY2Uuam9obnNvbkBleGFtcGxlLmNvbTEyMzQiLCJleHAiOjE3MjQ5MDc0NzksImlhdCI6MTcyNDkwNjU3OSwianRpIjoiODE2ZGJlNTctNjFiNi00YTQzLWFiZjAtYzIzOTg3NWJmNjg4In0.1WUZ6Y4_i6_fWH4g66mtbw5AbQNGYA7zbYXbFduLemI",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": " {\n \n        \"email\": \"alice.johnson@example.com1234\",\n        \"password\": \"password1231234\"\n\n\n    }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/users/email/alice.johnson@example.com1234",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"users",
+								"email",
+								"alice.johnson@example.com1234"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete user with id",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhbGljZS5qb2huc29uQGV4YW1wbGUuY29tMTIzNCIsImlzX2FkbWluIjpmYWxzZSwic3ViIjoiYWxpY2Uuam9obnNvbkBleGFtcGxlLmNvbTEyMzQiLCJleHAiOjE3MjQ5MDc0NzksImlhdCI6MTcyNDkwNjU3OSwianRpIjoiODE2ZGJlNTctNjFiNi00YTQzLWFiZjAtYzIzOTg3NWJmNjg4In0.1WUZ6Y4_i6_fWH4g66mtbw5AbQNGYA7zbYXbFduLemI",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/users/2",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"users",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "login",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhbGljZS5qb2huc29uQGV4YW1wbGUuY29tMTIzNCIsImlzX2FkbWluIjpmYWxzZSwic3ViIjoiYWxpY2Uuam9obnNvbkBleGFtcGxlLmNvbTEyMzQiLCJleHAiOjE3MjQ5MDc0NzksImlhdCI6MTcyNDkwNjU3OSwianRpIjoiODE2ZGJlNTctNjFiNi00YTQzLWFiZjAtYzIzOTg3NWJmNjg4In0.1WUZ6Y4_i6_fWH4g66mtbw5AbQNGYA7zbYXbFduLemI",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"alice.johnson@example.com12341234\",\n    \"password\": \"password1231234\"\n}\n\n\n\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/users/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"users",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "check route user",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "log out",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhbGljZS5qb2huc29uQGV4YW1wbGUuY29tMTIzNDEyMzQiLCJyb2xlIjoiR3Vlc3QiLCJzdWIiOiJhbGljZS5qb2huc29uQGV4YW1wbGUuY29tMTIzNDEyMzQiLCJleHAiOjE3Mjg0NjUyMzcsImlhdCI6MTcyODQ2NDMzNywianRpIjoiM2ViNjVlNDgtMTNhMy00MDlmLWE0OTQtYmJiZmRkYjE0NDJhIn0.bJquRlHZ-zfc8siN82RN5tvdAakOzfacqRBkivzkoYw",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/users/logout",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"users",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "usersTest",
+			"item": [
+				{
+					"name": "login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"alice.johnson@example.com1234\",\n    \"password\": \"password1231234\"\n}\n\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/usersTest/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"usersTest",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "test",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/test",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"test"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "reading",
+			"item": [
+				{
+					"name": "test reading route",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/testreading",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"testreading"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create reading",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhbGljZS5qb2huc29uQGV4YW1wbGUuY29tMTIzNCIsImlzX2FkbWluIjp0cnVlLCJzdWIiOiJhbGljZS5qb2huc29uQGV4YW1wbGUuY29tMTIzNCIsImV4cCI6MTcyNDkwODk1NSwiaWF0IjoxNzI0OTA4MDU1LCJqdGkiOiI0ZjViZDE0Yy0zYjk2LTQxMWUtODBkZC0zMTYyNGVhNDMxYzgifQ.PkM-uP3MqdkDBvYe8SjYLV4WTNfPja9CnW26ZNaAkpc",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reading_req_type\": {\n        \"testNumber\": 1,\n        \"sections\": [\n            {\n                \"sectionNumber\": 1,\n                \"timeAllowed\": 60,\n                \"passages\": [\n                    {\n                        \"passageNumber\": 1,\n                        \"title\": \"Sample Passage\",\n                        \"content\": [\n                            {\n                                \"paragraphSummary\": \"This is a summary.\",\n                                \"keyWords\": \"sample, passage\",\n                                \"keySentence\": \"This is a key sentence.\"\n                            }\n                        ],\n                        \"questions\": [\n                            {\n                                \"questionNumber\": 1,\n                                \"type\": \"MultipleChoice\",\n                                \"content\": \"What is the main idea?\",\n                                \"options\": [\"Option 1\", \"Option 2\", \"Option 3\"],\n                                \"correctAnswer\": \"Option 1\"\n                            }\n                        ]\n                    }\n                ]\n            }\n        ]\n    },\n    \"created_at\": \"2024-08-29T11:42:45Z\",\n    \"updated_at\": \"2024-08-29T11:42:45Z\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/readings",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"readings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get all reading",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/readings",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"readings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get reading by id",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/readings/1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"readings",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "comment",
+			"item": [
+				{
+					"name": "check comment route",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/comment/test",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"comment",
+								"test"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create comment",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"This is a test comment\",\n  \"author_id\": 124\n\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/comment",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"comment"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get all comment",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "websocket",
+			"item": [
+				{
+					"name": "websocket",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "ws://localhost:8888/ws",
+							"protocol": "ws",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"ws"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "python",
+			"item": [
+				{
+					"name": "test python",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/python-greeter?name=Alice",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"python-greeter"
+							],
+							"query": [
+								{
+									"key": "name",
+									"value": "Alice"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "evaluate",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/ielts/evaluate?student_response=The graph illustrates the proportion of male and female employees in 6 broad employment categories in Australia in 1987 and 2010.&passage=The provided graph displays data on gender distribution across various job sectors in Australia for the years 1987 and 2010&question=Summarise the information by selecting and reporting the main features, and make comparisons where relevant&complex_sentences=The most striking feature of the graph is the significant increase in female participation in the workforce across all sectors, particularly in the traditionally male-dominated fields of trades and labor&advanced_vocabulary=The data evinces a marked shift towards gender parity in the Australian workforce, with some sectors experiencing a more pronounced metamorphosis than others.&cohesive_devices=Furthermore, it is noteworthy that while some sectors have seen substantial changes, others have maintained a relatively stable gender distribution over the 23-year period.",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"ielts",
+								"evaluate"
+							],
+							"query": [
+								{
+									"key": "student_response",
+									"value": "The graph illustrates the proportion of male and female employees in 6 broad employment categories in Australia in 1987 and 2010."
+								},
+								{
+									"key": "passage",
+									"value": "The provided graph displays data on gender distribution across various job sectors in Australia for the years 1987 and 2010"
+								},
+								{
+									"key": "question",
+									"value": "Summarise the information by selecting and reporting the main features, and make comparisons where relevant"
+								},
+								{
+									"key": "complex_sentences",
+									"value": "The most striking feature of the graph is the significant increase in female participation in the workforce across all sectors, particularly in the traditionally male-dominated fields of trades and labor"
+								},
+								{
+									"key": "advanced_vocabulary",
+									"value": "The data evinces a marked shift towards gender parity in the Australian workforce, with some sectors experiencing a more pronounced metamorphosis than others."
+								},
+								{
+									"key": "cohesive_devices",
+									"value": "Furthermore, it is noteworthy that while some sectors have seen substantial changes, others have maintained a relatively stable gender distribution over the 23-year period."
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "dish",
+			"item": [
+				{
+					"name": "test server",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/dishes-test",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"dishes-test"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create dish",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n           \"id\": 1,\n            \"name\": \"gio 12 21\",\n            \"price\": 9,\n            \"description\": \"Classic Italian pasta dish with eggs, cheese, pancetta, and black pepper\",\n            \"image\": \"https://example.com/spaghetti-carbonara.jpg\",\n            \"status\": \"available\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/dishes",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"dishes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get dish all",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/dishes",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"dishes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get dish detail",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/dishes/1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"dishes",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "image",
+			"item": [
+				{
+					"name": "test server image",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "upload image",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "get picture",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/images/image?filename=Screenshot%202024-02-20%20at%2014.37.22.png&path=folder1/folder2",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"images",
+								"image"
+							],
+							"query": [
+								{
+									"key": "filename",
+									"value": "Screenshot%202024-02-20%20at%2014.37.22.png"
+								},
+								{
+									"key": "path",
+									"value": "folder1/folder2"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "guests",
+			"item": [
+				{
+					"name": "test server",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/qr/guest/test",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"qr",
+								"guest",
+								"test"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Table-Token",
+								"value": "MTp0YWJsZTo0ODgzMzUwOTA2.eFzcDV7lnSA",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"vu\",\n    \"table_number\": 1,\n    \"token\": \"MTp0YWJsZTo0ODgzMzUwOTA2asfdasdfsd.\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/qr/guest/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"qr",
+								"guest",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "table",
+			"item": [
+				{
+					"name": "tast table",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/table/test",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"table",
+								"test"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create table",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "  {\n        \"number\": 20,\n        \"capacity\": 0,\n        \"status\": \"TAKE_AWAY\"\n \n\n    }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/table",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"table"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get tables",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/table/list",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"table",
+								"list"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "set",
+			"item": [
+				{
+					"name": "test set",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/sets-test",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"sets-test"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "add new set",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"suat day du trung 1\",\n    \"description\": \"A delicious set of dishes.\",\n    \"dishes\": [\n        {\n            \"dish_id\": 1,\n            \"quantity\": 3\n        },\n        {\n            \"dish_id\": 2,\n            \"quantity\": 1\n        },\n           {\n            \"dish_id\": 3,\n            \"quantity\": 1\n        }\n    ],\n    \"userId\": 1,  // Replace with the appropriate user ID\n    \"is_public\": true,\n    \"image\": \"http://example.com/image.jpg\"  // Replace with the appropriate image URL\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/sets",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"sets"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get all sets",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/sets",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"sets"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "order",
+			"item": [
+				{
+					"name": "test order route",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/orders-test",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"orders-test"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create order",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"guest_id\": null,\n  \"user_id\": 1,\n  \"is_guest\": false,\n  \"table_number\": 1,\n  \"order_handler_id\": 1,\n  \"status\": \"pending\",\n  \"created_at\": \"2024-10-21T12:00:00Z\",\n  \"updated_at\": \"2024-10-21T12:00:00Z\",\n  \"total_price\": 5000,\n    \"order_name\": \"asdfasdf-344c1368-beaa-4bb2-8649-\",\n\n\n\"dish_items\": [\n    {\n        \"dish_id\": 1,  // not \"id\"\n        \"quantity\": 2\n    },\n        {\n                \"dish_id\": 2,\n                \"quantity\": 2\n            },\n              {\n                \"dish_id\": 3,\n                \"quantity\": 4\n            }\n    \n    \n],\n\"set_items\": [\n    {\n        \"set_id\": 1,  // not \"id\"\n        \"quantity\": 3\n    },\n       {\n        \"set_id\": 2,  // not \"id\"\n        \"quantity\": 3\n    }\n],\n  \"topping\": \"xzdfgdfg\",\n  \"tracking_order\": \"zsdf\",\n  \"take_away\": true,\n  \"chili_number\": 3,\n  \"Table_token\": \"MTo0OkF2YWlsYWJsZTo0ODg5ODMyNTYy.ZiOccA4-JoM\"\n}\n// ---------------\n\n// {\n//     \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwiZW1haWwiOiIxIiwicm9sZSI6Imd1ZXN0Iiwic3ViIjoiMSIsImV4cCI6MTcyOTc1MjQ4NSwiaWF0IjoxNzI5NzUxNTg1LCJqdGkiOiIyNjc3MDc4Zi00ZjNhLTQ3ODktYjk4Zi0yYmI3M2IxYTQ4YjkifQ.RuIR5UI-ZCu8qQMWJfdE0YfFBUuO0VWQT08qPxz5bLw\",\n//     \"refresh_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwiZW1haWwiOiIxIiwicm9sZSI6Imd1ZXN0Iiwic3ViIjoiMSIsImV4cCI6MTcyOTgzNzk4NSwiaWF0IjoxNzI5NzUxNTg1LCJqdGkiOiJhOWNkNzVmNi1mNDk1LTQ5NGUtOTEzZC04MTk3OTc5YWU0NTYifQ.QeJU8WKlC0yL-2NsMnseqvHWQ7B4vh7mVs-1GFIwZgY\",\n//     \"guest\": {\n//         \"id\": 4,\n//         \"name\": \"1\",\n//         \"role\": \"guest\",\n//         \"table_number\": 1,\n//         \"created_at\": \"2024-10-24T06:33:05.215758Z\",\n//         \"updated_at\": \"2024-10-24T06:33:05.215758Z\"\n//     },\n//     \"access_token_expires_at\": \"2024-10-24T13:48:05+07:00\",\n//     \"refresh_token_expires_at\": \"2024-10-25T13:33:05+07:00\",\n\n\n\n\n\n// {\n//     \"name\": \"1\",\n//     \"table_number\": 1,\n//     \"token\": \"MTp0YWJsZTo0ODgzMzUwOTA2.eFzcDV7lnSA\"\n// }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/orders",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"orders"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get all orders",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"page\": 1,\n    \"page_size\": 10\n \n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/orders",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"orders"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get order by name and id",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "add 1st order",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "create order 2",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "remove set and dish in order",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "delivery dish of order",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"order_id\": 21,\n    \"order_name\": \"update-order-456abc-7dd8-2ee1\",\n    \"guest_id\": null,\n    \"user_id\": 1,\n    \"table_number\": 1,\n\n        \n    \"dish_items\": [\n \n        {\n      \n            \"dish_id\": 1,\n            \"quantity\": 1\n    \n        }\n    ],\n    \"quantity_delivered\": 6,\n    \"delivery_status\": \"DELIVERED\",\n    \"delivered_at\": \"2025-01-29T10:15:00Z\",\n    \"delivered_by_user_id\": 201,\n    \"created_at\": \"2025-01-29T10:00:00Z\",\n    \"updated_at\": \"2025-01-29T10:15:00Z\",\n    \"is_guest\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/orders/1/AddDishDelivery",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"orders",
+								"1",
+								"AddDishDelivery"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "adddishes",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"order_id\": 2,\n    \"dish_id\": 1,\n    \"quantity\": 2,\n    \"order_name\": \"asdfasdf-344c1368-beaa-4bb2-8649-\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/orders/1/adddishestoorder",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"orders",
+								"1",
+								"adddishestoorder"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "addset",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "web socket",
+			"item": [
+				{
+					"name": "New Request",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "ws://localhost:8888/ws",
+							"protocol": "ws",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"ws"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "delivery",
+			"item": [
+				{
+					"name": "test server delivery",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/delivery-test",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"delivery-test"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "creat delivery",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"guest_id\": null,\n    \"user_id\": 1,\n    \"is_guest\": false,\n    \"table_number\": 1,\n    \"order_handler_id\": 1,\n    \"status\": \"Pending\",\n    \"total_price\": 2500,\n    \"dish_items\": [\n        {\n            \"dish_id\": 1,\n            \"quantity\": 2\n        },\n        {\n            \"dish_id\": 2,\n            \"quantity\": 1\n        }\n    ],\n    \"bow_chili\": 1,\n    \"bow_no_chili\": 1,\n    \"take_away\": false,\n    \"chili_number\": 3,\n    \"table_token\": \"MTp0YWJsZTo0ODg0Mjk0Mjk0.666YJoUIKKI\",\n    \"client_name\": \"John Doe\",\n    \"delivery_address\": \"123 Main St, Springfield\",\n    \"delivery_contact\": \"555-1234\",\n    \"delivery_notes\": \"Ring the doorbell upon arrival\",\n    \"scheduled_time\": \"2024-11-04T14:00:00Z\",\n    \"order_id\": 456789,\n    \"delivery_fee\": 200,\n    \"delivery_status\": \"Pending\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/delivery",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"delivery"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get delivery",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"page\": 1,\n    \"page_size\": 10\n \n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8888/delivery",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"delivery"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get by client name",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8888/delivery/client/John%20Doe",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8888",
+							"path": [
+								"delivery",
+								"client",
+								"John%20Doe"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "web socket",
+			"item": [
+				{
+					"name": "authentication",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "check server",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8888/python-test-server",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8888",
+					"path": [
+						"python-test-server"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
