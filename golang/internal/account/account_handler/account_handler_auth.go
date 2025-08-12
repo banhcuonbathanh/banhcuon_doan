@@ -210,16 +210,22 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 				userExists = true
 				httpStatus = http.StatusForbidden
 				
-				clientError = errorcustom.NewAPIErrorWithContext(
-					errorcustom.ErrCodeAccessDenied,
-					"Your account has been disabled or locked. Please contact support.",
-					httpStatus,
-					"handler",
-					"login",
-					err,
-				).WithDetail("email", req.Email).
-				  WithDetail("step", "account_status_check").
-				  WithDetail("user_found", true)
+	if errorcustom.IsUserNotFoundError(parsedErr) {
+	failureReason = "email_not_found"
+	userExists = false
+	httpStatus = http.StatusNotFound
+	
+	clientError = errorcustom.NewAPIErrorWithContext(
+		errorcustom.ErrCodeUserNotFound,
+		"User with this email address was not found",
+		httpStatus,
+		errorcustom.DomainUser,  // Add the domain parameter
+		"handler",
+		"login",
+		err,
+	).WithDetail("email", req.Email).
+	  WithDetail("step", "email_verification").
+	  WithDetail("user_found", false)
 				
 				// Log security event for account access attempts
 				logger.LogSecurityEvent(

@@ -5,6 +5,7 @@ package account_handler
 import (
 	"english-ai-full/internal/account"
 	pb "english-ai-full/internal/proto_qr/account"
+	utils_config "english-ai-full/utils/config"
 )
 
 // Compile-time interface compliance check
@@ -14,9 +15,9 @@ type AccountHandler struct {
 	*BaseAccountHandler
 }
 
-func NewAccountHandler(userClient pb.AccountServiceClient) *AccountHandler {
+func NewAccountHandler(userClient pb.AccountServiceClient, cfg *utils_config.Config) *AccountHandler {
 	return &AccountHandler{
-		BaseAccountHandler: NewBaseHandler(userClient),
+		BaseAccountHandler: NewBaseHandler(userClient, cfg),
 	}
 }
 

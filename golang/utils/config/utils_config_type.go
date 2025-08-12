@@ -13,6 +13,8 @@ const (
 
 // Configuration structure with comprehensive validation tags
 type Config struct {
+
+	// new wewewewe
 	// Environment settings
 	Environment string `mapstructure:"environment" json:"environment" validate:"required,oneof=development staging production testing docker"`
 	AppName     string `mapstructure:"app_name" json:"app_name" validate:"required,min=1,max=50"`
@@ -213,3 +215,61 @@ type ErrorHandlingConfig struct {
 	SanitizeSensitiveData  bool `mapstructure:"sanitize_sensitive_data" json:"sanitize_sensitive_data"`
 	RequestIDRequired      bool `mapstructure:"request_id_required" json:"request_id_required"`
 }
+
+
+// new 121212121
+// utils/config/config.go - Enhanced configuration
+
+
+type ErrorConfig struct {
+    IncludeStackTrace     bool   `mapstructure:"include_stack_trace"`
+    SanitizeSensitiveData bool   `mapstructure:"sanitize_sensitive_data"`
+    RequestIDRequired     bool   `mapstructure:"request_id_required"`
+    LogLevel             string `mapstructure:"log_level"`
+}
+
+type DomainsConfig struct {
+    Enabled []string              `mapstructure:"enabled"`
+    Default string               `mapstructure:"default"`
+    Account AccountDomainConfig  `mapstructure:"account"`
+    // Branch  BranchDomainConfig   `mapstructure:"branch"`
+    Order   OrderDomainConfig    `mapstructure:"order"`
+    // Delivery DeliveryDomainConfig `mapstructure:"delivery"`
+    WebSocket WebSocketDomainConfig `mapstructure:"websocket"`
+}
+
+type AccountDomainConfig struct {
+    MaxLoginAttempts    int  `mapstructure:"max_login_attempts"`
+    PasswordComplexity  bool `mapstructure:"password_complexity"`
+    JWTRequired        bool `mapstructure:"jwt_required"`
+}
+
+type OrderDomainConfig struct {
+    StatusTransitions       bool `mapstructure:"status_transitions"`
+    WebSocketNotifications bool `mapstructure:"websocket_notifications"`
+    PaymentValidation      bool `mapstructure:"payment_validation"`
+}
+
+type WebSocketDomainConfig struct {
+    JWTValidation     bool   `mapstructure:"jwt_validation"`
+    MessageSizeLimit  string `mapstructure:"message_size_limit"`
+    ConnectionTimeout string `mapstructure:"connection_timeout"`
+}
+
+// Domain-specific helper methods
+
+
+// func (c *Config) IsJWTRequiredForDomain(domain string) bool {
+//     switch domain {
+//     case "account":
+//         return c.Domains.Account.JWTRequired
+//     case "websocket":
+//         return c.Domains.WebSocket.JWTValidation
+//     default:
+//         return true // Default to requiring JWT
+//     }
+// }
+
+// new 1212121221
+
+

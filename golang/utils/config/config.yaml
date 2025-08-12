@@ -105,3 +105,69 @@ valid_roles:
   - "admin"
   - "user"
   - "manager"
+
+  
+
+
+
+  # config.yaml - Enhanced with error handling
+environment: "development"
+app_name: "English AI Full"
+
+
+
+
+
+
+
+
+# Domain-specific configuration
+domains:
+  enabled:
+    - "account"
+    - "branch"
+    - "order"
+    - "delivery"
+    - "dish"
+    - "table"
+    - "guest"
+    - "set"
+    - "websocket"
+    - "system"
+    - "image"
+  default: "system"
+  
+  account:
+    max_login_attempts: 5
+    password_complexity: true
+    jwt_required: true
+    
+  branch:
+    validation_required: true
+    cache_enabled: true
+    
+  order:
+    status_transitions: true
+    websocket_notifications: true
+    payment_validation: true
+    
+  delivery:
+    real_time_tracking: true
+    status_updates: true
+    websocket_required: true
+    
+  websocket:
+    jwt_validation: true
+    message_size_limit: "1MB"
+    connection_timeout: "30s"
+
+# Production overrides
+---
+environment: "production"
+error_handling:
+  include_stack_trace: false
+  sanitize_sensitive_data: true
+  log_level: "info"
+domains:
+  account:
+    max_login_attempts: 3

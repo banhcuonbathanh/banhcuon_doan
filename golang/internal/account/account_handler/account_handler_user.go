@@ -733,3 +733,258 @@ func (h *AccountHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		Message: responseMessage,
 	}, "delete_user")
 }
+
+// Logout handles user logout with comprehensive logging
+func (h *AccountHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	
+	// Create handler logger for this operation
+	handlerLog := logger.NewHandlerLogger()
+	handlerLog.SetOperation("logout")
+	
+	// Extract client information
+	clientIP := errorcustom.GetClientIP(r)
+	userAgent := r.Header.Get("User-Agent")
+	
+	// Create base context
+	baseContext := utils.CreateBaseContext(r, map[string]interface{}{
+		"ip":         clientIP,
+		"user_agent": userAgent,
+	})
+	
+	handlerLog.Info("Logout request initiated", baseContext)
+
+	// Decode request body
+	var req dto.LogoutRequest
+	if err := errorcustom.DecodeJSON(r.Body, &req, "logout", false); err != nil {
+		context := utils.MergeContext(baseContext, map[string]interface{}{
+			"error": err.Error(),
+		})
+		
+		logger.ErrorWithCause(
+			"Failed to decode logout request",
+			"json_decode_error",
+			logger.LayerHandler,
+			"decode_json",
+			context,
+		)
+		
+		// Log API request with decode error
+		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
+		
+		errorcustom.HandleError(w, err, "logout")
+		return
+	}
+
+	// Add user info to context
+	userContext := utils.MergeContext(baseContext, map[string]interface{}{
+		"user_id": req.UserID,
+	})
+	
+	handlerLog.Info("Logout request for user", userContext)
+
+	// Validate request structure
+	if err := h.validator.Struct(req); err != nil {
+		context := utils.MergeContext(userContext, map[string]interface{}{
+			"validation_error": err.Error(),
+		})
+		
+		if validationErrors, ok := err.(validator.ValidationErrors); ok {
+			// Log each validation error individually
+			for _, validationError := range validationErrors {
+				logger.LogValidationError(
+					validationError.Field(),
+					validationError.Tag(),
+					validationError.Value(),
+				)
+			}
+			
+			logger.WarningWithCause(
+				"Logout request validation failed",
+				"validation_error",
+				logger.LayerHandler,
+				"validate_request",
+				context,
+			)
+			
+			logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
+			
+			errorcustom.HandleValidationErrors(w, validationErrors, "logout")
+		} else {
+			logger.ErrorWithCause(
+				"Unexpected validation error during logout",
+				"validation_system_error",
+				logger.LayerHandler,
+				"validate_request",
+				context,
+			)
+			
+			clientError := errorcustom.NewAPIErrorWithContext(
+				errorcustom.ErrCodeValidationError,
+				"Validation failed",
+				http.StatusBadRequest,
+				"handler",
+				"logout",
+				err,
+			).WithDetail("user_id", req.UserID)
+			
+			logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
+			
+			errorcustom.HandleError(w, clientError, "logout")
+		}
+		return
+	}
+
+	handlerLog.Debug("Request validation passed", userContext)
+
+	// Log security event
+	logger.LogSecurityEvent(
+		"logout_attempt",
+		"User attempting to logout",
+		"medium",
+		userContext,
+	)
+
+	// Call logout service
+	serviceStart := time.Now()
+	handlerLog.Debug("Calling logout service", utils.MergeContext(userContext, map[string]interface{}{
+		"service": "AccountService",
+		"method":  "Logout",
+	}))
+
+	logoutRes, err := h.userClient.Logout(r.Context(), &pb.LogoutReq{
+		UserId: req.UserID,
+		Token:  req.Token, // Optional token if using token-based auth
+	})
+	serviceDuration := time.Since(serviceStart)
+
+	// Log service call
+	serviceContext := utils.MergeContext(userContext, map[string]interface{}{
+		"service":     "user-service",
+		"method":      "Logout",
+		"duration_ms": serviceDuration.Milliseconds(),
+	})
+
+	if err != nil {
+		var httpStatus int
+		var clientError *errorcustom.APIError
+		var failureReason string
+		
+		if strings.Contains(err.Error(), "not found") {
+			failureReason = "user_not_found"
+			httpStatus = http.StatusNotFound
+			
+			clientError = errorcustom.NewAPIErrorWithContext(
+				errorcustom.ErrCodeUserNotFound,
+				"User with the specified ID was not found",
+				httpStatus,
+				"handler",
+				"logout",
+				err,
+			).WithDetail("user_id", req.UserID)
+			
+			logger.WarningWithCause(
+				"Logout failed - user not found",
+				failureReason,
+				logger.LayerHandler,
+				"logout",
+				userContext,
+			)
+		} else if strings.Contains(err.Error(), "invalid session") {
+			failureReason = "invalid_session"
+			httpStatus = http.StatusUnauthorized
+			
+			clientError = errorcustom.NewAPIErrorWithContext(
+				errorcustom.ErrCodeInvalidSession,
+				"Invalid session or token",
+				httpStatus,
+				"handler",
+				"logout",
+				err,
+			).WithDetail("user_id", req.UserID)
+			
+			logger.WarningWithCause(
+				"Logout failed - invalid session",
+				failureReason,
+				logger.LayerHandler,
+				"logout",
+				userContext,
+			)
+		} else {
+			failureReason = "service_error"
+			httpStatus = http.StatusInternalServerError
+			
+			clientError = errorcustom.NewAPIErrorWithContext(
+				errorcustom.ErrCodeServiceError,
+				"Logout service is temporarily unavailable. Please try again later.",
+				httpStatus,
+				"handler",
+				"logout",
+				err,
+			).WithDetail("user_id", req.UserID).
+			  WithDetail("step", "service_call").
+			  WithDetail("retryable", true)
+			
+			logger.ErrorWithCause(
+				"Logout service call failed",
+				failureReason,
+				logger.LayerExternal,
+				"logout",
+				utils.MergeContext(userContext, map[string]interface{}{
+					"error": err.Error(),
+				}),
+			)
+		}
+		
+		// Log service call failure
+		logger.LogServiceCall("user-service", "Logout", false, err, utils.MergeContext(serviceContext, map[string]interface{}{
+			"failure_reason": failureReason,
+		}))
+		
+		// Log API request completion
+		logger.LogAPIRequest(r.Method, r.URL.Path, httpStatus, time.Since(start), utils.MergeContext(userContext, map[string]interface{}{
+			"failure_reason": failureReason,
+		}))
+		
+		errorcustom.HandleError(w, clientError, "logout")
+		return
+	}
+
+	// Logout successful
+	logger.LogServiceCall("user-service", "Logout", true, nil, serviceContext)
+
+	// Add logout info to context
+	logoutContext := utils.MergeContext(userContext, map[string]interface{}{
+		"logout_success": logoutRes.Success,
+	})
+
+	// Log user activity
+	logger.LogUserActivity(
+		fmt.Sprint(req.UserID),
+		"", // Email might not be available here
+		"logout",
+		"user_session",
+		logoutContext,
+	)
+
+	// Log security event
+	logger.LogSecurityEvent(
+		"user_logged_out",
+		"User successfully logged out",
+		"medium",
+		logoutContext,
+	)
+
+	// Log performance
+	logger.LogPerformance("logout", time.Since(start), logoutContext)
+
+	handlerLog.Info("Logout completed successfully", logoutContext)
+
+	// Log API request completion
+	logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusOK, time.Since(start), logoutContext)
+
+	errorcustom.RespondWithJSON(w, http.StatusOK, dto.LogoutResponse{
+		Success: logoutRes.Success,
+		Message: logoutRes.Message,
+	}, "logout")
+}

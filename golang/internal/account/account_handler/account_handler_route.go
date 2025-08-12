@@ -1,24 +1,27 @@
+// golang/internal/account/account_handler/account_handler_route.go
+
 package account_handler
 
 import (
 	"net/http"
-
-	pb "english-ai-full/internal/proto_qr/account"
+	error_custom "english-ai-full/internal/error_custom"
+	// pb "english-ai-full/internal/proto_qr/account"
 	"english-ai-full/pkg/middleware/auth"
 
 	"github.com/go-chi/chi"
 )
+// Update your existing RegisterRoutesAccountHandler function
 
-// Remove the old Handler struct and use AccountHandler directly
-// The AccountHandler already has all the required methods
-
-// RegisterRoutesAccountHandler registers all account-related routes
 func RegisterRoutesAccountHandler(r *chi.Mux, accountHandler *AccountHandler) {
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Server is running"))
 	})
 	
 	r.Route("/accounts", func(r chi.Router) {
+		// Add domain-specific middleware
+		r.Use(error_custom.DomainMiddleware("account")) // or "account" 
+		r.Use(error_custom.RateLimitMiddleware("account"))
+		
 		// Authentication routes
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", accountHandler.Register)
@@ -85,9 +88,9 @@ func RegisterRoutesAccountHandler(r *chi.Mux, accountHandler *AccountHandler) {
 }
 
 // Alternative factory function if you prefer to keep the Handler struct approach
-func NewHandler(userClient pb.AccountServiceClient) *AccountHandler {
-	return NewAccountHandler(userClient)
-}
+// func NewHandler(userClient pb.AccountServiceClient) *AccountHandler {
+// 	return NewAccountHandler(userClient)
+// }
 
 // Route documentation and usage examples
 /*

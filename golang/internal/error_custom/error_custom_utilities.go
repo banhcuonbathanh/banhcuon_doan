@@ -311,16 +311,16 @@ func NewErrorCollection(domain string) *ErrorCollection {
 }
 
 // Add adds an error to the collection
-func (ec *ErrorCollection) Add(err error) {
-	if err != nil {
-		ec.Errors = append(ec.Errors, err)
-	}
-}
+// func (ec *ErrorCollection) Add(err error) {
+// 	if err != nil {
+// 		ec.Errors = append(ec.Errors, err)
+// 	}
+// }
 
 // HasErrors returns true if the collection has errors
-func (ec *ErrorCollection) HasErrors() bool {
-	return len(ec.Errors) > 0
-}
+// func (ec *ErrorCollection) HasErrors() bool {
+// 	return len(ec.Errors) > 0
+// }
 
 // ToAPIError converts the collection to a single APIError
 func (ec *ErrorCollection) ToAPIError() *APIError {

@@ -44,60 +44,60 @@ const (
 // ============================================================================
 
 // GetNotFoundCode generates domain-specific not found error codes
-func GetNotFoundCode(domain string) string {
-	if domain == "" {
-		return ErrorTypeNotFound
-	}
-	return fmt.Sprintf("%s_%s", domain, ErrorTypeNotFound)
-}
+// func GetNotFoundCode(domain string) string {
+// 	if domain == "" {
+// 		return ErrorTypeNotFound
+// 	}
+// 	return fmt.Sprintf("%s_%s", domain, ErrorTypeNotFound)
+// }
 
 // GetValidationCode generates domain-specific validation error codes
-func GetValidationCode(domain string) string {
-	if domain == "" {
-		return ErrorTypeValidation
-	}
-	return fmt.Sprintf("%s_%s", domain, ErrorTypeValidation)
-}
+// func GetValidationCode(domain string) string {
+// 	if domain == "" {
+// 		return ErrorTypeValidation
+// 	}
+// 	return fmt.Sprintf("%s_%s", domain, ErrorTypeValidation)
+// }
 
-// GetDuplicateCode generates domain-specific duplicate error codes
-func GetDuplicateCode(domain string) string {
-	if domain == "" {
-		return ErrorTypeDuplicate
-	}
-	return fmt.Sprintf("%s_%s", domain, ErrorTypeDuplicate)
-}
+// // GetDuplicateCode generates domain-specific duplicate error codes
+// func GetDuplicateCode(domain string) string {
+// 	if domain == "" {
+// 		return ErrorTypeDuplicate
+// 	}
+// 	return fmt.Sprintf("%s_%s", domain, ErrorTypeDuplicate)
+// }
 
-// GetAuthenticationCode generates domain-specific authentication error codes
-func GetAuthenticationCode(domain string) string {
-	if domain == "" {
-		return ErrorTypeAuthentication
-	}
-	return fmt.Sprintf("%s_%s", domain, ErrorTypeAuthentication)
-}
+// // GetAuthenticationCode generates domain-specific authentication error codes
+// func GetAuthenticationCode(domain string) string {
+// 	if domain == "" {
+// 		return ErrorTypeAuthentication
+// 	}
+// 	return fmt.Sprintf("%s_%s", domain, ErrorTypeAuthentication)
+// }
 
-// GetAuthorizationCode generates domain-specific authorization error codes
-func GetAuthorizationCode(domain string) string {
-	if domain == "" {
-		return ErrorTypeAuthorization
-	}
-	return fmt.Sprintf("%s_%s", domain, ErrorTypeAuthorization)
-}
+// // GetAuthorizationCode generates domain-specific authorization error codes
+// func GetAuthorizationCode(domain string) string {
+// 	if domain == "" {
+// 		return ErrorTypeAuthorization
+// 	}
+// 	return fmt.Sprintf("%s_%s", domain, ErrorTypeAuthorization)
+// }
 
-// GetBusinessLogicCode generates domain-specific business logic error codes
-func GetBusinessLogicCode(domain string) string {
-	if domain == "" {
-		return ErrorTypeBusinessLogic
-	}
-	return fmt.Sprintf("%s_%s", domain, ErrorTypeBusinessLogic)
-}
+// // GetBusinessLogicCode generates domain-specific business logic error codes
+// func GetBusinessLogicCode(domain string) string {
+// 	if domain == "" {
+// 		return ErrorTypeBusinessLogic
+// 	}
+// 	return fmt.Sprintf("%s_%s", domain, ErrorTypeBusinessLogic)
+// }
 
-// GetExternalServiceCode generates domain-specific external service error codes
-func GetExternalServiceCode(domain string) string {
-	if domain == "" {
-		return ErrorTypeExternalService
-	}
-	return fmt.Sprintf("%s_%s", domain, ErrorTypeExternalService)
-}
+// // GetExternalServiceCode generates domain-specific external service error codes
+// func GetExternalServiceCode(domain string) string {
+// 	if domain == "" {
+// 		return ErrorTypeExternalService
+// 	}
+// 	return fmt.Sprintf("%s_%s", domain, ErrorTypeExternalService)
+// }
 
 // GetServiceUnavailableCode generates domain-specific service unavailable error codes
 func GetServiceUnavailableCode(domain string) string {
@@ -124,20 +124,20 @@ func GetInvalidInputCode(domain string) string {
 }
 
 // GetRateLimitCode generates domain-specific rate limit error codes
-func GetRateLimitCode(domain string) string {
-	if domain == "" {
-		return ErrorTypeRateLimit
-	}
-	return fmt.Sprintf("%s_%s", domain, ErrorTypeRateLimit)
-}
+// func GetRateLimitCode(domain string) string {
+// 	if domain == "" {
+// 		return ErrorTypeRateLimit
+// 	}
+// 	return fmt.Sprintf("%s_%s", domain, ErrorTypeRateLimit)
+// }
 
 // GetTimeoutCode generates domain-specific timeout error codes
-func GetTimeoutCode(domain string) string {
-	if domain == "" {
-		return ErrorTypeTimeout
-	}
-	return fmt.Sprintf("%s_%s", domain, ErrorTypeTimeout)
-}
+// func GetTimeoutCode(domain string) string {
+// 	if domain == "" {
+// 		return ErrorTypeTimeout
+// 	}
+// 	return fmt.Sprintf("%s_%s", domain, ErrorTypeTimeout)
+// }
 
 // ============================================================================
 // SPECIFIC ERROR CODES (for backward compatibility and specific cases)
@@ -163,41 +163,41 @@ const (
 // DOMAIN-SPECIFIC CODE MAPS
 // ============================================================================
 
-// GetDomainSpecificCodes returns all possible error codes for a domain
-func GetDomainSpecificCodes(domain string) map[string]string {
-	codes := make(map[string]string)
+// // GetDomainSpecificCodes returns all possible error codes for a domain
+// func GetDomainSpecificCodes(domain string) map[string]string {
+// 	codes := make(map[string]string)
 	
-	codes["NOT_FOUND"] = GetNotFoundCode(domain)
-	codes["VALIDATION_ERROR"] = GetValidationCode(domain)
-	codes["DUPLICATE"] = GetDuplicateCode(domain)
-	codes["AUTHENTICATION_ERROR"] = GetAuthenticationCode(domain)
-	codes["AUTHORIZATION_ERROR"] = GetAuthorizationCode(domain)
-	codes["BUSINESS_LOGIC_ERROR"] = GetBusinessLogicCode(domain)
-	codes["EXTERNAL_SERVICE_ERROR"] = GetExternalServiceCode(domain)
-	codes["SERVICE_UNAVAILABLE"] = GetServiceUnavailableCode(domain)
-	codes["SYSTEM_ERROR"] = GetSystemErrorCode(domain)
-	codes["INVALID_INPUT"] = GetInvalidInputCode(domain)
-	codes["RATE_LIMIT"] = GetRateLimitCode(domain)
-	codes["TIMEOUT"] = GetTimeoutCode(domain)
+// 	codes["NOT_FOUND"] = GetNotFoundCode(domain)
+// 	codes["VALIDATION_ERROR"] = GetValidationCode(domain)
+// 	codes["DUPLICATE"] = GetDuplicateCode(domain)
+// 	codes["AUTHENTICATION_ERROR"] = GetAuthenticationCode(domain)
+// 	codes["AUTHORIZATION_ERROR"] = GetAuthorizationCode(domain)
+// 	codes["BUSINESS_LOGIC_ERROR"] = GetBusinessLogicCode(domain)
+// 	codes["EXTERNAL_SERVICE_ERROR"] = GetExternalServiceCode(domain)
+// 	codes["SERVICE_UNAVAILABLE"] = GetServiceUnavailableCode(domain)
+// 	codes["SYSTEM_ERROR"] = GetSystemErrorCode(domain)
+// 	codes["INVALID_INPUT"] = GetInvalidInputCode(domain)
+// 	codes["RATE_LIMIT"] = GetRateLimitCode(domain)
+// 	codes["TIMEOUT"] = GetTimeoutCode(domain)
 	
-	return codes
-}
+// 	return codes
+// }
 
 // ============================================================================
 // CODE UTILITIES
 // ============================================================================
 
 // IsErrorCodeForDomain checks if an error code belongs to a specific domain
-func IsErrorCodeForDomain(code, domain string) bool {
-	if domain == "" {
-		return true // Generic codes belong to all domains
-	}
+// func IsErrorCodeForDomain(code, domain string) bool {
+// 	if domain == "" {
+// 		return true // Generic codes belong to all domains
+// 	}
 	
-	domainPrefix := domain + "_"
-	return code == domain || 
-		   code[:len(domainPrefix)] == domainPrefix ||
-		   !containsDomainPrefix(code) // Generic codes
-}
+// 	domainPrefix := domain + "_"
+// 	return code == domain || 
+// 		   code[:len(domainPrefix)] == domainPrefix ||
+// 		   !containsDomainPrefix(code) // Generic codes
+// }
 
 // containsDomainPrefix checks if a code contains any domain prefix
 func containsDomainPrefix(code string) bool {
@@ -212,23 +212,146 @@ func containsDomainPrefix(code string) bool {
 }
 
 // ExtractDomainFromCode extracts the domain from an error code
-func ExtractDomainFromCode(code string) string {
-	domains := []string{DomainUser, DomainCourse, DomainPayment, DomainAuth, DomainAdmin, DomainContent, DomainSystem}
+// func ExtractDomainFromCode(code string) string {
+// 	domains := []string{DomainUser, DomainCourse, DomainPayment, DomainAuth, DomainAdmin, DomainContent, DomainSystem}
 	
-	for _, domain := range domains {
-		if len(code) > len(domain)+1 && code[:len(domain)+1] == domain+"_" {
-			return domain
-		}
-	}
-	return "" // Generic/unknown domain
-}
+// 	for _, domain := range domains {
+// 		if len(code) > len(domain)+1 && code[:len(domain)+1] == domain+"_" {
+// 			return domain
+// 		}
+// 	}
+// 	return "" // Generic/unknown domain
+// }
 
 // GetBaseErrorType extracts the base error type from a domain-specific code
-func GetBaseErrorType(code string) string {
-	domain := ExtractDomainFromCode(code)
+// func GetBaseErrorType(code string) string {
+// 	domain := ExtractDomainFromCode(code)
+// 	if domain == "" {
+// 		return code // Already a base type
+// 	}
+	
+// 	return code[len(domain)+1:] // Remove domain prefix
+// }
+
+// new 12121
+
+// GetDomainCode generates domain-aware error code
+func GetDomainCode(baseCode, domain string) string {
 	if domain == "" {
-		return code // Already a base type
+		return baseCode
+	}
+	return fmt.Sprintf("%s_%s", domain, baseCode)
+}
+
+// GetNotFoundCode returns domain-aware NOT_FOUND code
+func GetNotFoundCode(domain string) string {
+	return GetDomainCode(ErrorTypeNotFound, domain)
+}
+
+// GetValidationCode returns domain-aware VALIDATION_ERROR code
+func GetValidationCode(domain string) string {
+	return GetDomainCode(ErrorTypeValidation, domain)
+}
+
+// GetDuplicateCode returns domain-aware DUPLICATE code
+func GetDuplicateCode(domain string) string {
+	return GetDomainCode(ErrorTypeDuplicate, domain)
+}
+
+// GetAuthenticationCode returns domain-aware AUTHENTICATION_ERROR code
+func GetAuthenticationCode(domain string) string {
+	return GetDomainCode(ErrorTypeAuthentication, domain)
+}
+
+// GetAuthorizationCode returns domain-aware AUTHORIZATION_ERROR code
+func GetAuthorizationCode(domain string) string {
+	return GetDomainCode(ErrorTypeAuthorization, domain)
+}
+
+// GetBusinessLogicCode returns domain-aware BUSINESS_LOGIC_ERROR code
+func GetBusinessLogicCode(domain string) string {
+	return GetDomainCode(ErrorTypeBusinessLogic, domain)
+}
+
+// GetExternalServiceCode returns domain-aware EXTERNAL_SERVICE_ERROR code
+func GetExternalServiceCode(domain string) string {
+	return GetDomainCode(ErrorTypeExternalService, domain)
+}
+
+// GetSystemCode returns domain-aware SYSTEM_ERROR code
+func GetSystemCode(domain string) string {
+	return GetDomainCode(ErrorTypeSystem, domain)
+}
+
+// GetDatabaseCode returns domain-aware DATABASE_ERROR code
+// func GetDatabaseCode(domain string) string {
+// 	return GetDomainCode(ErrorTypeDatabase, domain)
+// }
+
+// GetRateLimitCode returns domain-aware RATE_LIMIT_ERROR code
+func GetRateLimitCode(domain string) string {
+	return GetDomainCode(ErrorTypeRateLimit, domain)
+}
+
+// GetTimeoutCode returns domain-aware TIMEOUT_ERROR code
+func GetTimeoutCode(domain string) string {
+	return GetDomainCode(ErrorTypeTimeout, domain)
+}
+
+// ExtractDomainFromCode extracts domain from error code
+func ExtractDomainFromCode(code string) string {
+	parts := splitErrorCode(code)
+	if len(parts) == 2 {
+		return parts[0]
+	}
+	return ""
+}
+
+// GetBaseErrorType extracts base error type from domain-aware code
+func GetBaseErrorType(code string) string {
+	parts := splitErrorCode(code)
+	if len(parts) == 2 {
+		return parts[1]
+	}
+	return code
+}
+
+// IsErrorCodeForDomain checks if error code belongs to domain
+func IsErrorCodeForDomain(code, domain string) bool {
+	return ExtractDomainFromCode(code) == domain
+}
+
+// GetDomainSpecificCodes returns all error codes for a domain
+func GetDomainSpecificCodes(domain string) map[string]string {
+	baseTypes := []string{
+		ErrorTypeNotFound,
+		ErrorTypeValidation,
+		ErrorTypeDuplicate,
+		ErrorTypeAuthentication,
+		ErrorTypeAuthorization,
+		ErrorTypeBusinessLogic,
+		ErrorTypeExternalService,
+		ErrorTypeSystem,
+	
+		ErrorTypeRateLimit,
+		ErrorTypeTimeout,
 	}
 	
-	return code[len(domain)+1:] // Remove domain prefix
+	codes := make(map[string]string)
+	for _, baseType := range baseTypes {
+		codes[baseType] = GetDomainCode(baseType, domain)
+	}
+	
+	return codes
 }
+
+// Helper function to split error code
+func splitErrorCode(code string) []string {
+	for i, r := range code {
+		if r == '_' {
+			return []string{code[:i], code[i+1:]}
+		}
+	}
+	return []string{code}
+}
+// new 131313

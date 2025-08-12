@@ -13,8 +13,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 
 	"english-ai-full/logger"
 
@@ -814,4 +816,324 @@ func DecodeJSON(body io.Reader, target interface{}, requestID string, logRawBody
 	}
 	
 	return nil
+}
+
+// Add this function to your golang/internal/error_custom/error_custom_handler.go file
+
+// DebugMiddleware provides detailed request/response logging for development
+func DebugMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestID := GetRequestIDFromContext(r.Context())
+		domain := GetDomainFromContext(r.Context())
+		clientIP := GetClientIP(r)
+		
+		// Log incoming request details
+		logger.Debug("Debug: Incoming request details", map[string]interface{}{
+			"method":       r.Method,
+			"path":         r.URL.Path,
+			"query":        r.URL.RawQuery,
+			"headers":      r.Header,
+			"user_agent":   r.Header.Get("User-Agent"),
+			"content_type": r.Header.Get("Content-Type"),
+			"ip":           clientIP,
+			"request_id":   requestID,
+			"domain":       domain,
+		})
+		
+		// Create a custom ResponseWriter to capture response details
+		debugWriter := &debugResponseWriter{
+			ResponseWriter: w,
+			statusCode:     http.StatusOK,
+			responseSize:   0,
+		}
+		
+		// Record start time
+		startTime := time.Now()
+		
+		// Process the request
+		next.ServeHTTP(debugWriter, r)
+		
+		// Calculate processing time
+		duration := time.Since(startTime)
+		
+		// Log response details
+		logger.Debug("Debug: Response details", map[string]interface{}{
+			"status_code":    debugWriter.statusCode,
+			"response_size":  debugWriter.responseSize,
+			"duration_ms":    duration.Milliseconds(),
+			"duration_ns":    duration.Nanoseconds(),
+			"request_id":     requestID,
+			"domain":         domain,
+		})
+	})
+}
+
+// debugResponseWriter wraps http.ResponseWriter to capture response details
+type debugResponseWriter struct {
+	http.ResponseWriter
+	statusCode   int
+	responseSize int
+}
+
+func (drw *debugResponseWriter) WriteHeader(code int) {
+	drw.statusCode = code
+	drw.ResponseWriter.WriteHeader(code)
+}
+
+func (drw *debugResponseWriter) Write(data []byte) (int, error) {
+	size, err := drw.ResponseWriter.Write(data)
+	drw.responseSize += size
+	return size, err
+}
+
+
+// Add this function to your golang/internal/error_custom/error_custom_handler.go file
+
+// DomainContextMiddleware automatically detects and sets domain context based on URL patterns
+func DomainContextMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		domain := detectDomainFromPath(r.URL.Path)
+		
+		// Add domain to context
+		ctx := withDomain(r.Context(), domain)
+		r = r.WithContext(ctx)
+		
+		next.ServeHTTP(w, r)
+	})
+}
+
+// detectDomainFromPath automatically detects domain from URL path
+func detectDomainFromPath(path string) string {
+	path = strings.ToLower(path)
+	
+	// API route patterns
+	switch {
+	case strings.Contains(path, "/api/accounts") || strings.Contains(path, "/api/users") || strings.Contains(path, "/api/auth"):
+		return DomainUser
+	case strings.Contains(path, "/api/branches"):
+		return "branch"
+	case strings.Contains(path, "/api/courses"):
+		return DomainCourse
+	case strings.Contains(path, "/api/payments"):
+		return DomainPayment
+	case strings.Contains(path, "/api/content"):
+		return DomainContent
+	case strings.Contains(path, "/api/admin"):
+		return DomainAdmin
+	case strings.Contains(path, "/swagger") || strings.Contains(path, "/health") || strings.Contains(path, "/metrics"):
+		return DomainSystem
+	default:
+		return DomainSystem // Default fallback
+	}
+}
+
+// Add this function to your golang/internal/error_custom/error_custom_handler.go file
+
+
+
+// JWTValidationMiddleware validates JWT tokens and adds user context
+func JWTValidationMiddleware(secretKey string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Skip JWT validation for certain routes
+			if shouldSkipJWTValidation(r.URL.Path) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Extract token from Authorization header
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" {
+				domain := GetDomainFromContext(r.Context())
+				requestID := GetRequestIDFromContext(r.Context())
+				
+				authErr := NewAuthenticationError(domain, "Missing authorization token")
+				HandleError(w, authErr.ToAPIError(), requestID)
+				return
+			}
+
+			// Check Bearer token format
+			tokenParts := strings.SplitN(authHeader, " ", 2)
+			if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
+				domain := GetDomainFromContext(r.Context())
+				requestID := GetRequestIDFromContext(r.Context())
+				
+				authErr := NewAuthenticationError(domain, "Invalid authorization header format")
+				HandleError(w, authErr.ToAPIError(), requestID)
+				return
+			}
+
+			tokenString := tokenParts[1]
+
+			// Parse and validate the JWT token
+			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+				// Validate signing method
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+				}
+				return []byte(secretKey), nil
+			})
+
+			if err != nil {
+				domain := GetDomainFromContext(r.Context())
+				requestID := GetRequestIDFromContext(r.Context())
+				
+				authErr := NewAuthenticationError(domain, "Invalid or expired token")
+				HandleError(w, authErr.ToAPIError().WithCause(err), requestID)
+				return
+			}
+
+			// Check if token is valid and get claims
+			if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+				// Add user information to context
+				ctx := r.Context()
+				
+				if userID, ok := claims["user_id"]; ok {
+					ctx = context.WithValue(ctx, "user_id", int64(userID.(float64)))
+				}
+				
+				if email, ok := claims["email"].(string); ok {
+					ctx = context.WithValue(ctx, "user_email", email)
+				}
+				
+				if role, ok := claims["role"].(string); ok {
+					ctx = context.WithValue(ctx, "user_role", role)
+				}
+
+				r = r.WithContext(ctx)
+				next.ServeHTTP(w, r)
+			} else {
+				domain := GetDomainFromContext(r.Context())
+				requestID := GetRequestIDFromContext(r.Context())
+				
+				authErr := NewAuthenticationError(domain, "Invalid token claims")
+				HandleError(w, authErr.ToAPIError(), requestID)
+				return
+			}
+		})
+	}
+}
+
+// shouldSkipJWTValidation determines if JWT validation should be skipped for certain routes
+func shouldSkipJWTValidation(path string) bool {
+	skipRoutes := []string{
+		"/api/accounts/login",
+		"/api/accounts/register", 
+		"/api/auth/login",
+		"/api/auth/register",
+		"/swagger",
+		"/health",
+		"/metrics",
+		"/ping",
+	}
+	
+	path = strings.ToLower(path)
+	
+	for _, skipRoute := range skipRoutes {
+		if strings.HasPrefix(path, skipRoute) {
+			return true
+		}
+	}
+	
+	return false
+}
+
+// LogCriticalError logs critical system errors with enhanced context
+func LogCriticalError(errorType string, context map[string]interface{}) {
+	logContext := map[string]interface{}{
+		"error_type": errorType,
+		"severity":   "CRITICAL",
+		"timestamp":  time.Now().UTC().Format(time.RFC3339),
+	}
+	
+	// Merge provided context
+	for key, value := range context {
+		logContext[key] = value
+	}
+	
+	logger.Error("Critical system error", logContext)
+}
+
+
+// Add this function to your golang/internal/error_custom/error_custom_handler.go file
+
+
+// RateLimiter holds rate limiting data for a domain
+type RateLimiter struct {
+	requests map[string][]time.Time
+	mutex    sync.RWMutex
+	limit    int
+	window   time.Duration
+}
+
+var (
+	rateLimiters = make(map[string]*RateLimiter)
+	rateLimiterMutex sync.RWMutex
+)
+
+// RateLimitMiddleware provides rate limiting per domain and IP
+func RateLimitMiddleware(domain string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			clientIP := GetClientIP(r)
+			key := fmt.Sprintf("%s:%s", domain, clientIP)
+			
+			// Get or create rate limiter for this domain
+			rateLimiterMutex.RLock()
+			limiter, exists := rateLimiters[domain]
+			rateLimiterMutex.RUnlock()
+			
+			if !exists {
+				rateLimiterMutex.Lock()
+				if limiter, exists = rateLimiters[domain]; !exists {
+					limiter = &RateLimiter{
+						requests: make(map[string][]time.Time),
+						limit:    100, // 100 requests per minute by default
+						window:   time.Minute,
+					}
+					rateLimiters[domain] = limiter
+				}
+				rateLimiterMutex.Unlock()
+			}
+			
+			// Check rate limit
+			now := time.Now()
+			limiter.mutex.Lock()
+			
+			// Clean old requests outside the time window
+			if requests, exists := limiter.requests[key]; exists {
+				validRequests := make([]time.Time, 0, len(requests))
+				for _, reqTime := range requests {
+					if now.Sub(reqTime) < limiter.window {
+						validRequests = append(validRequests, reqTime)
+					}
+				}
+				limiter.requests[key] = validRequests
+			}
+			
+			// Check if limit exceeded
+			if len(limiter.requests[key]) >= limiter.limit {
+				limiter.mutex.Unlock()
+				
+				requestID := GetRequestIDFromContext(r.Context())
+				rateLimitErr := NewAPIError(
+					GetRateLimitCode(domain),
+					"Rate limit exceeded. Please try again later.",
+					http.StatusTooManyRequests,
+				).WithDomain(domain).
+					WithDetail("limit", limiter.limit).
+					WithDetail("window", limiter.window.String()).
+					WithDetail("client_ip", clientIP)
+				
+				HandleError(w, rateLimitErr, requestID)
+				return
+			}
+			
+			// Add current request
+			limiter.requests[key] = append(limiter.requests[key], now)
+			limiter.mutex.Unlock()
+			
+			next.ServeHTTP(w, r)
+		})
+	}
 }

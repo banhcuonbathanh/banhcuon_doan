@@ -3,12 +3,13 @@
 package main
 
 import (
-	_ "english-ai-full/docs" // Add this line at the top of imports
-	"english-ai-full/internal/account/account_handler" // Add this import
 	"context"
+	_ "english-ai-full/docs"                           // Add this line at the top of imports
+	"english-ai-full/internal/account/account_handler" // Add this import
 	"fmt"
 
 	"english-ai-full/internal/branch"
+	error_custom "english-ai-full/internal/error_custom"
 	branchpb "english-ai-full/internal/proto_qr/branch"
 	"log"
 	"net/http"
@@ -19,9 +20,7 @@ import (
 	pb "english-ai-full/internal/proto_qr/account"
 	ws2 "english-ai-full/internal/ws2"
 	"english-ai-full/token"
-	"english-ai-full/utils/config"
-
-	"github.com/swaggo/http-swagger"
+	utils_config "english-ai-full/utils/config"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/cors"
@@ -58,28 +57,7 @@ func main() {
 	}
 
 	r := chi.NewRouter()
-
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{
-			cfg.ExternalAPIs.QuanAn.Address, 
-			"http://localhost:*",
-			"http://localhost:8888",
-			"http://localhost:8080",
-			"*", // Allow all origins for development (remove in production)
-		},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"},
-		AllowedHeaders: []string{
-			"Accept",
-			"Authorization",
-			"Content-Type",
-			"X-CSRF-Token",
-			"X-Table-Token",
-			"X-Requested-With",
-		},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
-		MaxAge:           300,
-	}))
+	setupCORS(r, cfg)
 
 	// Use environment variable with a default value
 	if cfg.Environment == "development" {
@@ -88,11 +66,6 @@ func main() {
 
 	setupGlobalMiddleware(r, cfg)
 
-	// Add Swagger UI route - construct the URL properly
-	swaggerURL := fmt.Sprintf("http://%s:%d/swagger/doc.json", cfg.Server.Address, cfg.Server.Port)
-	r.Get("/swagger/*", httpSwagger.Handler(
-		httpSwagger.URL(swaggerURL), // The url pointing to API definition
-	))
 
 	/**
 	python server
@@ -120,9 +93,9 @@ func main() {
 
 	// account start
 	// In your main.go or wherever you're setting up routes
-	userClient := pb.NewAccountServiceClient(conn)
-	accountHandler := account_handler.NewAccountHandler(userClient)
-	account_handler.RegisterRoutesAccountHandler(r, accountHandler)
+	// userClient := pb.NewAccountServiceClient(conn)
+	// accountHandler := account_handler.NewAccountHandler(userClient, )
+	// account_handler.RegisterRoutesAccountHandler(r, accountHandler)
 
 	// account end
 	branchClient := branchpb.NewBranchServiceClient(conn)
@@ -189,23 +162,29 @@ func main() {
 	Start(serverAddress, r)
 }
 
-func setupGlobalMiddleware(r *chi.Mux, cfg *utils_config.Config) {
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Set CORS headers for every response
-			w.Header().Set("Access-Control-Allow-Origin", cfg.ExternalAPIs.QuanAn.Address)
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-CSRF-Token, X-Table-Token")
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-
-			if r.Method == "OPTIONS" {
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	})
+// setupCORS configures CORS middleware for the router
+func setupCORS(r *chi.Mux, cfg *utils_config.Config) {
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins: []string{
+			cfg.ExternalAPIs.QuanAn.Address, 
+			"http://localhost:*",
+			"http://localhost:8888",
+			"http://localhost:8080",
+			"*", // Allow all origins for development (remove in production)
+		},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"},
+		AllowedHeaders: []string{
+			"Accept",
+			"Authorization",
+			"Content-Type",
+			"X-CSRF-Token",
+			"X-Table-Token",
+			"X-Requested-With",
+		},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
 }
 
 func debugMiddleware(next http.Handler) http.Handler {
@@ -259,3 +238,68 @@ func Start(addr string, r *chi.Mux) error {
 	log.Printf("Swagger UI available at: http://localhost%s/swagger/index.html", addr)
 	return http.ListenAndServe(addr, r)
 }
+
+// new 12121212
+func setupGlobalMiddleware(r *chi.Mux, cfg *utils_config.Config) {
+    // Core error handling middleware
+    r.Use(error_custom.RequestIDMiddleware)
+    r.Use(error_custom.LogHTTPMiddleware)
+    r.Use(error_custom.RecoveryMiddleware)
+
+    // Environment-specific middleware
+    if cfg.Environment == "development" {
+        r.Use(error_custom.DebugMiddleware)
+    }
+
+    // JWT validation middleware for protected routes
+    if cfg.JWT.SecretKey != "" {
+        r.Use(error_custom.JWTValidationMiddleware(cfg.JWT.SecretKey))
+    }
+
+    // Domain context middleware
+    r.Use(error_custom.DomainContextMiddleware)
+}
+
+func setupDomainHandlers(r *chi.Mux, conn *grpc.ClientConn, cfg *utils_config.Config) {
+    // Account domain with error handling
+    if cfg.IsDomainEnabled("account") {
+        userClient := pb.NewAccountServiceClient(conn)
+        accountHandler := account_handler.NewAccountHandler(userClient, cfg)
+     account_handler.RegisterRoutesAccountHandler(r, accountHandler)
+    }
+
+    // Branch domain with error handling
+    // if cfg.IsDomainEnabled("branch") {
+    //     branchClient := branchpb.NewBranchServiceClient(conn)
+    //     branchHandler := branch.NewBranchHandlerWithErrorHandling(branchClient, cfg)
+    //     setupBranchRoutes(r, branchHandler)
+    // }
+
+    // Additional domain handlers...
+}
+
+
+
+func StartWithErrorHandling(addr string, r *chi.Mux, cfg *utils_config.Config) {
+    log.Printf("Starting HTTP server on %s", addr)
+    log.Printf("Environment: %s", cfg.Environment)
+  
+    
+    server := &http.Server{
+        Addr:         addr,
+        Handler:      r,
+        ReadTimeout:  cfg.Server.ReadTimeout,
+        WriteTimeout: cfg.Server.WriteTimeout,
+        IdleTimeout:  cfg.Server.IdleTimeout,
+    }
+    
+    if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+        // Enhanced error logging with context
+        error_custom.LogCriticalError("server_startup_failed", map[string]interface{}{
+            "address": addr,
+            "error":   err.Error(),
+        })
+        log.Fatalf("Server failed to start: %v", err)
+    }
+}
+// new 12121212
