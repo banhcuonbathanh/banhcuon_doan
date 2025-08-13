@@ -17,6 +17,11 @@ import (
 
 // VerifyEmail handles email verification requests with comprehensive logging and error handling
 func (h *AccountHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
+	  domain := errorcustom.GetDomainFromContext(r.Context())
+    if domain == "" {
+        domain = h.domain // fallback to struct field
+    }
+    h.WithRequestID(r) 
 	start := time.Now()
 	ctx := r.Context()
 
@@ -37,7 +42,7 @@ func (h *AccountHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	handlerLog.Info("Email verification request initiated", baseContext)
 
 	// Extract and validate token parameter
-	token, apiErr := errorcustom.GetStringParam(r, "token", 1)
+token, apiErr := errorcustom.GetStringParamWithDomain(r, "token", domain, 32)
 	if apiErr != nil {
 		context := utils.MergeContext(baseContext, map[string]interface{}{
 			"error": apiErr.Error(),
@@ -54,7 +59,7 @@ func (h *AccountHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 		// Log API request with error
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 
-		errorcustom.RespondWithAPIError(w, apiErr)
+			errorcustom.RespondWithError(w, http.StatusBadRequest, "Invalid token parameter", domain, h.requestID)
 		return
 	}
 
@@ -88,15 +93,16 @@ func (h *AccountHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 			failureReason = "invalid_or_expired_token"
 			httpStatus = http.StatusBadRequest
 
-			clientError = errorcustom.NewAPIErrorWithContext(
-				errorcustom.ErrCodeInvalidInput,
-				"The verification token is invalid or has expired",
-				httpStatus,
-				"handler",
-				"verify_email",
-				err,
-			).WithDetail("token_status", "invalid_or_expired").
-			  WithDetail("step", "token_verification")
+	clientError = errorcustom.NewAPIErrorWithContext(
+	errorcustom.ErrCodeInvalidInput,
+	"The verification token is invalid or has expired",
+	httpStatus,
+	domain, // Add domain parameter
+	"handler",
+	"verify_email",
+	err,
+).WithDetail("token_status", "invalid_or_expired").
+  WithDetail("step", "token_verification")
 
 			logger.WarningWithCause(
 				"Email verification failed - invalid or expired token",
@@ -126,6 +132,7 @@ func (h *AccountHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 				httpStatus,
 				"handler",
 				"verify_email",
+					domain, // Add domain parameter
 				err,
 			).WithDetail("step", "service_call").
 			  WithDetail("retryable", true)
@@ -288,8 +295,8 @@ func (h *AccountHandler) ResendVerification(w http.ResponseWriter, r *http.Reque
 				"validate_request",
 				context,
 			)
-
-			errorcustom.HandleValidationErrors(w, validationErrors, "resend_verification")
+requestID := errorcustom.GetRequestIDFromContext(ctx) 
+			errorcustom.HandleValidationErrors(w, validationErrors, h.domain, requestID)
 		} else {
 			logger.ErrorWithCause(
 				"Unexpected validation error during resend verification",
@@ -374,18 +381,23 @@ func (h *AccountHandler) ResendVerification(w http.ResponseWriter, r *http.Reque
 		} else {
 			failureReason = "service_error"
 			httpStatus = http.StatusInternalServerError
+	  // new asdfasdfasdf
 
-			clientError = errorcustom.NewAPIErrorWithContext(
-				errorcustom.ErrCodeServiceError,
-				"Email verification service is temporarily unavailable. Please try again later.",
-				httpStatus,
-				"handler",
-				"resend_verification",
-				err,
-			).WithDetail("email", utils.MaskSensitiveValue("email", req.Email)).
-			  WithDetail("step", "service_call").
-			  WithDetail("retryable", true)
 
+	clientError = errorcustom.NewAPIErrorWithContext(
+    errorcustom.ErrCodeServiceError,
+    "Email verification service is temporarily unavailable. Please try again later.",
+    httpStatus,
+    "user",                    // domain parameter (was missing)
+    "handler",                 // layer parameter  
+    "resend_verification",     // operation parameter
+    err,                       // cause parameter
+).WithDetail("email", utils.MaskSensitiveValue("email", req.Email)).
+  WithDetail("step", "service_call").
+  WithDetail("retryable", true)
+
+
+			  // new asdfasdfasdf
 			logger.ErrorWithCause(
 				"Resend verification failed - service error",
 				failureReason,
@@ -495,7 +507,7 @@ func (h *AccountHandler) FindByEmail(w http.ResponseWriter, r *http.Request) {
 	handlerLog.Info("Find user by email request initiated", baseContext)
 
 	// Extract and validate email parameter
-	email, apiErr := errorcustom.GetStringParam(r, "email", 1)
+	email, apiErr := errorcustom.GetStringParamWithDomain(r, "email", h.domain, 320)
 	if apiErr != nil {
 		context := utils.MergeContext(baseContext, map[string]interface{}{
 			"error": apiErr.Error(),
@@ -511,7 +523,7 @@ func (h *AccountHandler) FindByEmail(w http.ResponseWriter, r *http.Request) {
 
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 
-		errorcustom.RespondWithAPIError(w, apiErr)
+		errorcustom.HandleDomainError(w, apiErr, h.domain, h.requestID)
 		return
 	}
 

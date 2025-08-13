@@ -25,6 +25,8 @@ type BaseAccountHandler struct {
 	config       *utils_config.Config
 	domain       string
 	errorHandler *utils_config.DomainErrorHandler
+
+	requestID    string
 }
 
 // User represents a user entity for business logic operations
@@ -32,7 +34,7 @@ type BaseAccountHandler struct {
 
 // NewBaseHandler creates a new base account handler with comprehensive domain-aware setup
 func NewBaseHandler(userClient pb.AccountServiceClient, config *utils_config.Config) *BaseAccountHandler {
-	domain := "user" // Account handlers primarily work with user domain
+	domain := "account" // Account handlers primarily work with user domain
 	
 	// Create handler-specific logger with domain context
 	handlerLogger := logger.NewHandlerLogger()
@@ -1154,4 +1156,9 @@ func (h *BaseAccountHandler) getDiagnostics() map[string]interface{} {
 		"environment":          h.config.Environment,
 		"initialized_at":       time.Now().UTC(),
 	}
+}
+
+func (h *BaseAccountHandler) WithRequestID(r *http.Request) *BaseAccountHandler {
+	h.requestID = errorcustom.GetRequestIDFromContext(r.Context())
+	return h
 }
