@@ -504,7 +504,3 @@ func NewRepositoryError(operation, table, message string, cause error) *SystemEr
 	return NewSystemError(DomainSystem, "repository", operation, fmt.Sprintf("%s on table %s", message, table), cause)
 }
 
-// new 1212121212
-
-
-// new 121212121212

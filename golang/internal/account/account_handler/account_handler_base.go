@@ -28,13 +28,7 @@ type BaseAccountHandler struct {
 }
 
 // User represents a user entity for business logic operations
-type User struct {
-	ID       int64  `json:"id"`
-	Email    string `json:"email"`
-	Role     string `json:"role"`
-	IsActive bool   `json:"is_active"`
-	Branch   string `json:"branch,omitempty"`
-}
+
 
 // NewBaseHandler creates a new base account handler with comprehensive domain-aware setup
 func NewBaseHandler(userClient pb.AccountServiceClient, config *utils_config.Config) *BaseAccountHandler {
@@ -331,15 +325,21 @@ func ValidateEmailUniqueWithDomain(client pb.AccountServiceClient, domain string
 			return false
 		}
 		
-		// Check uniqueness via gRPC
+		// Check uniqueness via gRPC using FindByEmail
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		
-		req := &pb.CheckEmailExistsRequest{Email: email}
-		resp, err := client.CheckEmailExists(ctx, req)
+		req := &pb.FindByEmailReq{Email: email}
+		resp, err := client.FindByEmail(ctx, req)
 		
 		if err != nil {
-			// Log gRPC error but don't fail validation here
+			// If error is "not found", email is unique (good)
+			if strings.Contains(err.Error(), "not found") || 
+			   strings.Contains(err.Error(), "no rows") {
+				return true
+			}
+			
+			// Log other gRPC errors but don't fail validation here
 			logger.Warning("Email uniqueness check failed", map[string]interface{}{
 				"email":     email,
 				"error":     err.Error(),
@@ -349,23 +349,16 @@ func ValidateEmailUniqueWithDomain(client pb.AccountServiceClient, domain string
 			return true // Allow validation to pass, will be caught later
 		}
 		
-		return !resp.Exists
+		// If we got a response with an account, email exists (not unique)
+		if resp != nil && resp.Account != nil {
+			return false
+		}
+		
+		return true // Email is unique
 	}
 }
 
 // ValidateRole validates user roles (keeping existing logic)
-func ValidateRole(fl validator.FieldLevel) bool {
-	role := fl.Field().String()
-	validRoles := []string{"admin", "teacher", "student"}
-	
-	for _, validRole := range validRoles {
-		if role == validRole {
-			return true
-		}
-	}
-	
-	return false
-}
 
 // ============================================================================
 // ENHANCED HELPER METHODS
@@ -730,12 +723,12 @@ func (h *BaseAccountHandler) validateUserUpdateRules(context map[string]interfac
 // ============================================================================
 
 // getUserByID fetches user with domain-aware error handling
-func (h *BaseAccountHandler) getUserByID(userID int64) (*User, error) {
+func (h *BaseAccountHandler) getUserByID(userID int64) (*pb.Account, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	
-	req := &pb.GetUserRequest{UserId: userID}
-	resp, err := h.userClient.GetUser(ctx, req)
+	req := &pb.FindByIDReq{Id: userID}
+	resp, err := h.userClient.FindByID(ctx, req)
 	
 	if err != nil {
 		return nil, h.handleGRPCError(err, "get_user", map[string]interface{}{
@@ -743,13 +736,19 @@ func (h *BaseAccountHandler) getUserByID(userID int64) (*User, error) {
 		})
 	}
 	
-	// Convert protobuf to domain model
-	user := &User{
-		ID:       resp.User.Id,
-		Email:    resp.User.Email,
-		Role:     resp.User.Role,
-		IsActive: resp.User.IsActive,
-		Branch:   resp.User.Branch,
+	// If you need to create a new Account (e.g., to exclude password)
+	user := &pb.Account{
+		Id:        resp.Account.Id,
+		BranchId:  resp.Account.BranchId,
+		Name:      resp.Account.Name,
+		Email:     resp.Account.Email,
+		// Password:  "", // Exclude password for security
+		Avatar:    resp.Account.Avatar,
+		Title:     resp.Account.Title,
+		Role:      resp.Account.Role,
+		OwnerId:   resp.Account.OwnerId,
+		CreatedAt: resp.Account.CreatedAt,
+		UpdatedAt: resp.Account.UpdatedAt,
 	}
 	
 	return user, nil
@@ -1042,56 +1041,7 @@ func (h *BaseAccountHandler) measureOperation(operation string, fn func() error)
 // ============================================================================
 
 // validateRequestOrigin validates the origin of the request for security
-func (h *BaseAccountHandler) validateRequestOrigin(r *http.Request) error {
-	origin := r.Header.Get("Origin")
-	referer := r.Header.Get("Referer")
-	
-	// Log security validation attempt
-	h.logger.Debug("Validating request origin", map[string]interface{}{
-		"origin":    origin,
-		"referer":   referer,
-		"domain":    h.domain,
-		"client_ip": errorcustom.GetClientIP(r),
-	})
-	
-	// In production, validate against allowed origins
-	if h.config.IsProduction() && origin != "" {
-		allowedOrigins := h.config.GetAllowedOrigins()
-		originAllowed := false
-		
-		for _, allowedOrigin := range allowedOrigins {
-			if origin == allowedOrigin {
-				originAllowed = true
-				break
-			}
-		}
-		
-		if !originAllowed {
-			logger.LogSecurityEvent(
-				"invalid_origin_attempt",
-				"Request from unauthorized origin",
-				"medium",
-				map[string]interface{}{
-					"origin":          origin,
-					"allowed_origins": allowedOrigins,
-					"client_ip":       errorcustom.GetClientIP(r),
-					"domain":          h.domain,
-				},
-			)
-			
-			return errorcustom.NewAuthorizationErrorWithContext(
-				h.domain,
-				"origin_validation",
-				"request_origin",
-				map[string]interface{}{
-					"origin": origin,
-				},
-			)
-		}
-	}
-	
-	return nil
-}
+
 
 // logSecurityEvent logs security-related events with domain context
 func (h *BaseAccountHandler) logSecurityEvent(eventType string, description string, severity string, context map[string]interface{}) {
@@ -1117,12 +1067,7 @@ func (h *BaseAccountHandler) getMaxLoginAttempts() int {
 }
 
 // getSessionTimeout returns the session timeout from configuration
-func (h *BaseAccountHandler) getSessionTimeout() time.Duration {
-	if h.config != nil {
-		return h.config.GetSessionTimeout()
-	}
-	return 24 * time.Hour // Default fallback
-}
+
 
 // isRateLimitEnabled checks if rate limiting is enabled
 func (h *BaseAccountHandler) isRateLimitEnabled() bool {
@@ -1195,53 +1140,6 @@ func (h *BaseAccountHandler) withGRPCRetry(operation string, fn func() error) er
 // HEALTH CHECK AND DIAGNOSTICS
 // ============================================================================
 
-// healthCheck performs health check for the account handler
-func (h *BaseAccountHandler) healthCheck(ctx context.Context) error {
-	healthContext := map[string]interface{}{
-		"operation": "health_check",
-		"domain":    h.domain,
-		"component": "account_handler",
-	}
-	
-	h.logger.Debug("Starting account handler health check", healthContext)
-	
-	// Check gRPC client connectivity
-	if h.userClient == nil {
-		return errorcustom.NewSystemError(
-			h.domain,
-			"grpc_client",
-			"connection",
-			"gRPC client not initialized",
-			nil,
-		)
-	}
-	
-	// Test gRPC connection with a lightweight operation
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	
-	// Use a health check endpoint if available, or a lightweight operation
-	_, err := h.userClient.CheckEmailExists(ctx, &pb.CheckEmailExistsRequest{
-		Email: "health.check@example.com",
-	})
-	
-	if err != nil {
-		h.logger.Warning("gRPC health check failed", utils.MergeContext(healthContext, map[string]interface{}{
-			"grpc_error": err.Error(),
-		}))
-		
-		return errorcustom.NewExternalServiceError(
-			h.domain,
-			"account_service",
-			"health_check",
-			err,
-			true, // retryable
-		)
-	}
-	
-	h.logger.Info("Account handler health check passed", healthContext)
-	return nil
-}
 
 // getDiagnostics returns diagnostic information about the handler
 func (h *BaseAccountHandler) getDiagnostics() map[string]interface{} {

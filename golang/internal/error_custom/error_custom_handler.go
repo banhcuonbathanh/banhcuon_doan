@@ -1137,3 +1137,12 @@ func RateLimitMiddleware(domain string) func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// In your errorcustom or utils package, add:
+func ValidatePassword(password string) error {
+    if len(password) < 8 {
+        return fmt.Errorf("password must be at least 8 characters long")
+    }
+    // Add more validation rules as needed
+    return nil
+}
