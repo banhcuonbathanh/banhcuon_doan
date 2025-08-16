@@ -2,14 +2,14 @@
 // ============================================================================
 // FILE: golang/internal/error_custom/layer/repository_errors.go
 // ============================================================================
-package layer
+package errorcustom
 
 import (
 	"database/sql"
 	"fmt"
 	"strings"
 
-	errorcustom "english-ai-full/internal/error_custom"
+
 	"english-ai-full/logger"
 )
 
@@ -26,7 +26,7 @@ func NewRepositoryErrorManager() *RepositoryErrorManager {
 // ============================================================================
 
 // HandleDatabaseError handles various database errors
-func (r *RepositoryErrorManager) HandleDatabaseError(err error, domain, table, operation string, context map[string]interface{}) *errorcustom.APIError {
+func (r *RepositoryErrorManager) HandleDatabaseError(err error, domain, table, operation string, context map[string]interface{}) * APIError {
 	if err == nil {
 		return nil
 	}
@@ -49,10 +49,10 @@ func (r *RepositoryErrorManager) HandleDatabaseError(err error, domain, table, o
 }
 
 // handleNoRowsError handles sql.ErrNoRows errors
-func (r *RepositoryErrorManager) handleNoRowsError(domain, table, operation string, context map[string]interface{}) *errorcustom.APIError {
+func (r *RepositoryErrorManager) handleNoRowsError(domain, table, operation string, context map[string]interface{}) * APIError {
 	resourceType := strings.TrimSuffix(table, "s") // Remove plural 's'
 	
-	notFoundErr := errorcustom.NewNotFoundError(domain, resourceType, nil)
+	notFoundErr :=  NewNotFoundError(domain, resourceType, nil)
 	if len(context) > 0 {
 		notFoundErr.Identifiers = context
 	}
@@ -74,7 +74,7 @@ func (r *RepositoryErrorManager) handleNoRowsError(domain, table, operation stri
 }
 
 // handleConstraintViolation handles database constraint violations
-func (r *RepositoryErrorManager) handleConstraintViolation(err error, domain, table, operation string, context map[string]interface{}) *errorcustom.APIError {
+func (r *RepositoryErrorManager) handleConstraintViolation(err error, domain, table, operation string, context map[string]interface{}) * APIError {
 	errMsg := strings.ToLower(err.Error())
 	
 	switch {
@@ -83,7 +83,7 @@ func (r *RepositoryErrorManager) handleConstraintViolation(err error, domain, ta
 		field := r.extractFieldFromConstraintError(err)
 		value := r.extractValueFromContext(context, field)
 		
-		duplicateErr := errorcustom.NewDuplicateError(domain, table, field, value)
+		duplicateErr :=  NewDuplicateError(domain, table, field, value)
 		apiErr := duplicateErr.ToAPIError().
 			WithLayer("repository").
 			WithOperation(operation).
@@ -102,7 +102,7 @@ func (r *RepositoryErrorManager) handleConstraintViolation(err error, domain, ta
 		return apiErr
 
 	case strings.Contains(errMsg, "foreign key"):
-		businessErr := errorcustom.NewBusinessLogicError(
+		businessErr :=  NewBusinessLogicError(
 			domain,
 			"foreign_key_constraint",
 			"Referenced record does not exist or cannot be deleted due to dependencies",
@@ -126,7 +126,7 @@ func (r *RepositoryErrorManager) handleConstraintViolation(err error, domain, ta
 		return apiErr
 
 	case strings.Contains(errMsg, "check"):
-		validationErr := errorcustom.NewValidationError(
+		validationErr :=  NewValidationError(
 			domain,
 			"check_constraint",
 			"Data violates database check constraint",
@@ -143,7 +143,7 @@ func (r *RepositoryErrorManager) handleConstraintViolation(err error, domain, ta
 		return apiErr
 
 	default:
-		systemErr := errorcustom.NewSystemError(
+		systemErr :=  NewSystemError(
 			domain,
 			"database",
 			operation,
@@ -158,8 +158,8 @@ func (r *RepositoryErrorManager) handleConstraintViolation(err error, domain, ta
 }
 
 // handleConnectionError handles database connection errors
-func (r *RepositoryErrorManager) handleConnectionError(err error, domain, table, operation string) *errorcustom.APIError {
-	serviceErr := errorcustom.NewExternalServiceError(
+func (r *RepositoryErrorManager) handleConnectionError(err error, domain, table, operation string) * APIError {
+	serviceErr :=  NewExternalServiceError(
 		domain,
 		"database",
 		operation,
@@ -185,8 +185,8 @@ func (r *RepositoryErrorManager) handleConnectionError(err error, domain, table,
 }
 
 // handleDeadlockError handles database deadlock errors
-func (r *RepositoryErrorManager) handleDeadlockError(err error, domain, table, operation string) *errorcustom.APIError {
-	systemErr := errorcustom.NewSystemError(
+func (r *RepositoryErrorManager) handleDeadlockError(err error, domain, table, operation string) * APIError {
+	systemErr :=  NewSystemError(
 		domain,
 		"database",
 		operation,
@@ -213,9 +213,9 @@ func (r *RepositoryErrorManager) handleDeadlockError(err error, domain, table, o
 }
 
 // handleTimeoutError handles database timeout errors
-func (r *RepositoryErrorManager) handleTimeoutError(err error, domain, table, operation string) *errorcustom.APIError {
-	timeoutErr := errorcustom.NewAPIError(
-		errorcustom.GetTimeoutCode(domain),
+func (r *RepositoryErrorManager) handleTimeoutError(err error, domain, table, operation string) * APIError {
+	timeoutErr :=  NewAPIError(
+		 GetTimeoutCode(domain),
 		"Database operation timed out",
 		408,
 	).WithDomain(domain).
@@ -238,8 +238,8 @@ func (r *RepositoryErrorManager) handleTimeoutError(err error, domain, table, op
 }
 
 // handleGenericDatabaseError handles generic database errors
-func (r *RepositoryErrorManager) handleGenericDatabaseError(err error, domain, table, operation string, context map[string]interface{}) *errorcustom.APIError {
-	systemErr := errorcustom.NewSystemError(
+func (r *RepositoryErrorManager) handleGenericDatabaseError(err error, domain, table, operation string, context map[string]interface{}) * APIError {
+	systemErr :=  NewSystemError(
 		domain,
 		"database",
 		operation,

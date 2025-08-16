@@ -10,22 +10,34 @@ import (
 	"time"
 )
 
+
+// Context keys for request metadata
+type contextKey string
+
+const (
+	ContextKeyRequestID contextKey = "request_id"
+	ContextKeyDomain    contextKey = "domain"
+	ContextKeyUserID    contextKey = "user_id"
+)
+
 // ============================================================================
 // CORE ERROR TYPES
 // ============================================================================
 
 // APIError represents a structured API error with detailed information
-// type APIError struct {
-// 	Code       string                 `json:"code"`
-// 	Message    string                 `json:"message"`
-// 	Details    map[string]interface{} `json:"details,omitempty"`
-// 	HTTPStatus int                    `json:"-"`
-// 	Domain     string                 `json:"domain,omitempty"`     // user, course, payment, etc.
-// 	Layer      string                 `json:"layer,omitempty"`      // handler, service, repository
-// 	Operation  string                 `json:"operation,omitempty"`  // login, register, create_course, etc.
-// 	Cause      error                  `json:"-"`                    // Original error for internal use
-// 	Retryable  bool                   `json:"retryable,omitempty"`  // Whether the operation can be retried
-// }
+type APIError struct {
+	Code       string                 `json:"code"`
+	Message    string                 `json:"message"`
+	Details    map[string]interface{} `json:"details,omitempty"`
+	HTTPStatus int                    `json:"-"`
+	Domain     string                 `json:"domain,omitempty"`     // user, course, payment, etc.
+	Layer      string                 `json:"layer,omitempty"`      // handler, service, repository
+	Operation  string                 `json:"operation,omitempty"`  // login, register, create_course, etc.
+	Cause      error                  `json:"-"`                    // Original error for internal use
+	Retryable  bool                   `json:"retryable,omitempty"`  // Whether the operation can be retried
+	Timestamp  time.Time              `json:"timestamp"`
+	RequestID  string                 `json:"request_id,omitempty"`
+}
 
 // ErrorResponse represents the standard error format for API responses
 // swagger:model ErrorResponse
@@ -90,17 +102,17 @@ type DuplicateError struct {
 // AuthenticationError represents authentication failures
 type AuthenticationError struct {
 	BaseError
-	Reason    string                 `json:"reason"`
-	Step      string                 `json:"step,omitempty"`
-	Context   map[string]interface{} `json:"context,omitempty"`
+	Reason  string                 `json:"reason"`
+	Step    string                 `json:"step,omitempty"`
+	Context map[string]interface{} `json:"context,omitempty"`
 }
 
 // AuthorizationError represents authorization failures
 type AuthorizationError struct {
 	BaseError
-	Action    string                 `json:"action"`
-	Resource  string                 `json:"resource"`
-	Context   map[string]interface{} `json:"context,omitempty"`
+	Action   string                 `json:"action"`
+	Resource string                 `json:"resource"`
+	Context  map[string]interface{} `json:"context,omitempty"`
 }
 
 // BusinessLogicError represents business rule violations
@@ -114,20 +126,20 @@ type BusinessLogicError struct {
 // ExternalServiceError represents errors from external services
 type ExternalServiceError struct {
 	BaseError
-	Service   string                 `json:"service"`
-	Operation string                 `json:"operation"`
-	Message   string                 `json:"message"`
-	Cause     error                  `json:"-"`
-	Retryable bool                   `json:"retryable"`
+	Service   string `json:"service"`
+	Operation string `json:"operation"`
+	Message   string `json:"message"`
+	Cause     error  `json:"-"`
+	Retryable bool   `json:"retryable"`
 }
 
 // SystemError represents internal system errors
 type SystemError struct {
 	BaseError
-	Component string                 `json:"component"`
-	Operation string                 `json:"operation"`
-	Message   string                 `json:"message"`
-	Cause     error                  `json:"-"`
+	Component string `json:"component"`
+	Operation string `json:"operation"`
+	Message   string `json:"message"`
+	Cause     error  `json:"-"`
 }
 
 // ============================================================================
@@ -137,7 +149,7 @@ type SystemError struct {
 // Error implements the error interface
 func (e *APIError) Error() string {
 	parts := []string{}
-	
+
 	if e.Domain != "" {
 		parts = append(parts, e.Domain)
 	}
@@ -147,12 +159,12 @@ func (e *APIError) Error() string {
 	if e.Operation != "" {
 		parts = append(parts, e.Operation)
 	}
-	
+
 	prefix := ""
 	if len(parts) > 0 {
 		prefix = fmt.Sprintf("[%s]", strings.Join(parts, ":"))
 	}
-	
+
 	return fmt.Sprintf("%s[%s] %s", prefix, e.Code, e.Message)
 }
 
@@ -234,7 +246,7 @@ func (e *APIError) ToErrorResponse() ErrorResponse {
 		Message: e.Message,
 		Details: e.Details,
 	}
-	
+
 	// Add retryable info if applicable
 	if e.Retryable {
 		if response.Details == nil {
@@ -242,7 +254,7 @@ func (e *APIError) ToErrorResponse() ErrorResponse {
 		}
 		response.Details["retryable"] = e.Retryable
 	}
-	
+
 	return response
 }
 
@@ -270,7 +282,7 @@ func (e *NotFoundError) ToAPIError() *APIError {
 		e.Error(),
 		http.StatusNotFound,
 	).WithDomain(e.Domain)
-	
+
 	if e.ResourceID != nil {
 		apiErr.WithDetail("resource_id", e.ResourceID)
 	}
@@ -280,7 +292,7 @@ func (e *NotFoundError) ToAPIError() *APIError {
 	if len(e.Identifiers) > 0 {
 		apiErr.WithDetail("identifiers", e.Identifiers)
 	}
-	
+
 	return apiErr
 }
 
@@ -295,14 +307,14 @@ func (e *ValidationError) ToAPIError() *APIError {
 		http.StatusBadRequest,
 	).WithDomain(e.Domain).
 		WithDetail("field", e.Field)
-	
+
 	if e.Value != nil {
 		apiErr.WithDetail("value", e.Value)
 	}
 	if len(e.Rules) > 0 {
 		apiErr.WithDetail("rules", e.Rules)
 	}
-	
+
 	return apiErr
 }
 
@@ -335,7 +347,7 @@ func (e *AuthenticationError) ToAPIError() *APIError {
 		http.StatusUnauthorized,
 	).WithDomain(e.Domain).
 		WithDetail("reason", e.Reason)
-	
+
 	if e.Step != "" {
 		apiErr.WithDetail("step", e.Step)
 	}
@@ -344,7 +356,7 @@ func (e *AuthenticationError) ToAPIError() *APIError {
 			apiErr.WithDetail(k, v)
 		}
 	}
-	
+
 	return apiErr
 }
 
@@ -360,13 +372,13 @@ func (e *AuthorizationError) ToAPIError() *APIError {
 	).WithDomain(e.Domain).
 		WithDetail("action", e.Action).
 		WithDetail("resource", e.Resource)
-	
+
 	if len(e.Context) > 0 {
 		for k, v := range e.Context {
 			apiErr.WithDetail(k, v)
 		}
 	}
-	
+
 	return apiErr
 }
 
@@ -381,13 +393,13 @@ func (e *BusinessLogicError) ToAPIError() *APIError {
 		http.StatusUnprocessableEntity,
 	).WithDomain(e.Domain).
 		WithDetail("rule", e.Rule)
-	
+
 	if len(e.Context) > 0 {
 		for k, v := range e.Context {
 			apiErr.WithDetail(k, v)
 		}
 	}
-	
+
 	return apiErr
 }
 
@@ -400,12 +412,12 @@ func (e *ExternalServiceError) ToAPIError() *APIError {
 	if e.Retryable {
 		code = GetServiceUnavailableCode(e.Domain)
 	}
-	
+
 	status := http.StatusInternalServerError
 	if e.Retryable {
 		status = http.StatusServiceUnavailable
 	}
-	
+
 	return NewAPIError(code, "External service error", status).
 		WithDomain(e.Domain).
 		WithDetail("service", e.Service).
@@ -429,19 +441,23 @@ func (e *SystemError) ToAPIError() *APIError {
 		WithCause(e.Cause)
 }
 
+
+
 // ============================================================================
 // CORE CONSTRUCTORS
 // ============================================================================
 
 // NewAPIError creates a new APIError instance
-// func NewAPIError(code, message string, httpStatus int) *APIError {
-// 	return &APIError{
-// 		Code:       code,
-// 		Message:    message,
-// 		HTTPStatus: httpStatus,
-// 		Details:    make(map[string]interface{}),
-// 	}
-// }
+func NewAPIError(code, message string, httpStatus int) *APIError {
+	return &APIError{
+		Code:       code,
+		Message:    message,
+		HTTPStatus: httpStatus,
+		Details:    make(map[string]interface{}),
+		Timestamp:  time.Now().UTC(),
+		Retryable:  false,
+	}
+}
 
 // NewAPIErrorWithContext creates a new APIError instance with full context
 func NewAPIErrorWithContext(code, message string, httpStatus int, domain, layer, operation string, cause error) *APIError {
@@ -454,6 +470,8 @@ func NewAPIErrorWithContext(code, message string, httpStatus int, domain, layer,
 		Operation:  operation,
 		Cause:      cause,
 		Details:    make(map[string]interface{}),
+		Timestamp:  time.Now().UTC(),
+		Retryable:  false,
 	}
 }
 
@@ -475,188 +493,42 @@ func (er ErrorResponse) WithDetail(key string, value interface{}) ErrorResponse 
 	return er
 }
 
+// ============================================================================
+// CONSTRUCTOR FUNCTIONS
+// ============================================================================
 
-// new start12121
+// NotFoundError constructors
 
 
-// // Supported domains
-// const (
-// 	DomainUser    = "user"
-// 	DomainCourse  = "course"
-// 	DomainPayment = "payment"
-// 	DomainAuth    = "auth"
-// 	DomainAdmin   = "admin"
-// 	DomainContent = "content"
-// 	DomainSystem  = "system"
-// )
 
-// Core error types
-// const (
-// 	ErrorTypeNotFound         = "NOT_FOUND"
-// 	ErrorTypeValidation       = "VALIDATION_ERROR"
-// 	ErrorTypeDuplicate        = "DUPLICATE"
-// 	ErrorTypeAuthentication   = "AUTHENTICATION_ERROR"
-// 	ErrorTypeAuthorization    = "AUTHORIZATION_ERROR"
-// 	ErrorTypeBusinessLogic    = "BUSINESS_LOGIC_ERROR"
-// 	ErrorTypeExternalService  = "EXTERNAL_SERVICE_ERROR"
-// 	ErrorTypeSystem           = "SYSTEM_ERROR"
-// 	ErrorTypeDatabase         = "DATABASE_ERROR"
-// 	ErrorTypeRateLimit        = "RATE_LIMIT_ERROR"
-// 	ErrorTypeTimeout          = "TIMEOUT_ERROR"
-// )
 
-// Context keys for request metadata
-type contextKey string
 
-const (
-	ContextKeyRequestID contextKey = "request_id"
-	ContextKeyDomain    contextKey = "domain"
-	ContextKeyUserID    contextKey = "user_id"
-)
+// DuplicateError constructor
 
-// APIError represents the core error structure with domain awareness
-type APIError struct {
-	Code       string                 `json:"code"`
-	Message    string                 `json:"message"`
-	HTTPStatus int                    `json:"-"`
-	Details    map[string]interface{} `json:"details,omitempty"`
-	Domain     string                 `json:"domain,omitempty"`
-	Layer      string                 `json:"-"`
-	Operation  string                 `json:"-"`
-	Retryable  bool                   `json:"-"`
-	Timestamp  time.Time              `json:"timestamp"`
-	RequestID  string                 `json:"request_id,omitempty"`
-	Cause      error                  `json:"-"`
-}
 
-// Error implements the error interface
-// func (e *APIError) Error() string {
-// 	if e.Domain != "" {
-// 		return fmt.Sprintf("[%s] %s: %s", e.Domain, e.Code, e.Message)
-// 	}
-// 	return fmt.Sprintf("%s: %s", e.Code, e.Message)
-// }
+// AuthenticationError constructors
 
-// WithDomain adds domain context to the error
-// func (e *APIError) WithDomain(domain string) *APIError {
-// 	e.Domain = domain
-// 	return e
-// }
 
-// WithDetail adds additional context to the error
-// func (e *APIError) WithDetail(key string, value interface{}) *APIError {
-// 	if e.Details == nil {
-// 		e.Details = make(map[string]interface{})
-// 	}
-// 	e.Details[key] = value
-// 	return e
-// }
 
-// WithLayer adds layer information for debugging
-// func (e *APIError) WithLayer(layer string) *APIError {
-// 	e.Layer = layer
-// 	return e
-// }
 
-// WithOperation adds operation context
-// func (e *APIError) WithOperation(operation string) *APIError {
-// 	e.Operation = operation
-// 	return e
-// }
+// AuthorizationError constructor
 
-// // WithRetryable marks error as retryable or not
-// func (e *APIError) WithRetryable(retryable bool) *APIError {
-// 	e.Retryable = retryable
-// 	return e
-// }
 
-// WithCause adds the underlying cause
-// func (e *APIError) WithCause(cause error) *APIError {
-// 	e.Cause = cause
-// 	return e
-// }
 
-// ToErrorResponse converts to HTTP response format
-// func (e *APIError) ToErrorResponse() map[string]interface{} {
-// 	response := map[string]interface{}{
-// 		"code":      e.Code,
-// 		"message":   e.Message,
-// 		"timestamp": e.Timestamp.UTC().Format(time.RFC3339),
-// 	}
-	
-// 	if len(e.Details) > 0 {
-// 		response["details"] = e.Details
-// 	}
-	
-// 	if e.RequestID != "" {
-// 		response["request_id"] = e.RequestID
-// 	}
-	
-// 	if e.Domain != "" {
-// 		response["domain"] = e.Domain
-// 	}
-	
-// 	return response
-// }
 
-// GetLogContext returns structured logging context
-// func (e *APIError) GetLogContext() map[string]interface{} {
-// 	context := map[string]interface{}{
-// 		"error_code":   e.Code,
-// 		"error_msg":    e.Message,
-// 		"http_status":  e.HTTPStatus,
-// 		"retryable":    e.Retryable,
-// 		"timestamp":    e.Timestamp,
-// 	}
-	
-// 	if e.Domain != "" {
-// 		context["domain"] = e.Domain
-// 	}
-	
-// 	if e.Layer != "" {
-// 		context["layer"] = e.Layer
-// 	}
-	
-// 	if e.Operation != "" {
-// 		context["operation"] = e.Operation
-// 	}
-	
-// 	if e.RequestID != "" {
-// 		context["request_id"] = e.RequestID
-// 	}
-	
-// 	if e.Details != nil {
-// 		context["details"] = e.Details
-// 	}
-	
-// 	return context
-// }
 
-// NewAPIError creates a new API error
-func NewAPIError(code, message string, httpStatus int) *APIError {
-	return &APIError{
-		Code:       code,
-		Message:    message,
-		HTTPStatus: httpStatus,
-		Details:    make(map[string]interface{}),
-		Timestamp:  time.Now().UTC(),
-		Retryable:  false,
-	}
-}
 
-// ErrorCollection manages multiple related errors
-// type ErrorCollection struct {
-// 	Domain string      `json:"domain"`
-// 	Errors []*APIError `json:"errors"`
-// }
+
+// ExternalServiceError constructor
+
+
+
+
+
+
 
 // NewErrorCollection creates a new error collection for a domain
-// func NewErrorCollection(domain string) *ErrorCollection {
-// 	return &ErrorCollection{
-// 		Domain: domain,
-// 		Errors: make([]*APIError, 0),
-// 	}
-// }
+
 
 // Add adds an error to the collection
 func (ec *ErrorCollection) Add(err error) {
@@ -678,33 +550,3 @@ func (ec *ErrorCollection) HasErrors() bool {
 func (ec *ErrorCollection) Count() int {
 	return len(ec.Errors)
 }
-
-// ToAPIError converts collection to single API error
-// func (ec *ErrorCollection) ToAPIError() *APIError {
-// 	if len(ec.Errors) == 0 {
-// 		return nil
-// 	}
-	
-// 	if len(ec.Errors) == 1 {
-// 		return ec.Errors[0]
-// 	}
-	
-// 	// Multiple errors - create collection error
-// 	code := GetValidationCode(ec.Domain)
-// 	apiErr := NewAPIError(
-// 		code,
-// 		"Multiple validation errors occurred",
-// 		http.StatusBadRequest,
-// 	).WithDomain(ec.Domain)
-	
-// 	// Convert errors to map format
-// 	errorDetails := make([]map[string]interface{}, len(ec.Errors))
-// 	for i, err := range ec.Errors {
-// 		errorDetails[i] = err.ToErrorResponse()
-// 	}
-	
-// 	apiErr.WithDetail("errors", errorDetails)
-// 	return apiErr
-// }
-
-// new end121

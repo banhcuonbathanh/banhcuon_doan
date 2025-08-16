@@ -2,13 +2,13 @@
 // ============================================================================
 // FILE: golang/internal/error_custom/layer/service_errors.go
 // ============================================================================
-package layer
+package errorcustom
 
 import (
 	"context"
 
 
-	errorcustom "english-ai-full/internal/error_custom"
+
 	"english-ai-full/logger"
 )
 
@@ -25,16 +25,16 @@ func NewServiceErrorManager() *ServiceErrorManager {
 // ============================================================================
 
 // WrapRepositoryError wraps repository errors with service layer context
-func (s *ServiceErrorManager) WrapRepositoryError(err error, domain, operation string, context map[string]interface{}) *errorcustom.APIError {
+func (s *ServiceErrorManager) WrapRepositoryError(err error, domain, operation string, context map[string]interface{}) * APIError {
 	if err == nil {
 		return nil
 	}
 
 	// Convert to API error if not already
-	apiErr := errorcustom.ConvertToAPIError(err)
+	apiErr :=  ConvertToAPIError(err)
 	if apiErr == nil {
-		apiErr = errorcustom.NewAPIError(
-			errorcustom.GetSystemErrorCode(domain),
+		apiErr =  NewAPIError(
+			 GetSystemErrorCode(domain),
 			"Service operation failed",
 			500,
 		)
@@ -58,8 +58,8 @@ func (s *ServiceErrorManager) WrapRepositoryError(err error, domain, operation s
 }
 
 // HandleBusinessRuleViolation creates a business logic error
-func (s *ServiceErrorManager) HandleBusinessRuleViolation(domain, rule, description string, context map[string]interface{}) *errorcustom.APIError {
-	businessErr := errorcustom.NewBusinessLogicErrorWithContext(domain, rule, description, context)
+func (s *ServiceErrorManager) HandleBusinessRuleViolation(domain, rule, description string, context map[string]interface{}) * APIError {
+	businessErr :=  NewBusinessLogicErrorWithContext(domain, rule, description, context)
 	apiErr := businessErr.ToAPIError().
 		WithLayer("service")
 
@@ -75,8 +75,8 @@ func (s *ServiceErrorManager) HandleBusinessRuleViolation(domain, rule, descript
 }
 
 // HandleExternalServiceError handles errors from external services
-func (s *ServiceErrorManager) HandleExternalServiceError(err error, domain, service, operation string, retryable bool) *errorcustom.APIError {
-	extServiceErr := errorcustom.NewExternalServiceError(domain, service, operation, "External service error", err, retryable)
+func (s *ServiceErrorManager) HandleExternalServiceError(err error, domain, service, operation string, retryable bool) * APIError {
+	extServiceErr :=  NewExternalServiceError(domain, service, operation, "External service error", err, retryable)
 	apiErr := extServiceErr.ToAPIError().
 		WithLayer("service")
 
@@ -98,12 +98,12 @@ func (s *ServiceErrorManager) HandleExternalServiceError(err error, domain, serv
 // ============================================================================
 
 // HandleTransactionError handles database transaction errors
-func (s *ServiceErrorManager) HandleTransactionError(err error, domain, operation string) *errorcustom.APIError {
+func (s *ServiceErrorManager) HandleTransactionError(err error, domain, operation string) * APIError {
 	if err == nil {
 		return nil
 	}
 
-	systemErr := errorcustom.NewSystemError(domain, "database_transaction", operation, "Transaction failed", err)
+	systemErr :=  NewSystemError(domain, "database_transaction", operation, "Transaction failed", err)
 	apiErr := systemErr.ToAPIError().
 		WithLayer("service")
 
@@ -122,7 +122,7 @@ func (s *ServiceErrorManager) HandleTransactionError(err error, domain, operatio
 // ============================================================================
 
 // HandleContextError handles context-related errors (timeouts, cancellations)
-func (s *ServiceErrorManager) HandleContextError(ctx context.Context, domain, operation string) *errorcustom.APIError {
+func (s *ServiceErrorManager) HandleContextError(ctx context.Context, domain, operation string) * APIError {
 	err := ctx.Err()
 	if err == nil {
 		return nil
@@ -130,8 +130,8 @@ func (s *ServiceErrorManager) HandleContextError(ctx context.Context, domain, op
 
 	switch err {
 	case context.DeadlineExceeded:
-		timeoutErr := errorcustom.NewAPIError(
-			errorcustom.GetTimeoutCode(domain),
+		timeoutErr :=  NewAPIError(
+			 GetTimeoutCode(domain),
 			"Operation timed out",
 			408,
 		).WithDomain(domain).
@@ -148,8 +148,8 @@ func (s *ServiceErrorManager) HandleContextError(ctx context.Context, domain, op
 		return timeoutErr
 
 	case context.Canceled:
-		cancelErr := errorcustom.NewAPIError(
-			errorcustom.GetSystemErrorCode(domain),
+		cancelErr :=  NewAPIError(
+			 GetSystemErrorCode(domain),
 			"Operation was cancelled",
 			499,
 		).WithDomain(domain).
@@ -165,7 +165,7 @@ func (s *ServiceErrorManager) HandleContextError(ctx context.Context, domain, op
 		return cancelErr
 
 	default:
-		systemErr := errorcustom.NewSystemError(domain, "context", operation, "Context error", err)
+		systemErr :=  NewSystemError(domain, "context", operation, "Context error", err)
 		return systemErr.ToAPIError().WithLayer("service")
 	}
 }
@@ -175,16 +175,16 @@ func (s *ServiceErrorManager) HandleContextError(ctx context.Context, domain, op
 // ============================================================================
 
 // ValidateBusinessRules validates business rules and returns collected errors
-func (s *ServiceErrorManager) ValidateBusinessRules(domain string, validations map[string]func() error) *errorcustom.APIError {
-	errorCollection := errorcustom.NewErrorCollection(domain)
+func (s *ServiceErrorManager) ValidateBusinessRules(domain string, validations map[string]func() error) * APIError {
+	errorCollection :=  NewErrorCollection(domain)
 
 	for ruleName, validationFunc := range validations {
 		if err := validationFunc(); err != nil {
-			if businessErr, ok := err.(*errorcustom.BusinessLogicError); ok {
+			if businessErr, ok := err.(* BusinessLogicError); ok {
 				errorCollection.Add(businessErr)
 			} else {
 				// Convert generic error to business logic error
-				businessErr := errorcustom.NewBusinessLogicError(domain, ruleName, err.Error())
+				businessErr :=  NewBusinessLogicError(domain, ruleName, err.Error())
 				errorCollection.Add(businessErr)
 			}
 		}
@@ -206,7 +206,7 @@ func (s *ServiceErrorManager) ValidateBusinessRules(domain string, validations m
 // ============================================================================
 
 // logServiceError logs service errors with appropriate severity
-func (s *ServiceErrorManager) logServiceError(apiErr *errorcustom.APIError, operation string) {
+func (s *ServiceErrorManager) logServiceError(apiErr * APIError, operation string) {
 	logContext := apiErr.GetLogContext()
 	logContext["operation"] = operation
 	logContext["layer"] = "service"

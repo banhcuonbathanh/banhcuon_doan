@@ -1,4 +1,3 @@
-
 // ============================================================================
 // FILE: golang/internal/error_custom/middleware.go
 // ============================================================================
@@ -6,14 +5,12 @@ package errorcustom
 
 import (
 	"context"
+	"english-ai-full/logger"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"strings"
 	"time"
-
-	"english-ai-full/internal/error_custom/layer"
-	"english-ai-full/logger"
 )
 
 // ErrorMiddleware provides enhanced error handling middleware
@@ -139,7 +136,7 @@ func (em *ErrorMiddleware) detectDomainFromPath(path string) string {
 	
 	switch {
 	case strings.Contains(path, "/api/accounts") || strings.Contains(path, "/api/users"):
-		return DomainUser
+		return DomainAccount
 	case strings.Contains(path, "/api/auth"):
 		return DomainAuth
 	case strings.Contains(path, "/api/branches"):
@@ -202,7 +199,3 @@ type responseWriter struct {
 	statusCode int
 }
 
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
-}

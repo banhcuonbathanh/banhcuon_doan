@@ -8,8 +8,7 @@ import (
 	"context"
 	"net/http"
 
-	"english-ai-full/internal/error_custom/domain"
-	"english-ai-full/internal/error_custom/layer"
+
 )
 
 // UnifiedErrorHandler provides a single interface for all error handling needs

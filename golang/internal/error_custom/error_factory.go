@@ -4,48 +4,43 @@
 // ============================================================================
 package errorcustom
 
-import (
-	"english-ai-full/internal/error_custom/domain"
-	"english-ai-full/internal/error_custom/layer"
-)
 
 // ErrorFactory provides centralized access to all error managers
 type ErrorFactory struct {
 	// Domain error managers
-	UserErrors    *domain.UserDomainErrors
-	AuthErrors    *domain.AuthDomainErrors
-	BranchErrors  *domain.BranchDomainErrors
-	AdminErrors   *domain.AdminDomainErrors
-	AccountErrors *domain.AccountDomainErrors
+	UserErrors    * AccountDomainErrors
+	AuthErrors    * AuthDomainErrors
+	BranchErrors  * BranchDomainErrors
+	AdminErrors   * AdminDomainErrors
+	AccountErrors * AccountDomainErrors
 
 	// Layer error managers
-	HandlerErrorMgr    *layer.HandlerErrorManager
-	ServiceErrorMgr    *layer.ServiceErrorManager
-	RepositoryErrorMgr *layer.RepositoryErrorManager
+	HandlerErrorMgr    * HandlerErrorManager
+	ServiceErrorMgr    * ServiceErrorManager
+	RepositoryErrorMgr * RepositoryErrorManager
 }
 
 // NewErrorFactory creates a new error factory with all managers
 func NewErrorFactory() *ErrorFactory {
 	return &ErrorFactory{
 		// Initialize domain error managers
-		UserErrors:    domain.NewUserDomainErrors(),
-		AuthErrors:    domain.NewAuthDomainErrors(),
-		BranchErrors:  domain.NewBranchDomainErrors(),
-		AdminErrors:   domain.NewAdminDomainErrors(),
-		AccountErrors: domain.NewAccountDomainErrors(),
+		UserErrors:     NewAccountDomainErrors(),
+		AuthErrors:     NewAuthDomainErrors(),
+		BranchErrors:   NewBranchDomainErrors(),
+		AdminErrors:    NewAdminDomainErrors(),
+		AccountErrors:  NewAccountDomainErrors(),
 
 		// Initialize layer error managers
-		HandlerErrorMgr:    layer.NewHandlerErrorManager(),
-		ServiceErrorMgr:    layer.NewServiceErrorManager(),
-		RepositoryErrorMgr: layer.NewRepositoryErrorManager(),
+		HandlerErrorMgr:     NewHandlerErrorManager(),
+		ServiceErrorMgr:     NewServiceErrorManager(),
+		RepositoryErrorMgr:  NewRepositoryErrorManager(),
 	}
 }
 
 // GetDomainErrors returns domain-specific error manager
 func (ef *ErrorFactory) GetDomainErrors(domain string) interface{} {
 	switch domain {
-	case DomainUser:
-		return ef.UserErrors
+	
 	case DomainAuth:
 		return ef.AuthErrors
 	case "branch":

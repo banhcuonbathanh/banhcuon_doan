@@ -2,10 +2,10 @@
 // ============================================================================
 // FILE: golang/internal/error_custom/domain/auth_errors.go
 // ============================================================================
-package domain
+package errorcustom
 
 import (
-	errorcustom "english-ai-full/internal/error_custom"
+
 	"fmt"
 	"time"
 )
@@ -18,9 +18,9 @@ func NewAuthDomainErrors() *AuthDomainErrors {
 }
 
 // Token Errors
-func (a *AuthDomainErrors) NewInvalidTokenError(tokenType string) *errorcustom.AuthenticationError {
-	return errorcustom.NewAuthenticationErrorWithStep(
-		errorcustom.DomainAuth,
+func (a *AuthDomainErrors) NewInvalidTokenError(tokenType string) *AuthenticationError {
+	return NewAuthenticationErrorWithStep(
+		DomainAuth,
 		fmt.Sprintf("invalid %s token", tokenType),
 		"token_validation",
 		map[string]interface{}{
@@ -29,9 +29,9 @@ func (a *AuthDomainErrors) NewInvalidTokenError(tokenType string) *errorcustom.A
 	)
 }
 
-func (a *AuthDomainErrors) NewExpiredTokenError(tokenType string, expiredAt time.Time) *errorcustom.AuthenticationError {
-	return errorcustom.NewAuthenticationErrorWithStep(
-		errorcustom.DomainAuth,
+func (a *AuthDomainErrors) NewExpiredTokenError(tokenType string, expiredAt time.Time) *AuthenticationError {
+	return NewAuthenticationErrorWithStep(
+		DomainAuth,
 		fmt.Sprintf("%s token has expired", tokenType),
 		"token_expiry_check",
 		map[string]interface{}{
@@ -41,9 +41,9 @@ func (a *AuthDomainErrors) NewExpiredTokenError(tokenType string, expiredAt time
 	)
 }
 
-func (a *AuthDomainErrors) NewMissingTokenError(tokenType string) *errorcustom.AuthenticationError {
-	return errorcustom.NewAuthenticationErrorWithStep(
-		errorcustom.DomainAuth,
+func (a *AuthDomainErrors) NewMissingTokenError(tokenType string) *AuthenticationError {
+	return NewAuthenticationErrorWithStep(
+		 DomainAuth,
 		fmt.Sprintf("missing %s token", tokenType),
 		"token_presence_check",
 		map[string]interface{}{
@@ -53,9 +53,9 @@ func (a *AuthDomainErrors) NewMissingTokenError(tokenType string) *errorcustom.A
 }
 
 // Session Errors
-func (a *AuthDomainErrors) NewSessionExpiredError(sessionID string) *errorcustom.AuthenticationError {
-	return errorcustom.NewAuthenticationErrorWithStep(
-		errorcustom.DomainAuth,
+func (a *AuthDomainErrors) NewSessionExpiredError(sessionID string) * AuthenticationError {
+	return  NewAuthenticationErrorWithStep(
+		 DomainAuth,
 		"session has expired",
 		"session_validation",
 		map[string]interface{}{
@@ -64,9 +64,9 @@ func (a *AuthDomainErrors) NewSessionExpiredError(sessionID string) *errorcustom
 	)
 }
 
-func (a *AuthDomainErrors) NewInvalidSessionError(sessionID string) *errorcustom.AuthenticationError {
-	return errorcustom.NewAuthenticationErrorWithStep(
-		errorcustom.DomainAuth,
+func (a *AuthDomainErrors) NewInvalidSessionError(sessionID string) * AuthenticationError {
+	return  NewAuthenticationErrorWithStep(
+		 DomainAuth,
 		"invalid session",
 		"session_validation",
 		map[string]interface{}{
@@ -76,9 +76,9 @@ func (a *AuthDomainErrors) NewInvalidSessionError(sessionID string) *errorcustom
 }
 
 // Permission Errors
-func (a *AuthDomainErrors) NewInsufficientPermissionsError(userID int64, requiredPermission string, userPermissions []string) *errorcustom.AuthorizationError {
-	return errorcustom.NewAuthorizationErrorWithContext(
-		errorcustom.DomainAuth,
+func (a *AuthDomainErrors) NewInsufficientPermissionsError(userID int64, requiredPermission string, userPermissions []string) * AuthorizationError {
+	return  NewAuthorizationErrorWithContext(
+		 DomainAuth,
 		"access",
 		"resource",
 		map[string]interface{}{
@@ -89,9 +89,9 @@ func (a *AuthDomainErrors) NewInsufficientPermissionsError(userID int64, require
 	)
 }
 
-func (a *AuthDomainErrors) NewRoleNotAuthorizedError(userID int64, userRole, requiredRole string) *errorcustom.AuthorizationError {
-	return errorcustom.NewAuthorizationErrorWithContext(
-		errorcustom.DomainAuth,
+func (a *AuthDomainErrors) NewRoleNotAuthorizedError(userID int64, userRole, requiredRole string) * AuthorizationError {
+	return  NewAuthorizationErrorWithContext(
+		 DomainAuth,
 		"role_access",
 		"resource",
 		map[string]interface{}{
@@ -103,9 +103,9 @@ func (a *AuthDomainErrors) NewRoleNotAuthorizedError(userID int64, userRole, req
 }
 
 // Rate Limiting Errors
-func (a *AuthDomainErrors) NewTooManyLoginAttemptsError(email string, remainingTime time.Duration) *errorcustom.BusinessLogicError {
-	return errorcustom.NewBusinessLogicErrorWithContext(
-		errorcustom.DomainAuth,
+func (a *AuthDomainErrors) NewTooManyLoginAttemptsError(email string, remainingTime time.Duration) * BusinessLogicError {
+	return  NewBusinessLogicErrorWithContext(
+		 DomainAuth,
 		"login_rate_limit",
 		"Too many login attempts. Please try again later",
 		map[string]interface{}{

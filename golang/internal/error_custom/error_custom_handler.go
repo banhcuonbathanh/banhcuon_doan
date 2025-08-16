@@ -7,8 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
-	"net"
+
 	"net/http"
 	"regexp"
 	"strconv"
@@ -115,11 +114,6 @@ func RecoveryMiddleware(next http.Handler) http.Handler {
 // CUSTOM RESPONSE WRITER
 // ============================================================================
 
-// Custom ResponseWriter to capture status code
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
 
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
@@ -617,10 +611,6 @@ func getValidationMessage(fe validator.FieldError) string {
 // CONTEXT UTILITIES
 // ============================================================================
 
-// generateRequestID creates a unique request identifier
-func generateRequestID() string {
-	return fmt.Sprintf("req_%d_%d", time.Now().UnixNano(), rand.Int63n(1000))
-}
 
 // withRequestID adds request ID to context
 func withRequestID(ctx context.Context, requestID string) context.Context {
@@ -632,21 +622,8 @@ func withDomain(ctx context.Context, domain string) context.Context {
 	return context.WithValue(ctx, "domain", domain)
 }
 
-// GetRequestIDFromContext extracts request ID from context
-func GetRequestIDFromContext(ctx context.Context) string {
-	if requestID, ok := ctx.Value("request_id").(string); ok {
-		return requestID
-	}
-	return "unknown"
-}
 
-// GetDomainFromContext extracts domain from context
-func GetDomainFromContext(ctx context.Context) string {
-	if domain, ok := ctx.Value("domain").(string); ok {
-		return domain
-	}
-	return ""
-}
+
 
 // GetUserEmailFromContext extracts user email from JWT token context
 func GetUserEmailFromContext(r *http.Request) string {
@@ -665,27 +642,27 @@ func GetUserIDFromContext(r *http.Request) int64 {
 }
 
 // GetClientIP extracts the real client IP from request
-func GetClientIP(r *http.Request) string {
-	// Get IP from X-Forwarded-For header
-	forwarded := r.Header.Get("X-Forwarded-For")
-	if forwarded != "" {
-		// Take the first IP (client IP)
-		return strings.Split(forwarded, ",")[0]
-	}
+// func GetClientIP(r *http.Request) string {
+// 	// Get IP from X-Forwarded-For header
+// 	forwarded := r.Header.Get("X-Forwarded-For")
+// 	if forwarded != "" {
+// 		// Take the first IP (client IP)
+// 		return strings.Split(forwarded, ",")[0]
+// 	}
 	
-	// Get IP from X-Real-IP header
-	realIP := r.Header.Get("X-Real-IP")
-	if realIP != "" {
-		return realIP
-	}
+// 	// Get IP from X-Real-IP header
+// 	realIP := r.Header.Get("X-Real-IP")
+// 	if realIP != "" {
+// 		return realIP
+// 	}
 	
-	// Get IP from request RemoteAddr
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return ip
-}
+// 	// Get IP from request RemoteAddr
+// 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+// 	if err != nil {
+// 		return r.RemoteAddr
+// 	}
+// 	return ip
+// }
 
 // ============================================================================
 // EMAIL VALIDATION (maintained for compatibility)

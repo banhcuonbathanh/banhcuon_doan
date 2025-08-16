@@ -1,10 +1,10 @@
 // ============================================================================
 // FILE: golang/internal/error_custom/domain/admin_errors.go
 // ============================================================================
-package domain
+package errorcustom
 
 import (
-	errorcustom "english-ai-full/internal/error_custom"
+
 	"fmt"
 )
 
@@ -16,9 +16,9 @@ func NewAdminDomainErrors() *AdminDomainErrors {
 }
 
 // Admin Authorization Errors
-func (a *AdminDomainErrors) NewInsufficientAdminPrivilegesError(userID int64, requiredRole, currentRole string) *errorcustom.AuthorizationError {
-	return errorcustom.NewAuthorizationErrorWithContext(
-		errorcustom.DomainAdmin,
+func (a *AdminDomainErrors) NewInsufficientAdminPrivilegesError(userID int64, requiredRole, currentRole string) *AuthorizationError {
+	return NewAuthorizationErrorWithContext(
+		DomainAdmin,
 		"admin_operation",
 		"system",
 		map[string]interface{}{
@@ -29,18 +29,18 @@ func (a *AdminDomainErrors) NewInsufficientAdminPrivilegesError(userID int64, re
 	)
 }
 
-func (a *AdminDomainErrors) NewSystemMaintenanceModeError() *errorcustom.BusinessLogicError {
-	return errorcustom.NewBusinessLogicError(
-		errorcustom.DomainAdmin,
+func (a *AdminDomainErrors) NewSystemMaintenanceModeError() *BusinessLogicError {
+	return NewBusinessLogicError(
+		DomainAdmin,
 		"system_maintenance",
 		"System is currently in maintenance mode",
 	)
 }
 
 // Bulk Operations Errors
-func (a *AdminDomainErrors) NewBulkOperationLimitError(operation string, requested, maxAllowed int) *errorcustom.BusinessLogicError {
-	return errorcustom.NewBusinessLogicErrorWithContext(
-		errorcustom.DomainAdmin,
+func (a *AdminDomainErrors) NewBulkOperationLimitError(operation string, requested, maxAllowed int) *BusinessLogicError {
+	return NewBusinessLogicErrorWithContext(
+		DomainAdmin,
 		"bulk_operation_limit",
 		fmt.Sprintf("Bulk %s operation exceeds maximum limit", operation),
 		map[string]interface{}{
@@ -51,9 +51,9 @@ func (a *AdminDomainErrors) NewBulkOperationLimitError(operation string, request
 	)
 }
 
-func (a *AdminDomainErrors) NewBulkOperationPartialFailureError(operation string, totalRequested, successful, failed int, failures []string) *errorcustom.BusinessLogicError {
-	return errorcustom.NewBusinessLogicErrorWithContext(
-		errorcustom.DomainAdmin,
+func (a *AdminDomainErrors) NewBulkOperationPartialFailureError(operation string, totalRequested, successful, failed int, failures []string) *BusinessLogicError {
+	return NewBusinessLogicErrorWithContext(
+		DomainAdmin,
 		"bulk_operation_partial_failure",
 		fmt.Sprintf("Bulk %s operation completed with %d failures out of %d requests", operation, failed, totalRequested),
 		map[string]interface{}{
@@ -67,9 +67,9 @@ func (a *AdminDomainErrors) NewBulkOperationPartialFailureError(operation string
 }
 
 // Resource Management Errors
-func (a *AdminDomainErrors) NewResourceQuotaExceededError(resourceType string, currentUsage, maxQuota int64) *errorcustom.BusinessLogicError {
-	return errorcustom.NewBusinessLogicErrorWithContext(
-		errorcustom.DomainAdmin,
+func (a *AdminDomainErrors) NewResourceQuotaExceededError(resourceType string, currentUsage, maxQuota int64) *BusinessLogicError {
+	return NewBusinessLogicErrorWithContext(
+		DomainAdmin,
 		"resource_quota",
 		fmt.Sprintf("%s quota exceeded", resourceType),
 		map[string]interface{}{

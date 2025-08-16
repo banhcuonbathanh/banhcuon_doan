@@ -1,7 +1,5 @@
-// ============================================================================
-// FILE: golang/internal/error_custom/layer/handler_errors.go
-// ============================================================================
-package layer
+
+package errorcustom
 
 import (
 	"encoding/json"
@@ -10,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	errorcustom "english-ai-full/internal/error_custom"
+
 	"english-ai-full/logger"
 
 	"github.com/go-chi/chi"
@@ -35,14 +33,14 @@ func NewHandlerErrorManager() *HandlerErrorManager {
 
 // HandleJSONDecodeError handles JSON decoding errors with detailed context
 // HandleJSONDecodeError handles JSON decoding errors with detailed context
-func (h *HandlerErrorManager) HandleJSONDecodeError(err error, domain, requestID string) *errorcustom.APIError {
+func (h *HandlerErrorManager) HandleJSONDecodeError(err error, domain, requestID string) * APIError {
 	var syntaxError *json.SyntaxError
 	var unmarshalTypeError *json.UnmarshalTypeError
 	
 	switch {
 	case err.Error() == "unexpected end of JSON input":
-		return errorcustom.NewAPIError(
-			errorcustom.GetInvalidInputCode(domain),
+		return  NewAPIError(
+			 GetInvalidInputCode(domain),
 			"Request body cannot be empty",
 			http.StatusBadRequest,
 		).WithDomain(domain).
@@ -54,8 +52,8 @@ func (h *HandlerErrorManager) HandleJSONDecodeError(err error, domain, requestID
 		if syntaxErr, ok := err.(*json.SyntaxError); ok {
 			syntaxError = syntaxErr
 		}
-		return errorcustom.NewAPIError(
-			errorcustom.GetInvalidInputCode(domain),
+		return  NewAPIError(
+			 GetInvalidInputCode(domain),
 			"Invalid JSON syntax",
 			http.StatusBadRequest,
 		).WithDomain(domain).
@@ -69,8 +67,8 @@ func (h *HandlerErrorManager) HandleJSONDecodeError(err error, domain, requestID
 		unmarshalTypeError, ok = err.(*json.UnmarshalTypeError)
 		return ok
 	}():
-		return errorcustom.NewAPIError(
-			errorcustom.GetInvalidInputCode(domain),
+		return  NewAPIError(
+			 GetInvalidInputCode(domain),
 			fmt.Sprintf("Invalid value type for field '%s'", unmarshalTypeError.Field),
 			http.StatusBadRequest,
 		).WithDomain(domain).
@@ -81,8 +79,8 @@ func (h *HandlerErrorManager) HandleJSONDecodeError(err error, domain, requestID
 			WithDetail("request_id", requestID)
 
 	default:
-		return errorcustom.NewAPIError(
-			errorcustom.GetInvalidInputCode(domain),
+		return  NewAPIError(
+			 GetInvalidInputCode(domain),
 			"Invalid JSON format",
 			http.StatusBadRequest,
 		).WithDomain(domain).
@@ -94,14 +92,14 @@ func (h *HandlerErrorManager) HandleJSONDecodeError(err error, domain, requestID
 }
 
 // HandleValidationError handles struct validation errors
-func (h *HandlerErrorManager) HandleValidationError(validationErrs validator.ValidationErrors, domain, requestID string) *errorcustom.APIError {
-	errorCollection := errorcustom.NewErrorCollection(domain)
+func (h *HandlerErrorManager) HandleValidationError(validationErrs validator.ValidationErrors, domain, requestID string) * APIError {
+	errorCollection :=  NewErrorCollection(domain)
 	
 	for _, err := range validationErrs {
 		field := strings.ToLower(err.Field())
 		message := h.getValidationMessage(err)
 		
-		validationErr := errorcustom.NewValidationErrorWithRules(
+		validationErr :=  NewValidationErrorWithRules(
 			domain,
 			field,
 			message,
@@ -127,12 +125,12 @@ func (h *HandlerErrorManager) HandleValidationError(validationErrs validator.Val
 // ============================================================================
 
 // ParseIDParameter safely parses ID parameters with enhanced error handling
-func (h *HandlerErrorManager) ParseIDParameter(r *http.Request, paramName, domain, requestID string) (int64, *errorcustom.APIError) {
+func (h *HandlerErrorManager) ParseIDParameter(r *http.Request, paramName, domain, requestID string) (int64, * APIError) {
 	idStr := chi.URLParam(r, paramName)
 	
 	if idStr == "" {
-		return 0, errorcustom.NewAPIError(
-			errorcustom.GetValidationCode(domain),
+		return 0,  NewAPIError(
+			 GetValidationCode(domain),
 			fmt.Sprintf("Missing required URL parameter: %s", paramName),
 			http.StatusBadRequest,
 		).WithDomain(domain).
@@ -144,8 +142,8 @@ func (h *HandlerErrorManager) ParseIDParameter(r *http.Request, paramName, domai
 
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		return 0, errorcustom.NewAPIError(
-			errorcustom.GetValidationCode(domain),
+		return 0,  NewAPIError(
+			 GetValidationCode(domain),
 			fmt.Sprintf("Invalid %s format: must be a valid integer", paramName),
 			http.StatusBadRequest,
 		).WithDomain(domain).
@@ -157,8 +155,8 @@ func (h *HandlerErrorManager) ParseIDParameter(r *http.Request, paramName, domai
 	}
 
 	if id <= 0 {
-		return 0, errorcustom.NewAPIError(
-			errorcustom.GetValidationCode(domain),
+		return 0,  NewAPIError(
+			 GetValidationCode(domain),
 			fmt.Sprintf("Invalid %s: must be a positive integer", paramName),
 			http.StatusBadRequest,
 		).WithDomain(domain).
@@ -173,12 +171,12 @@ func (h *HandlerErrorManager) ParseIDParameter(r *http.Request, paramName, domai
 }
 
 // ParseStringParameter safely parses string parameters with validation
-func (h *HandlerErrorManager) ParseStringParameter(r *http.Request, paramName, domain, requestID string, minLen, maxLen int) (string, *errorcustom.APIError) {
+func (h *HandlerErrorManager) ParseStringParameter(r *http.Request, paramName, domain, requestID string, minLen, maxLen int) (string, * APIError) {
 	value := chi.URLParam(r, paramName)
 	
 	if value == "" {
-		return "", errorcustom.NewAPIError(
-			errorcustom.GetValidationCode(domain),
+		return "",  NewAPIError(
+			 GetValidationCode(domain),
 			fmt.Sprintf("Missing required URL parameter: %s", paramName),
 			http.StatusBadRequest,
 		).WithDomain(domain).
@@ -189,8 +187,8 @@ func (h *HandlerErrorManager) ParseStringParameter(r *http.Request, paramName, d
 	}
 
 	if minLen > 0 && len(value) < minLen {
-		return "", errorcustom.NewAPIError(
-			errorcustom.GetValidationCode(domain),
+		return "",  NewAPIError(
+			 GetValidationCode(domain),
 			fmt.Sprintf("Parameter %s must be at least %d characters long", paramName, minLen),
 			http.StatusBadRequest,
 		).WithDomain(domain).
@@ -203,8 +201,8 @@ func (h *HandlerErrorManager) ParseStringParameter(r *http.Request, paramName, d
 	}
 
 	if maxLen > 0 && len(value) > maxLen {
-		return "", errorcustom.NewAPIError(
-			errorcustom.GetValidationCode(domain),
+		return "",  NewAPIError(
+			 GetValidationCode(domain),
 			fmt.Sprintf("Parameter %s cannot exceed %d characters", paramName, maxLen),
 			http.StatusBadRequest,
 		).WithDomain(domain).
@@ -224,7 +222,7 @@ func (h *HandlerErrorManager) ParseStringParameter(r *http.Request, paramName, d
 // ============================================================================
 
 // ParsePaginationParameters safely parses pagination with comprehensive validation
-func (h *HandlerErrorManager) ParsePaginationParameters(r *http.Request, domain, requestID string) (limit, offset int64, apiErr *errorcustom.APIError) {
+func (h *HandlerErrorManager) ParsePaginationParameters(r *http.Request, domain, requestID string) (limit, offset int64, apiErr * APIError) {
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
 	
@@ -236,8 +234,8 @@ func (h *HandlerErrorManager) ParsePaginationParameters(r *http.Request, domain,
 	if limitStr != "" {
 		l, err := strconv.ParseInt(limitStr, 10, 64)
 		if err != nil {
-			return 0, 0, errorcustom.NewAPIError(
-				errorcustom.GetValidationCode(domain),
+			return 0, 0,  NewAPIError(
+				 GetValidationCode(domain),
 				"Invalid limit parameter: must be a valid integer",
 				http.StatusBadRequest,
 			).WithDomain(domain).
@@ -248,8 +246,8 @@ func (h *HandlerErrorManager) ParsePaginationParameters(r *http.Request, domain,
 		}
 
 		if l < 1 {
-			return 0, 0, errorcustom.NewAPIError(
-				errorcustom.GetValidationCode(domain),
+			return 0, 0,  NewAPIError(
+				 GetValidationCode(domain),
 				"Invalid limit parameter: must be at least 1",
 				http.StatusBadRequest,
 			).WithDomain(domain).
@@ -261,8 +259,8 @@ func (h *HandlerErrorManager) ParsePaginationParameters(r *http.Request, domain,
 		}
 
 		if l > 100 {
-			return 0, 0, errorcustom.NewAPIError(
-				errorcustom.GetValidationCode(domain),
+			return 0, 0,  NewAPIError(
+				 GetValidationCode(domain),
 				"Invalid limit parameter: cannot exceed 100",
 				http.StatusBadRequest,
 			).WithDomain(domain).
@@ -280,8 +278,8 @@ func (h *HandlerErrorManager) ParsePaginationParameters(r *http.Request, domain,
 	if offsetStr != "" {
 		o, err := strconv.ParseInt(offsetStr, 10, 64)
 		if err != nil {
-			return 0, 0, errorcustom.NewAPIError(
-				errorcustom.GetValidationCode(domain),
+			return 0, 0,  NewAPIError(
+				 GetValidationCode(domain),
 				"Invalid offset parameter: must be a valid integer",
 				http.StatusBadRequest,
 			).WithDomain(domain).
@@ -292,8 +290,8 @@ func (h *HandlerErrorManager) ParsePaginationParameters(r *http.Request, domain,
 		}
 
 		if o < 0 {
-			return 0, 0, errorcustom.NewAPIError(
-				errorcustom.GetValidationCode(domain),
+			return 0, 0,  NewAPIError(
+				 GetValidationCode(domain),
 				"Invalid offset parameter: cannot be negative",
 				http.StatusBadRequest,
 			).WithDomain(domain).
@@ -316,10 +314,10 @@ func (h *HandlerErrorManager) ParsePaginationParameters(r *http.Request, domain,
 
 // RespondWithError sends a standardized error response
 func (h *HandlerErrorManager) RespondWithError(w http.ResponseWriter, err error, domain, requestID string) {
-	apiErr := errorcustom.ConvertToAPIError(err)
+	apiErr :=  ConvertToAPIError(err)
 	if apiErr == nil {
-		apiErr = errorcustom.NewAPIError(
-			errorcustom.GetSystemErrorCode(domain),
+		apiErr =  NewAPIError(
+			 GetSystemErrorCode(domain),
 			"An unexpected error occurred",
 			http.StatusInternalServerError,
 		)
@@ -405,7 +403,7 @@ func (h *HandlerErrorManager) getValidationMessage(fe validator.FieldError) stri
 }
 
 // shouldLogError determines if error should be logged
-func (h *HandlerErrorManager) shouldLogError(err *errorcustom.APIError) bool {
+func (h *HandlerErrorManager) shouldLogError(err * APIError) bool {
 	// Always log server errors
 	if err.HTTPStatus >= 500 {
 		return true
@@ -422,7 +420,7 @@ func (h *HandlerErrorManager) shouldLogError(err *errorcustom.APIError) bool {
 }
 
 // getErrorSeverity returns error severity for logging
-func (h *HandlerErrorManager) getErrorSeverity(err *errorcustom.APIError) string {
+func (h *HandlerErrorManager) getErrorSeverity(err * APIError) string {
 	if err.HTTPStatus >= 500 {
 		return "ERROR"
 	}

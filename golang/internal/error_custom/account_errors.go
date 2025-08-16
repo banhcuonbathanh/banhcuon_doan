@@ -1,5 +1,7 @@
-// golang/internal/error_custom/account_domain_errors.go
+// golang/internal/error_custom/domain/account_errors.go
 package errorcustom
+
+import "fmt"
 
 // AccountDomainErrors provides account domain error constructors
 type AccountDomainErrors struct{}
@@ -12,7 +14,7 @@ func NewAccountDomainErrors() *AccountDomainErrors {
 // User Authentication Errors
 func (u *AccountDomainErrors) NewEmailNotFoundError(email string) *AuthenticationError {
 	return NewAuthenticationErrorWithStep(
-		DomainAccount, // Remove 'errorcustom.' prefix - same package
+		DomainAccount,
 		"email not found",
 		"email_verification",
 		map[string]interface{}{
@@ -108,6 +110,23 @@ func (u *AccountDomainErrors) NewInvalidEmailFormatError(email string) *Validati
 	)
 }
 
+// Account Resource Errors
+func (u *AccountDomainErrors) NewAccountNotFoundError(accountID int64) *NotFoundError {
+	return NewNotFoundError(DomainAccount, "account", accountID)
+}
+
+func (u *AccountDomainErrors) NewAccountClosedError(accountID int64) *BusinessLogicError {
+	return NewBusinessLogicErrorWithContext(
+		DomainAccount,
+		"account_closed",
+		"Account has been closed and cannot be accessed",
+		map[string]interface{}{
+			"account_id": accountID,
+			"status":     "closed",
+		},
+	)
+}
+
 // User Business Logic Errors
 func (u *AccountDomainErrors) NewEmailVerificationRequiredError(userID int64, email string) *BusinessLogicError {
 	return NewBusinessLogicErrorWithContext(
@@ -140,6 +159,44 @@ func (u *AccountDomainErrors) NewUserProfileIncompleteError(userID int64, missin
 		map[string]interface{}{
 			"user_id":        userID,
 			"missing_fields": missingFields,
+		},
+	)
+}
+
+// Additional Account Status Errors
+func (u *AccountDomainErrors) NewAccountSuspendedError(accountID int64, reason string) *BusinessLogicError {
+	return NewBusinessLogicErrorWithContext(
+		DomainAccount,
+		"account_suspended",
+		"Account has been suspended",
+		map[string]interface{}{
+			"account_id": accountID,
+			"reason":     reason,
+			"status":     "suspended",
+		},
+	)
+}
+
+func (u *AccountDomainErrors) NewAccountPendingVerificationError(accountID int64) *BusinessLogicError {
+	return NewBusinessLogicErrorWithContext(
+		DomainAccount,
+		"account_pending_verification",
+		"Account is pending verification and cannot be used yet",
+		map[string]interface{}{
+			"account_id": accountID,
+			"status":     "pending_verification",
+		},
+	)
+}
+
+func (u *AccountDomainErrors) NewInsufficientPermissionsError(userID int64, requiredPermission string) *AuthorizationError {
+	return NewAuthorizationErrorWithContext(
+		DomainAccount,
+		"access",
+		requiredPermission,
+		map[string]interface{}{
+			"user_id":             userID,
+			"required_permission": requiredPermission,
 		},
 	)
 }
