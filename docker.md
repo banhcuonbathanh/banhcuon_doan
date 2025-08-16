@@ -27,3 +27,16 @@ docker inspect --format='{{.Image}}' postgres
 docker image inspect postgres:15-alpine
 
 docker image inspect f490b1e1368a
+
+
+# Pre-pull the image once to cache it locally
+docker pull postgres:15-alpine
+
+# Use --no-recreate to avoid rebuilding existing containers
+docker-compose up -d --no-recreate mypostgres_ai
+
+# Alternative: Use --pull never to never pull images
+docker-compose up -d --pull never mypostgres_ai
+
+# Check if containers are already running before starting
+docker-compose ps

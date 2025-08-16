@@ -32,7 +32,8 @@ import (
 
 func main() {
 	// Initialize configuration using the new system
-	configPath := getEnvWithDefault("CONFIG_PATH", "./config.yaml")
+	configPath := getEnvWithDefault("CONFIG_PATH", "utils/config/config.yaml")
+
 	err := utils_config.InitializeConfig(configPath)
 	if err != nil {
 		log.Printf("Warning: Failed to load config file: %v", err)
