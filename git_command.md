@@ -1,6 +1,6 @@
 # Create feature branch
 
-git checkout -b config_8Au
+git checkout -b errorcustom_16Au
 
 # Commit changes
 
