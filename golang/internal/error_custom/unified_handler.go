@@ -89,38 +89,12 @@ func (ueh *UnifiedErrorHandler) HandleDatabaseError(err error, domain, table, op
 	return ueh.errorFactory.RepositoryErrorMgr.HandleDatabaseError(err, domain, table, operation, context)
 }
 
-// ============================================================================
-// DOMAIN-SPECIFIC ERROR METHODS
-// ============================================================================
 
-// User Domain Errors
-func (ueh *UnifiedErrorHandler) NewUserNotFoundByID(userID int64) error {
-	return ueh.errorFactory.UserErrors.NewUserNotFoundByID(userID)
-}
 
-func (ueh *UnifiedErrorHandler) NewUserNotFoundByEmail(email string) error {
-	return ueh.errorFactory.UserErrors.NewUserNotFoundByEmail(email)
-}
 
-func (ueh *UnifiedErrorHandler) NewDuplicateEmailError(email string) error {
-	return ueh.errorFactory.UserErrors.NewDuplicateEmailError(email)
-}
 
-func (ueh *UnifiedErrorHandler) NewWeakPasswordError(requirements []string) error {
-	return ueh.errorFactory.UserErrors.NewWeakPasswordError(requirements)
-}
 
-func (ueh *UnifiedErrorHandler) NewEmailNotFoundError(email string) error {
-	return ueh.errorFactory.UserErrors.NewEmailNotFoundError(email)
-}
 
-func (ueh *UnifiedErrorHandler) NewPasswordMismatchError(email string) error {
-	return ueh.errorFactory.UserErrors.NewPasswordMismatchError(email)
-}
-
-func (ueh *UnifiedErrorHandler) NewAccountDisabledError(email, reason string) error {
-	return ueh.errorFactory.UserErrors.NewAccountDisabledError(email, reason)
-}
 
 // Auth Domain Errors
 func (ueh *UnifiedErrorHandler) NewInvalidTokenError(tokenType string) error {

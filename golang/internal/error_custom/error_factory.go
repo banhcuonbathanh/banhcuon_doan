@@ -8,7 +8,7 @@ package errorcustom
 // ErrorFactory provides centralized access to all error managers
 type ErrorFactory struct {
 	// Domain error managers
-	UserErrors    * AccountDomainErrors
+
 	AuthErrors    * AuthDomainErrors
 	BranchErrors  * BranchDomainErrors
 	AdminErrors   * AdminDomainErrors
@@ -24,7 +24,7 @@ type ErrorFactory struct {
 func NewErrorFactory() *ErrorFactory {
 	return &ErrorFactory{
 		// Initialize domain error managers
-		UserErrors:     NewAccountDomainErrors(),
+	
 		AuthErrors:     NewAuthDomainErrors(),
 		BranchErrors:   NewBranchDomainErrors(),
 		AdminErrors:    NewAdminDomainErrors(),
