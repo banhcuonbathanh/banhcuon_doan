@@ -166,7 +166,7 @@ func (s *AccountService) validateUserRole(role string) error {
 	}
 	
 	return errorcustom.NewValidationError(
-		errorcustom.DomainUser,
+		errorcustom.DomainAccount,
 		"role",
 		fmt.Sprintf("Invalid role: %s. Valid roles are: %s", 
 			role, 
@@ -186,7 +186,7 @@ func (s *AccountService) validateAccountStatus(status string) error {
 	}
 	
 	return errorcustom.NewValidationError(
-		errorcustom.DomainUser,
+		errorcustom.DomainAccount,
 		"status",
 		fmt.Sprintf("Invalid status: %s. Valid statuses are: %s", 
 			status, 
@@ -202,7 +202,7 @@ func (s *AccountService) validateAccountStatus(status string) error {
 func (s *AccountService) validateEmail(email string) error {
 	if email == "" {
 		return errorcustom.NewValidationError(
-			errorcustom.DomainUser,
+			errorcustom.DomainAccount,
 			"email",
 			"Email is required",
 			nil, // Use nil for empty value
@@ -215,7 +215,7 @@ func (s *AccountService) validateEmail(email string) error {
 	// Basic format validation
 	if !strings.Contains(email, "@") {
 		return errorcustom.NewValidationError(
-			errorcustom.DomainUser,
+			errorcustom.DomainAccount,
 			"email",
 			"Email must contain @ symbol",
 			email,
@@ -225,7 +225,7 @@ func (s *AccountService) validateEmail(email string) error {
 	// Length validation
 	if len(email) > 254 {
 		return errorcustom.NewValidationError(
-			errorcustom.DomainUser,
+			errorcustom.DomainAccount,
 			"email",
 			"Email address is too long (maximum 254 characters)",
 			email,
@@ -236,7 +236,7 @@ func (s *AccountService) validateEmail(email string) error {
 	parts := strings.Split(email, "@")
 	if len(parts) != 2 {
 		return errorcustom.NewValidationError(
-			errorcustom.DomainUser,
+			errorcustom.DomainAccount,
 			"email",
 			"Invalid email format",
 			email,
@@ -248,7 +248,7 @@ func (s *AccountService) validateEmail(email string) error {
 	// Local part validation
 	if len(local) == 0 || len(local) > 64 {
 		return errorcustom.NewValidationError(
-			errorcustom.DomainUser,
+			errorcustom.DomainAccount,
 			"email",
 			"Invalid email local part length",
 			email,
@@ -258,7 +258,7 @@ func (s *AccountService) validateEmail(email string) error {
 	// Domain part validation
 	if len(domain) == 0 || len(domain) > 253 {
 		return errorcustom.NewValidationError(
-			errorcustom.DomainUser,
+			errorcustom.DomainAccount,
 			"email",
 			"Invalid email domain length",
 			email,
@@ -268,7 +268,7 @@ func (s *AccountService) validateEmail(email string) error {
 	// Must contain at least one dot in domain
 	if !strings.Contains(domain, ".") {
 		return errorcustom.NewValidationError(
-			errorcustom.DomainUser,
+			errorcustom.DomainAccount,
 			"email",
 			"Email domain must contain at least one dot",
 			email,

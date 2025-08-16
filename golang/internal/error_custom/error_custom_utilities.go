@@ -134,7 +134,7 @@ func IsServerError(err error) bool {
 
 // IsUserNotFoundError determines if error is related to user not found
 func IsUserNotFoundError(err error) bool {
-	return IsDomainError(err, DomainUser) && IsNotFoundError(err)
+	return IsDomainError(err, DomainAccount) && IsNotFoundError(err)
 }
 
 // IsPasswordError determines if error is password related
@@ -144,7 +144,7 @@ func IsPasswordError(err error) bool {
 	}
 
 	// Check if it's a domain-specific authentication error
-	if IsDomainError(err, DomainUser) && IsAuthenticationError(err) {
+	if IsDomainError(err, DomainAccount) && IsAuthenticationError(err) {
 		return true
 	}
 

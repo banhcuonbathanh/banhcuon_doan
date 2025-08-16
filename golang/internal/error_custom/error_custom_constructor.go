@@ -181,12 +181,12 @@ func NewSystemError(domain, component, operation, message string, cause error) *
 
 // NewUserNotFoundByID creates a user not found error with ID
 func NewUserNotFoundByID(id int64) *NotFoundError {
-	return NewNotFoundError(DomainUser, "user", id)
+	return NewNotFoundError(DomainAccount, "user", id)
 }
 
 // NewUserNotFoundByEmail creates a user not found error with email
 func NewUserNotFoundByEmail(email string) *NotFoundError {
-	return NewNotFoundErrorWithIdentifiers(DomainUser, "user", map[string]interface{}{
+	return NewNotFoundErrorWithIdentifiers(DomainAccount, "user", map[string]interface{}{
 		"email": email,
 	})
 }
@@ -194,7 +194,7 @@ func NewUserNotFoundByEmail(email string) *NotFoundError {
 // NewEmailNotFoundError creates an authentication error for email not found
 func NewEmailNotFoundError(email string) *AuthenticationError {
 	return NewAuthenticationErrorWithStep(
-		DomainUser,
+		DomainAccount,
 		"email not found",
 		"email_check",
 		map[string]interface{}{
@@ -207,7 +207,7 @@ func NewEmailNotFoundError(email string) *AuthenticationError {
 // NewPasswordMismatchError creates an authentication error for password mismatch
 func NewPasswordMismatchError(email string) *AuthenticationError {
 	return NewAuthenticationErrorWithStep(
-		DomainUser,
+		DomainAccount,
 		"password mismatch",
 		"password_check",
 		map[string]interface{}{
@@ -220,7 +220,7 @@ func NewPasswordMismatchError(email string) *AuthenticationError {
 // NewAccountDisabledError creates an authentication error for disabled account
 func NewAccountDisabledError(email string) *AuthenticationError {
 	return NewAuthenticationErrorWithStep(
-		DomainUser,
+		DomainAccount,
 		"account disabled",
 		"status_check",
 		map[string]interface{}{
@@ -233,7 +233,7 @@ func NewAccountDisabledError(email string) *AuthenticationError {
 // NewAccountLockedError creates an authentication error for locked account
 func NewAccountLockedError(email string, lockReason string) *AuthenticationError {
 	return NewAuthenticationErrorWithStep(
-		DomainUser,
+		DomainAccount,
 		fmt.Sprintf("account locked: %s", lockReason),
 		"status_check",
 		map[string]interface{}{
@@ -246,13 +246,13 @@ func NewAccountLockedError(email string, lockReason string) *AuthenticationError
 
 // NewDuplicateEmailError creates a duplicate email error
 func NewDuplicateEmailError(email string) *DuplicateError {
-	return NewDuplicateError(DomainUser, "user", "email", email)
+	return NewDuplicateError(DomainAccount, "user", "email", email)
 }
 
 // NewWeakPasswordError creates a password validation error
 func NewWeakPasswordError(requirements []string) *ValidationError {
 	return NewValidationErrorWithRules(
-		DomainUser,
+		DomainAccount,
 		"password",
 		"Password does not meet security requirements",
 		"[REDACTED]",

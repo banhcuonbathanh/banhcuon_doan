@@ -909,7 +909,7 @@ func detectDomainFromPath(path string) string {
 	// API route patterns
 	switch {
 	case strings.Contains(path, "/api/accounts") || strings.Contains(path, "/api/users") || strings.Contains(path, "/api/auth"):
-		return DomainUser
+		return DomainAccount
 	case strings.Contains(path, "/api/branches"):
 		return "branch"
 	case strings.Contains(path, "/api/courses"):

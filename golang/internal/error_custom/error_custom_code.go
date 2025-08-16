@@ -9,7 +9,7 @@ import "fmt"
 // ============================================================================
 
 const (
-	DomainUser    = "user"
+	DomainAccount    = "account"
 	DomainCourse  = "course"
 	DomainPayment = "payment"
 	DomainAuth    = "auth"
@@ -201,7 +201,7 @@ const (
 
 // containsDomainPrefix checks if a code contains any domain prefix
 func containsDomainPrefix(code string) bool {
-	domains := []string{DomainUser, DomainCourse, DomainPayment, DomainAuth, DomainAdmin, DomainContent, DomainSystem}
+	domains := []string{DomainAccount, DomainCourse, DomainPayment, DomainAuth, DomainAdmin, DomainContent, DomainSystem}
 	
 	for _, domain := range domains {
 		if len(code) > len(domain)+1 && code[:len(domain)+1] == domain+"_" {
