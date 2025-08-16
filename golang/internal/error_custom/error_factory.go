@@ -15,7 +15,7 @@ type ErrorFactory struct {
 	AccountErrors * AccountDomainErrors
 
 	// Layer error managers
-	HandlerErrorMgr    * HandlerErrorManager
+
 	ServiceErrorMgr    * ServiceErrorManager
 	RepositoryErrorMgr * RepositoryErrorManager
 }
@@ -31,7 +31,7 @@ func NewErrorFactory() *ErrorFactory {
 		AccountErrors:  NewAccountDomainErrors(),
 
 		// Initialize layer error managers
-		HandlerErrorMgr:     NewHandlerErrorManager(),
+
 		ServiceErrorMgr:     NewServiceErrorManager(),
 		RepositoryErrorMgr:  NewRepositoryErrorManager(),
 	}
