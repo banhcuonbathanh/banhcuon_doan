@@ -375,39 +375,7 @@ serviceDuration := time.Since(serviceStart)
 
 	errorcustom.RespondWithJSON(w, http.StatusOK, response, "login")
 }
-// Register with enhanced error handling
 
-// Logout with detailed logging
-func (h *AccountHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	startTime := time.Now()
-	clientIP := errorcustom.GetClientIP(r)
-	
-	// Extract user context if available (from JWT middleware)
-	userID, _ := h.getUserIDFromContext(r.Context())
-	userEmail := errorcustom.GetUserEmailFromContext(r)
-	
-	logger.Info("User logout initiated", map[string]interface{}{
-		"user_id":    userID,
-		"user_email": userEmail,
-		"ip":         clientIP,
-		"layer":      "handler",
-		"operation":  "logout",
-	})
-
-	// Here you could invalidate tokens if you maintain a token blacklist
-	// h.tokenService.InvalidateTokens(userID)
-
-	logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusOK, time.Since(startTime), map[string]interface{}{
-		"user_id":   userID,
-		"ip":        clientIP,
-		"layer":     "handler",
-		"operation": "logout",
-	})
-
-	errorcustom.RespondWithJSON(w, http.StatusOK, map[string]string{
-		"message": "logout successful",
-	}, "logout")
-}
 // aosiguojtoaotuqewoituoqweurouqweoruqwouroqweuroqwuroqiwuriq
 func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()

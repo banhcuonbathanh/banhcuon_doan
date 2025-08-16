@@ -94,7 +94,7 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 			
 			logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 			
-			errorcustom.HandleValidationErrors(w, validationErrors, "create_account")
+			errorcustom.HandleValidationErrors(w, validationErrors, "create_account", h.domain)
 		} else {
 			logger.ErrorWithCause(
 				"Unexpected validation error during account creation",
@@ -110,6 +110,7 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 				http.StatusBadRequest,
 				"handler",
 				"create_account",
+				h.domain,
 				err,
 			).WithDetail("email", req.Email)
 			
@@ -123,7 +124,7 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	handlerLog.Debug("Request validation passed", userContext)
 
 	// Validate password with detailed logging
-	if err := errorcustom.ValidatePasswordWithDetails(req.Password, "create_account"); err != nil {
+	if err := errorcustom.ValidatePasswordWithDomain(req.Password, "create_account", h.domain); err != nil {
 		logger.LogValidationError("password", "Password validation failed", "***masked***")
 		
 		logger.WarningWithCause(
@@ -140,6 +141,7 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest,
 			"handler",
 			"create_account",
+			h.domain,
 			err,
 		).WithDetail("email", req.Email).
 		  WithDetail("step", "password_validation")
@@ -173,6 +175,7 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError,
 			"handler",
 			"create_account",
+			h.domain,
 			err,
 		).WithDetail("email", req.Email).
 		  WithDetail("step", "password_hashing")
@@ -224,6 +227,7 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 				httpStatus,
 				"handler",
 				"create_account",
+				h.domain,
 				err,
 			).WithDetail("email", req.Email).
 			  WithDetail("step", "email_uniqueness_check").
@@ -246,6 +250,7 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 				httpStatus,
 				"handler",
 				"create_account",
+				h.domain,
 				err,
 			).WithDetail("email", req.Email).
 			  WithDetail("step", "service_call").
@@ -326,7 +331,7 @@ func (h *AccountHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) 
 	handlerLog.Info("Update user request initiated", baseContext)
 
 	// Parse ID parameter
-	id, apiErr := errorcustom.ParseIDParam(r, "id")
+	id, apiErr := errorcustom.ParseIDParamWithDomain(r, "id", h.domain)
 	if apiErr != nil {
 		context := utils.MergeContext(baseContext, map[string]interface{}{
 			"error": apiErr.Error(),
@@ -343,7 +348,7 @@ func (h *AccountHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) 
 		// Log API request with error
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 		
-		errorcustom.RespondWithAPIError(w, apiErr)
+		errorcustom.HandleDomainError(w, apiErr, h.domain, h.requestID)
 		return
 	}
 
@@ -410,7 +415,7 @@ func (h *AccountHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) 
 			
 			logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 			
-			errorcustom.HandleValidationErrors(w, validationErrors, "update_user")
+			errorcustom.HandleValidationErrors(w, validationErrors, "update_user", h.domain)
 		} else {
 			logger.ErrorWithCause(
 				"Unexpected validation error during user update",
@@ -426,6 +431,7 @@ func (h *AccountHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) 
 				http.StatusBadRequest,
 				"handler",
 				"update_user",
+				h.domain,
 				err,
 			).WithDetail("user_id", id)
 			
@@ -479,6 +485,7 @@ func (h *AccountHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) 
 				httpStatus,
 				"handler",
 				"update_user",
+				h.domain,
 				err,
 			).WithDetail("user_id", id)
 			
@@ -499,6 +506,7 @@ func (h *AccountHandler) UpdateUserByID(w http.ResponseWriter, r *http.Request) 
 				httpStatus,
 				"handler",
 				"update_user",
+				h.domain,
 				err,
 			).WithDetail("user_id", id).
 			  WithDetail("step", "service_call").
@@ -587,7 +595,7 @@ func (h *AccountHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	
 	handlerLog.Info("Delete user request initiated", baseContext)
 
-	id, apiErr := errorcustom.ParseIDParam(r, "id")
+	id, apiErr := errorcustom.ParseIDParamWithDomain(r, "id", h.domain)
 	if apiErr != nil {
 		context := utils.MergeContext(baseContext, map[string]interface{}{
 			"error": apiErr.Error(),
@@ -602,7 +610,7 @@ func (h *AccountHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		)
 		
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
-		errorcustom.RespondWithAPIError(w, apiErr)
+		errorcustom.HandleDomainError(w, apiErr, h.domain, h.requestID)
 		return
 	}
 
@@ -645,6 +653,7 @@ func (h *AccountHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 				httpStatus,
 				"handler",
 				"delete_user",
+				h.domain,
 				err,
 			).WithDetail("user_id", id)
 			
@@ -664,6 +673,7 @@ func (h *AccountHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 				httpStatus,
 				"handler",
 				"delete_user",
+				h.domain,
 				err,
 			).WithDetail("user_id", id).
 			  WithDetail("step", "service_call").
@@ -809,7 +819,7 @@ func (h *AccountHandler) Logout(w http.ResponseWriter, r *http.Request) {
 			
 			logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 			
-			errorcustom.HandleValidationErrors(w, validationErrors, "logout")
+			errorcustom.HandleValidationErrors(w, validationErrors, "logout", h.domain)
 		} else {
 			logger.ErrorWithCause(
 				"Unexpected validation error during logout",
@@ -825,6 +835,7 @@ func (h *AccountHandler) Logout(w http.ResponseWriter, r *http.Request) {
 				http.StatusBadRequest,
 				"handler",
 				"logout",
+				h.domain,
 				err,
 			).WithDetail("user_id", req.UserID)
 			
@@ -853,7 +864,7 @@ func (h *AccountHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	}))
 
 	logoutRes, err := h.userClient.Logout(r.Context(), &pb.LogoutReq{
-		UserId: req.UserID,
+		UserId: int64(req.UserID),
 		Token:  req.Token, // Optional token if using token-based auth
 	})
 	serviceDuration := time.Since(serviceStart)
@@ -880,6 +891,7 @@ func (h *AccountHandler) Logout(w http.ResponseWriter, r *http.Request) {
 				httpStatus,
 				"handler",
 				"logout",
+				h.domain,
 				err,
 			).WithDetail("user_id", req.UserID)
 			
@@ -894,15 +906,15 @@ func (h *AccountHandler) Logout(w http.ResponseWriter, r *http.Request) {
 			failureReason = "invalid_session"
 			httpStatus = http.StatusUnauthorized
 			
-			clientError = errorcustom.NewAPIErrorWithContext(
-				errorcustom.ErrCodeInvalidSession,
-				"Invalid session or token",
-				httpStatus,
-				"handler",
-				"logout",
-				err,
-			).WithDetail("user_id", req.UserID)
-			
+	
+// 			clientError := errorcustom.NewAPIError(
+//     errorcustom.GetAuthenticationCode(h.domain),
+//     "Invalid session or token",
+//     httpStatus,
+// ).WithDomain(h.domain).
+//   WithLayer("handler").
+//   WithOperation("logout").
+//   WithCause(err)
 			logger.WarningWithCause(
 				"Logout failed - invalid session",
 				failureReason,
@@ -920,6 +932,7 @@ func (h *AccountHandler) Logout(w http.ResponseWriter, r *http.Request) {
 				httpStatus,
 				"handler",
 				"logout",
+				h.domain,
 				err,
 			).WithDetail("user_id", req.UserID).
 			  WithDetail("step", "service_call").

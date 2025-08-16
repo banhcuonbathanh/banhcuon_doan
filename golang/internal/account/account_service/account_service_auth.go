@@ -15,7 +15,7 @@ import (
 )
 
 // Register handles user registration
-func (s *ServiceStruct) Register(ctx context.Context, req *account.RegisterReq) (*account.RegisterRes, error) {
+func (s *AccountService) Register(ctx context.Context, req *account.RegisterReq) (*account.RegisterRes, error) {
 	// Check if email already exists
 	exists, err := s.userRepo.ExistsByEmail(ctx, req.Email)
 	if err != nil {
@@ -74,7 +74,7 @@ func (s *ServiceStruct) Register(ctx context.Context, req *account.RegisterReq) 
 }
 
 // Login handles user authentication
-func (s *ServiceStruct) Login(ctx context.Context, req *account.LoginReq) (*account.AccountRes, error) {
+func (s *AccountService) Login(ctx context.Context, req *account.LoginReq) (*account.AccountRes, error) {
 	user, err := s.userRepo.FindByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, pkgerrors.WithStack(err)
@@ -120,7 +120,7 @@ func (s *ServiceStruct) Login(ctx context.Context, req *account.LoginReq) (*acco
 }
 
 // Logout handles user logout
-func (s *ServiceStruct) Logout(ctx context.Context, req *account.LogoutReq) (*account.LogoutRes, error) {
+func (s *AccountService) Logout(ctx context.Context, req *account.LogoutReq) (*account.LogoutRes, error) {
 	// For JWT-based authentication, logout is typically handled client-side
 	// by removing the token. Server-side logout would require token blacklisting.
 	// This is a placeholder implementation.
@@ -134,7 +134,7 @@ func (s *ServiceStruct) Logout(ctx context.Context, req *account.LogoutReq) (*ac
 }
 
 // RefreshToken handles token refresh requests
-func (s *ServiceStruct) RefreshToken(ctx context.Context, req *account.RefreshTokenReq) (*account.RefreshTokenRes, error) {
+func (s *AccountService) RefreshToken(ctx context.Context, req *account.RefreshTokenReq) (*account.RefreshTokenRes, error) {
 	if s.tokenMaker == nil {
 		return nil, errors.New("token functionality not available")
 	}
@@ -164,7 +164,7 @@ func (s *ServiceStruct) RefreshToken(ctx context.Context, req *account.RefreshTo
 }
 
 // ValidateToken handles token validation requests
-func (s *ServiceStruct) ValidateToken(ctx context.Context, req *account.ValidateTokenReq) (*account.ValidateTokenRes, error) {
+func (s *AccountService) ValidateToken(ctx context.Context, req *account.ValidateTokenReq) (*account.ValidateTokenRes, error) {
 	if s.tokenMaker == nil {
 		return nil, errors.New("token functionality not available")
 	}

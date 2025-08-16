@@ -12,7 +12,7 @@ import (
 )
 
 // ChangePassword handles password change requests
-func (s *ServiceStruct) ChangePassword(ctx context.Context, req *account.ChangePasswordReq) (*account.ChangePasswordRes, error) {
+func (s *AccountService) ChangePassword(ctx context.Context, req *account.ChangePasswordReq) (*account.ChangePasswordRes, error) {
 	// Verify current password
 	user, err := s.userRepo.FindByID(ctx, req.UserId)
 	if err != nil {
@@ -87,7 +87,7 @@ func (s *ServiceStruct) ChangePassword(ctx context.Context, req *account.ChangeP
 }
 
 // ForgotPassword handles forgot password requests
-func (s *ServiceStruct) ForgotPassword(ctx context.Context, req *account.ForgotPasswordReq) (*account.ForgotPasswordRes, error) {
+func (s *AccountService) ForgotPassword(ctx context.Context, req *account.ForgotPasswordReq) (*account.ForgotPasswordRes, error) {
 	// Check if user exists
 	user, err := s.userRepo.FindByEmail(ctx, req.Email)
 	if err != nil {
@@ -160,7 +160,7 @@ func (s *ServiceStruct) ForgotPassword(ctx context.Context, req *account.ForgotP
 }
 
 // ResetPassword handles password reset requests
-func (s *ServiceStruct) ResetPassword(ctx context.Context, req *account.ResetPasswordReq) (*account.ResetPasswordRes, error) {
+func (s *AccountService) ResetPassword(ctx context.Context, req *account.ResetPasswordReq) (*account.ResetPasswordRes, error) {
 	if s.tokenMaker == nil {
 		serviceErr := errorcustom.NewServiceError(
 			"AccountService",

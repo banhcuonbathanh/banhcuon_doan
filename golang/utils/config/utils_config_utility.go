@@ -307,3 +307,32 @@ func InitializeDomainErrorHandling() {
 	// Use in your middleware or handlers
 	_ = errorHandler
 }
+
+
+// IsValidAccountStatus checks if the given status is valid
+func (c *Config) IsValidAccountStatus(status string) bool {
+    for _, validStatus := range c.ValidAccountStatuses {
+        if strings.EqualFold(validStatus, status) {
+            return true
+        }
+    }
+    return false
+}
+
+// GetValidAccountStatusesString returns valid statuses as a comma-separated string
+func (c *Config) GetValidAccountStatusesString() string {
+    return strings.Join(c.ValidAccountStatuses, ", ")
+}
+
+// GetValidAccountStatusesMap returns valid statuses as a map for quick lookup
+func (c *Config) GetValidAccountStatusesMap() map[string]bool {
+    statusMap := make(map[string]bool, len(c.ValidAccountStatuses))
+    for _, status := range c.ValidAccountStatuses {
+        statusMap[strings.ToLower(status)] = true
+    }
+    return statusMap
+}
+
+// IsValidAccountStatus checks if the given status is valid
+
+

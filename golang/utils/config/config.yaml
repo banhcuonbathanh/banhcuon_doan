@@ -19,13 +19,12 @@ database:
   port: 5432
   name: "english_ai_dev"
   user: "postgres"
-  password: "" # Set via environment variable: ENGLISH_AI_DATABASE_PASSWORD or DB_PASSWORD
+  password: "" # Set via environment variable
   ssl_mode: "disable"
   max_connections: 25
   max_idle_conns: 10
   conn_max_lifetime: "1h"
   conn_max_idle_time: "10m"
-  # URL will be constructed automatically from above fields or from DB_* environment variables
 
 security:
   max_login_attempts: 5
@@ -54,7 +53,7 @@ pagination:
   limit: 1000
 
 jwt:
-  secret_key: "kIOopC3C7wA8DQH6FOF2Jfn+UZP8Q02nGxr/EgFMOmo=" # Default secret, override with JWT_SECRET
+  secret_key: "kIOopC3C7wA8DQH6FOF2Jfn+UZP8Q02nGxr/EgFMOmo="
   expiration_hours: 24
   refresh_token_expiration_days: 30
   issuer: "english-ai-dev"
@@ -62,7 +61,7 @@ jwt:
   refresh_threshold: "2h"
 
 email:
-  verification_enabled: false # Disabled by default for development
+  verification_enabled: false
   verification_expiry_hours: 24
   require_verification: false
   smtp_host: "localhost"
@@ -83,7 +82,7 @@ rate_limit:
 
 external_apis:
   anthropic:
-    api_key: "dummy_key_for_dev" # Override with ANTHROPIC_API_KEY environment variable
+    api_key: "dummy_key_for_dev"
     api_url: "https://api.anthropic.com"
     timeout: "30s"
     max_retries: 3
@@ -101,25 +100,18 @@ logging:
   max_age: 28
   compress: false
 
+# Global valid roles and statuses (applies to ALL environments)
 valid_roles:
   - "admin"
   - "user"
   - "manager"
+  - "guest"    # Added guest role from your original code
 
-  
-
-
-
-  # config.yaml - Enhanced with error handling
-environment: "development"
-app_name: "English AI Full"
-
-
-
-
-
-
-
+valid_account_statuses:
+  - "active"
+  - "inactive"
+  - "suspended"
+  - "pending"
 
 # Domain-specific configuration
 domains:
@@ -161,13 +153,39 @@ domains:
     message_size_limit: "1MB"
     connection_timeout: "30s"
 
-# Production overrides
+# Error handling configuration
+error_handling:
+  include_stack_trace: true    # true for development
+  sanitize_sensitive_data: false # false for development
+  log_level: "debug"
+
 ---
+# Production overrides (this section overrides above values in production)
 environment: "production"
+
+# Production-specific security
+security:
+  require_https: true
+  max_login_attempts: 3  # Stricter in production
+
+# Production error handling
 error_handling:
   include_stack_trace: false
   sanitize_sensitive_data: true
   log_level: "info"
+
+# Production logging
+logging:
+  level: "info"
+  format: "json"
+
+# Production can have different valid roles if needed
+# valid_roles:
+#   - "admin"
+#   - "user"
+#   - "manager"
+#   # Note: No "guest" role in production
+
 domains:
   account:
-    max_login_attempts: 3
+    max_login_attempts: 3  # Different from development

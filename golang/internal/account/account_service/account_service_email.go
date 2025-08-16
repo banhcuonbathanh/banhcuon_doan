@@ -10,10 +10,8 @@ import (
 	"english-ai-full/internal/proto_qr/account"
 )
 
-
-
 // VerifyEmail handles email verification requests
-func (s *ServiceStruct) VerifyEmail(ctx context.Context, req *account.VerifyEmailReq) (*account.VerifyEmailRes, error) {
+func (s *AccountService) VerifyEmail(ctx context.Context, req *account.VerifyEmailReq) (*account.VerifyEmailRes, error) {
 	if s.tokenMaker == nil {
 		serviceErr := errorcustom.NewServiceError(
 			"AccountService",
@@ -30,10 +28,10 @@ func (s *ServiceStruct) VerifyEmail(ctx context.Context, req *account.VerifyEmai
 	if err != nil {
 		// Check if it's token validation specific error
 		if strings.Contains(err.Error(), "expired") {
-			return nil, errorcustom.NewInvalidTokenError("verification_token", "verification token has expired")
+return nil, errorcustom.NewValidationError("verification_token", "verification token has expired", "", nil)
 		}
 		if strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "not found") {
-			return nil, errorcustom.NewInvalidTokenError("verification_token", "verification token is invalid")
+return nil, errorcustom.NewValidationError("verification_token", "verification token has expired", "", nil)
 		}
 		// For other repository errors
 		repoErr := errorcustom.NewRepositoryError(
@@ -64,7 +62,7 @@ func (s *ServiceStruct) VerifyEmail(ctx context.Context, req *account.VerifyEmai
 }
 
 // ResendVerification handles resend verification email requests
-func (s *ServiceStruct) ResendVerification(ctx context.Context, req *account.ResendVerificationReq) (*account.ResendVerificationRes, error) {
+func (s *AccountService) ResendVerification(ctx context.Context, req *account.ResendVerificationReq) (*account.ResendVerificationRes, error) {
 	if s.tokenMaker == nil || s.emailService == nil {
 		serviceErr := errorcustom.NewServiceError(
 			"AccountService",

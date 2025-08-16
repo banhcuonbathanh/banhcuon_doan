@@ -120,7 +120,7 @@ func (h *AccountHandler) ChangePassword(w http.ResponseWriter, r *http.Request) 
 				context,
 			)
 
-			errorcustom.HandleValidationErrors(w, validationErrors, "change_password")
+			errorcustom.HandleValidationErrors(w, validationErrors, "change_password", h.domain)
 		} else {
 			logger.ErrorWithCause(
 				"Unexpected validation error during password change",
@@ -144,7 +144,7 @@ func (h *AccountHandler) ChangePassword(w http.ResponseWriter, r *http.Request) 
 	handlerLog.Debug("Request validation passed", baseContext)
 
 	// Validate new password strength
-	if err := errorcustom.ValidatePasswordWithDetails(req.NewPassword, "change_password"); err != nil {
+	if err := errorcustom.ValidatePasswordWithDomain(req.NewPassword, "change_password", h.domain); err != nil {
 		context := utils.MergeContext(baseContext, map[string]interface{}{
 			"password_validation_error": err.Error(),
 		})
@@ -165,6 +165,7 @@ func (h *AccountHandler) ChangePassword(w http.ResponseWriter, r *http.Request) 
 			http.StatusBadRequest,
 			"handler",
 			"change_password",
+			h.domain,
 			err,
 		).WithDetail("user_id", fmt.Sprint(userID)).
 		  WithDetail("step", "password_strength_validation")
@@ -198,6 +199,7 @@ func (h *AccountHandler) ChangePassword(w http.ResponseWriter, r *http.Request) 
 			http.StatusInternalServerError,
 			"handler",
 			"password_hashing",
+			h.domain,
 			err,
 		).WithDetail("user_id", fmt.Sprint(userID)).
 		  WithDetail("step", "password_hashing")
@@ -239,6 +241,7 @@ func (h *AccountHandler) ChangePassword(w http.ResponseWriter, r *http.Request) 
 				httpStatus,
 				"handler",
 				"change_password",
+				h.domain,
 				err,
 			).WithDetail("user_id", fmt.Sprint(userID)).
 			  WithDetail("step", "current_password_verification")
@@ -271,6 +274,7 @@ func (h *AccountHandler) ChangePassword(w http.ResponseWriter, r *http.Request) 
 				httpStatus,
 				"handler",
 				"change_password",
+				h.domain,
 				err,
 			).WithDetail("user_id", fmt.Sprint(userID)).
 			  WithDetail("step", "service_call").
@@ -445,7 +449,7 @@ func (h *AccountHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) 
 				context,
 			)
 
-			errorcustom.HandleValidationErrors(w, validationErrors, "forgot_password")
+			errorcustom.HandleValidationErrors(w, validationErrors, "forgot_password", h.domain)
 		} else {
 			logger.ErrorWithCause(
 				"Unexpected validation error during forgot password",
@@ -683,7 +687,7 @@ func (h *AccountHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 				context,
 			)
 
-			errorcustom.HandleValidationErrors(w, validationErrors, "reset_password")
+			errorcustom.HandleValidationErrors(w, validationErrors, "reset_password", h.domain)
 		} else {
 			logger.ErrorWithCause(
 				"Unexpected validation error during password reset",
@@ -707,7 +711,7 @@ func (h *AccountHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	handlerLog.Debug("Request validation passed", baseContext)
 
 	// Validate new password strength
-	if err := errorcustom.ValidatePasswordWithDetails(req.NewPassword, "reset_password"); err != nil {
+	if err := errorcustom.ValidatePasswordWithDomain(req.NewPassword, "reset_password", h.domain); err != nil {
 		context := utils.MergeContext(baseContext, map[string]interface{}{
 			"password_validation_error": err.Error(),
 		})
@@ -728,6 +732,7 @@ func (h *AccountHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest,
 			"handler",
 			"reset_password",
+			h.domain,
 			err,
 		).WithDetail("step", "password_strength_validation")
 
@@ -760,6 +765,7 @@ func (h *AccountHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError,
 			"handler",
 			"password_hashing",
+			h.domain,
 			err,
 		).WithDetail("step", "password_hashing")
 
@@ -797,6 +803,7 @@ func (h *AccountHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 				httpStatus,
 				"handler",
 				"reset_password",
+				h.domain,
 				err,
 			).WithDetail("token_status", "invalid_or_expired").
 			  WithDetail("step", "token_verification")
@@ -829,6 +836,7 @@ func (h *AccountHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 				httpStatus,
 				"handler",
 				"reset_password",
+				h.domain,
 				err,
 			).WithDetail("step", "service_call").
 			  WithDetail("retryable", true)

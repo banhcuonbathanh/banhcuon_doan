@@ -17,7 +17,7 @@ import (
 )
 
 // FindByEmail finds user by email address
-func (s *ServiceStruct) FindByEmail(ctx context.Context, req *account.FindByEmailReq) (*account.AccountRes, error) {
+func (s *AccountService) FindByEmail(ctx context.Context, req *account.FindByEmailReq) (*account.AccountRes, error) {
 	user, err := s.userRepo.FindByEmail(ctx, req.Email)
 	if err != nil {
 		// Check if it's a user not found error using string matching
@@ -43,7 +43,7 @@ func (s *ServiceStruct) FindByEmail(ctx context.Context, req *account.FindByEmai
 	}}, nil
 }
 // FindByID finds user by ID
-func (s *ServiceStruct) FindByID(ctx context.Context, req *account.FindByIDReq) (*account.FindByIDRes, error) {
+func (s *AccountService) FindByID(ctx context.Context, req *account.FindByIDReq) (*account.FindByIDRes, error) {
 	user, err := s.userRepo.FindByID(ctx, req.Id)
 	if err != nil {
 		// Check if it's a user not found error using string matching
@@ -73,7 +73,7 @@ func (s *ServiceStruct) FindByID(ctx context.Context, req *account.FindByIDReq) 
 
 
 // FindAllUsers retrieves all users
-func (s *ServiceStruct) FindAllUsers(ctx context.Context, req *emptypb.Empty) (*account.AccountList, error) {
+func (s *AccountService) FindAllUsers(ctx context.Context, req *emptypb.Empty) (*account.AccountList, error) {
 	users, err := s.userRepo.FindAllUsers(ctx)
 	if err != nil {
 		// Create a service error for repository failures
@@ -110,7 +110,7 @@ func (s *ServiceStruct) FindAllUsers(ctx context.Context, req *emptypb.Empty) (*
 }
 
 // FindByRole finds users by role
-func (s *ServiceStruct) FindByRole(ctx context.Context, req *account.FindByRoleReq) (*account.AccountList, error) {
+func (s *AccountService) FindByRole(ctx context.Context, req *account.FindByRoleReq) (*account.AccountList, error) {
 	users, err := s.userRepo.FindByRole(ctx, req.Role)
 	if err != nil {
 		// Create a service error for repository failures
@@ -147,7 +147,7 @@ func (s *ServiceStruct) FindByRole(ctx context.Context, req *account.FindByRoleR
 }
 
 // FindByBranch finds users by branch ID
-func (s *ServiceStruct) FindByBranch(ctx context.Context, req *account.FindByBranchReq) (*account.AccountList, error) {
+func (s *AccountService) FindByBranch(ctx context.Context, req *account.FindByBranchReq) (*account.AccountList, error) {
 	users, err := s.userRepo.FindByBranchID(ctx, req.BranchId)
 	if err != nil {
 		// Create a service error for repository failures
@@ -184,7 +184,7 @@ func (s *ServiceStruct) FindByBranch(ctx context.Context, req *account.FindByBra
 }
 
 // SearchUsers performs advanced user search with filtering and pagination
-func (s *ServiceStruct) SearchUsers(ctx context.Context, req *account.SearchUsersReq) (*account.SearchUsersRes, error) {
+func (s *AccountService) SearchUsers(ctx context.Context, req *account.SearchUsersReq) (*account.SearchUsersRes, error) {
 	// Extract pagination info
 	var page, pageSize int32
 	if req.Pagination != nil {
@@ -263,7 +263,7 @@ func (s *ServiceStruct) SearchUsers(ctx context.Context, req *account.SearchUser
 
 
 // GetUserProfile handles user profile requests (current user or specific user)
-func (s *ServiceStruct) GetUserProfile(ctx context.Context, req *account.FindByIDReq) (*account.FindByIDRes, error) {
+func (s *AccountService) GetUserProfile(ctx context.Context, req *account.FindByIDReq) (*account.FindByIDRes, error) {
 	s.logServiceCall("GetUserProfile", map[string]interface{}{
 		"user_id": req.Id,
 	})
@@ -295,7 +295,7 @@ func (s *ServiceStruct) GetUserProfile(ctx context.Context, req *account.FindByI
 }
 
 // Alternative: GetCurrentUserProfile for getting current user only
-func (s *ServiceStruct) GetCurrentUserProfile(ctx context.Context, req *emptypb.Empty) (*account.FindByIDRes, error) {
+func (s *AccountService) GetCurrentUserProfile(ctx context.Context, req *emptypb.Empty) (*account.FindByIDRes, error) {
 	s.logServiceCall("GetCurrentUserProfile", map[string]interface{}{})
 
 	// Get current user ID from context (JWT token, session, etc.)
@@ -319,7 +319,7 @@ func (s *ServiceStruct) GetCurrentUserProfile(ctx context.Context, req *emptypb.
 
 
 
-func (s *ServiceStruct) GetUsersByBranch(ctx context.Context, req *account.FindByBranchReq) (*account.AccountList, error) {
+func (s *AccountService) GetUsersByBranch(ctx context.Context, req *account.FindByBranchReq) (*account.AccountList, error) {
 	s.logServiceCall("GetUsersByBranch", map[string]interface{}{
 		"branch_id": req.BranchId,
 		"page":      req.Pagination.Page,
@@ -379,7 +379,7 @@ func (s *ServiceStruct) GetUsersByBranch(ctx context.Context, req *account.FindB
 
 // getCurrentUserFromContext extracts current user ID from context
 // This implementation depends on your authentication middleware
-func (s *ServiceStruct) getCurrentUserFromContext(ctx context.Context) (int64, error) {
+func (s *AccountService) getCurrentUserFromContext(ctx context.Context) (int64, error) {
 	// Option 1: If you store user ID directly in context
 	if userID := ctx.Value("user_id"); userID != nil {
 		if id, ok := userID.(int64); ok {
@@ -418,7 +418,7 @@ func (s *ServiceStruct) getCurrentUserFromContext(ctx context.Context) (int64, e
 
 // Replace existing GetUsersByBranch business logic method with:
 // GetUsersByBranchSimple - simplified version for internal use
-func (s *ServiceStruct) GetUsersByBranchSimple(ctx context.Context, branchID int64) ([]model.Account, error) {
+func (s *AccountService) GetUsersByBranchSimple(ctx context.Context, branchID int64) ([]model.Account, error) {
 	return s.userRepo.FindByBranchID(ctx, branchID)
 }
 

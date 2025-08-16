@@ -95,7 +95,7 @@ func (h *AccountHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 			// Log API request with validation error
 			logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 			
-			errorcustom.HandleValidationErrors(w, validationErrors, "refresh_token")
+			errorcustom.HandleValidationErrors(w, validationErrors, "refresh_token", h.domain)
 		} else {
 			logger.ErrorWithCause(
 				"Unexpected validation error during token refresh",
@@ -111,6 +111,7 @@ func (h *AccountHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 				http.StatusBadRequest,
 				"handler",
 				"refresh_token",
+				h.domain,
 				err,
 			)
 			
@@ -157,6 +158,7 @@ func (h *AccountHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 				httpStatus,
 				"handler",
 				"refresh_token",
+				h.domain,
 				err,
 			).WithDetail("token_type", "refresh").
 			  WithDetail("step", "token_validation").
@@ -187,6 +189,7 @@ func (h *AccountHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 				httpStatus,
 				"handler",
 				"refresh_token",
+				h.domain,
 				err,
 			).WithDetail("step", "service_call").
 			  WithDetail("retryable", true)
@@ -291,6 +294,7 @@ func (h *AccountHandler) ValidateToken(w http.ResponseWriter, r *http.Request) {
 			http.StatusUnauthorized,
 			"handler",
 			"validate_token",
+			h.domain,
 			nil,
 		).WithDetail("expected_header", "Authorization").
 		  WithDetail("header_format", "Bearer <token>")
@@ -331,6 +335,7 @@ func (h *AccountHandler) ValidateToken(w http.ResponseWriter, r *http.Request) {
 			http.StatusUnauthorized,
 			"handler",
 			"validate_token",
+			h.domain,
 			nil,
 		).WithDetail("provided_format", authHeader).
 		  WithDetail("expected_format", "Bearer <token>")
@@ -384,6 +389,7 @@ func (h *AccountHandler) ValidateToken(w http.ResponseWriter, r *http.Request) {
 				httpStatus,
 				"handler",
 				"validate_token",
+				h.domain,
 				err,
 			).WithDetail("token_type", "access").
 			  WithDetail("step", "token_validation").
@@ -414,6 +420,7 @@ func (h *AccountHandler) ValidateToken(w http.ResponseWriter, r *http.Request) {
 				httpStatus,
 				"handler",
 				"validate_token",
+				h.domain,
 				err,
 			).WithDetail("step", "service_call").
 			  WithDetail("retryable", true)

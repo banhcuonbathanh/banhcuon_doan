@@ -17,7 +17,7 @@ import (
 )
 
 // CreateUser handles user creation
-func (s *ServiceStruct) CreateUser(ctx context.Context, req *account.AccountReq) (*account.Account, error) {
+func (s *AccountService) CreateUser(ctx context.Context, req *account.AccountReq) (*account.Account, error) {
 	// Hash password if provided
 	hashedPassword := req.Password
 	if s.passwordHash != nil && req.Password != "" {
@@ -68,7 +68,7 @@ func (s *ServiceStruct) CreateUser(ctx context.Context, req *account.AccountReq)
 }
 
 // UpdateUser handles user updates
-func (s *ServiceStruct) UpdateUser(ctx context.Context, req *account.UpdateUserReq) (*account.AccountRes, error) {
+func (s *AccountService) UpdateUser(ctx context.Context, req *account.UpdateUserReq) (*account.AccountRes, error) {
 	// Update user in repository
 	user, err := s.userRepo.UpdateUser(ctx, model.Account{
 		ID:       req.Id,
@@ -119,7 +119,7 @@ func (s *ServiceStruct) UpdateUser(ctx context.Context, req *account.UpdateUserR
 	}, nil
 }
 // DeleteUser handles user deletion// DeleteUser handles user deletion
-func (s *ServiceStruct) DeleteUser(ctx context.Context, req *account.DeleteAccountReq) (*account.DeleteAccountRes, error) {
+func (s *AccountService) DeleteUser(ctx context.Context, req *account.DeleteAccountReq) (*account.DeleteAccountRes, error) {
 	// Get user info before deletion for email notification
 	var user model.Account
 	if s.emailService != nil {
@@ -172,7 +172,7 @@ func (s *ServiceStruct) DeleteUser(ctx context.Context, req *account.DeleteAccou
 }
 
 // UpdateAccountStatus handles account status updates
-func (s *ServiceStruct) UpdateAccountStatus(ctx context.Context, req *account.UpdateAccountStatusReq) (*account.UpdateAccountStatusRes, error) {
+func (s *AccountService) UpdateAccountStatus(ctx context.Context, req *account.UpdateAccountStatusReq) (*account.UpdateAccountStatusRes, error) {
 	// Update account status in repository
 	err := s.userRepo.UpdateAccountStatus(ctx, req.UserId, req.Status)
 	if err != nil {

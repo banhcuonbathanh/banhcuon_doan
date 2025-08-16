@@ -116,4 +116,10 @@ func (cm *ConfigManager) setDefaults() {
 	cm.viper.SetDefault("domains.default", "system")
 	cm.viper.SetDefault("domains.error_tracking.enabled", true)
 	cm.viper.SetDefault("domains.error_tracking.log_level", "info")
+
+	// Valid roles (existing)
+cm.viper.SetDefault("valid_roles", []string{"admin", "user", "manager"})
+
+// Add valid account statuses
+cm.viper.SetDefault("valid_account_statuses", []string{"active", "inactive", "suspended", "pending"})
 }

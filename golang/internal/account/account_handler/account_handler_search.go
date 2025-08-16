@@ -17,9 +17,11 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-// FindAccountByID handles finding user by ID with comprehensive logging
 func (h *AccountHandler) FindAccountByID(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
+	
+	// Extract request ID from context
+	requestID := errorcustom.GetRequestIDFromContext(r.Context())
 	
 	// Create handler logger for this operation
 	handlerLog := logger.NewHandlerLogger()
@@ -31,7 +33,7 @@ func (h *AccountHandler) FindAccountByID(w http.ResponseWriter, r *http.Request)
 	handlerLog.Info("Find account by ID request started", baseContext)
 
 	// Parse ID parameter
-	id, apiErr := errorcustom.ParseIDParam(r, "id")
+	id, apiErr := errorcustom.ParseIDParamWithDomain(r, "id", h.domain)
 	if apiErr != nil {
 		context := utils.MergeContext(baseContext, map[string]interface{}{
 			"error": apiErr.Error(),
@@ -48,7 +50,8 @@ func (h *AccountHandler) FindAccountByID(w http.ResponseWriter, r *http.Request)
 		// Log API request with error
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 		
-		errorcustom.RespondWithAPIError(w, apiErr)
+		// Use HandleError for error responses, not RespondWithDomainSuccess
+		errorcustom.HandleError(w, apiErr, requestID)
 		return
 	}
 
@@ -78,6 +81,7 @@ func (h *AccountHandler) FindAccountByID(w http.ResponseWriter, r *http.Request)
 				errorcustom.ErrCodeUserNotFound,
 				"User with the specified ID was not found",
 				httpStatus,
+				h.domain,
 				"handler",
 				"find_account_by_id",
 				err,
@@ -96,6 +100,7 @@ func (h *AccountHandler) FindAccountByID(w http.ResponseWriter, r *http.Request)
 				errorcustom.ErrCodeServiceError,
 				"Failed to retrieve user",
 				httpStatus,
+				h.domain,
 				"handler",
 				"find_account_by_id",
 				err,
@@ -118,7 +123,8 @@ func (h *AccountHandler) FindAccountByID(w http.ResponseWriter, r *http.Request)
 		// Log API request completion
 		logger.LogAPIRequest(r.Method, r.URL.Path, httpStatus, time.Since(start), baseContext)
 		
-		errorcustom.HandleError(w, clientError, "find_account_by_id")
+		// Use HandleError for error responses
+		errorcustom.HandleError(w, clientError, requestID)
 		return
 	}
 
@@ -136,7 +142,8 @@ func (h *AccountHandler) FindAccountByID(w http.ResponseWriter, r *http.Request)
 	// Log API request completion
 	logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusOK, time.Since(start), baseContext)
 
-	errorcustom.RespondWithJSON(w, http.StatusOK, dto.FindAccountByIDResponse{
+	// Create success response data
+	responseData := dto.FindAccountByIDResponse{
 		ID:        id,
 		BranchID:  res.Account.BranchId,
 		Name:      res.Account.Name,
@@ -147,7 +154,10 @@ func (h *AccountHandler) FindAccountByID(w http.ResponseWriter, r *http.Request)
 		OwnerID:   res.Account.OwnerId,
 		CreatedAt: res.Account.CreatedAt.AsTime(),
 		UpdatedAt: res.Account.UpdatedAt.AsTime(),
-	}, "find_account_by_id")
+	}
+
+	// Use RespondWithDomainSuccess for successful responses
+	errorcustom.RespondWithDomainSuccess(w, responseData, h.domain, requestID)
 }
 
 // GetUserProfile handles getting user profile with enhanced logging
@@ -165,7 +175,7 @@ func (h *AccountHandler) GetUserProfile(w http.ResponseWriter, r *http.Request) 
 	handlerLog.Info("Get user profile request started", baseContext)
 
 	// Parse ID parameter or get from context
-	idStr, _ := errorcustom.GetStringParam(r, "id", 0)
+	idStr, _ := errorcustom.GetStringParamWithDomain(r, "id",h.domain, 0)
 	var id int64
 	var err error
 
@@ -214,6 +224,7 @@ func (h *AccountHandler) GetUserProfile(w http.ResponseWriter, r *http.Request) 
 				http.StatusBadRequest,
 				"handler",
 				"get_user_profile",
+				h.domain,
 				err,
 			).WithDetail("provided_id", idStr)
 			
@@ -253,6 +264,7 @@ func (h *AccountHandler) GetUserProfile(w http.ResponseWriter, r *http.Request) 
 				httpStatus,
 				"handler",
 				"get_user_profile",
+				h.domain,
 				err,
 			).WithDetail("user_id", id)
 			
@@ -271,6 +283,7 @@ func (h *AccountHandler) GetUserProfile(w http.ResponseWriter, r *http.Request) 
 				httpStatus,
 				"handler",
 				"get_user_profile",
+				h.domain,
 				err,
 			).WithDetail("user_id", id)
 			
@@ -330,6 +343,9 @@ func (h *AccountHandler) FindAllUsers(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	ctx := r.Context()
 	
+	// Extract request ID from context
+	requestID := errorcustom.GetRequestIDFromContext(r.Context())
+	
 	// Create handler logger for this operation
 	handlerLog := logger.NewHandlerLogger()
 	handlerLog.SetOperation("find_all_users")
@@ -356,7 +372,8 @@ func (h *AccountHandler) FindAllUsers(w http.ResponseWriter, r *http.Request) {
 		
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 		
-		errorcustom.RespondWithAPIError(w, apiErr)
+		// Fix: Use HandleError instead of RespondWithAPIError
+		errorcustom.HandleError(w, apiErr, requestID)
 		return
 	}
 
@@ -398,6 +415,7 @@ func (h *AccountHandler) FindAllUsers(w http.ResponseWriter, r *http.Request) {
 			errorcustom.ErrCodeServiceError,
 			"Failed to retrieve users",
 			http.StatusInternalServerError,
+			h.domain,  // Fix: Add domain parameter
 			"handler",
 			"find_all_users",
 			err,
@@ -405,7 +423,8 @@ func (h *AccountHandler) FindAllUsers(w http.ResponseWriter, r *http.Request) {
 		
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusInternalServerError, time.Since(start), paginationContext)
 		
-		errorcustom.HandleError(w, clientError, "find_all_users")
+		// Fix: Use HandleError with requestID
+		errorcustom.HandleError(w, clientError, requestID)
 		return
 	}
 
@@ -460,19 +479,25 @@ func (h *AccountHandler) FindAllUsers(w http.ResponseWriter, r *http.Request) {
 	// Log API request completion
 	logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusOK, time.Since(start), resultContext)
 
-	errorcustom.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
+	// Create response data
+	responseData := map[string]interface{}{
 		"users":       userResponses,
 		"total_count": totalCount,
 		"page":        page,
 		"page_size":   pageSize,
 		"total_pages": (totalCount + int64(pageSize) - 1) / int64(pageSize),
-	}, "find_all_users")
+	}
+
+	// Fix: Use RespondWithDomainSuccess for successful responses
+	errorcustom.RespondWithDomainSuccess(w, responseData, h.domain, requestID)
 }
 
-// FindByRole handles finding users by role with comprehensive logging
 func (h *AccountHandler) FindByRole(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	ctx := r.Context()
+	
+	// Extract request ID from context
+	requestID := errorcustom.GetRequestIDFromContext(r.Context())
 	
 	// Create handler logger for this operation
 	handlerLog := logger.NewHandlerLogger()
@@ -484,7 +509,7 @@ func (h *AccountHandler) FindByRole(w http.ResponseWriter, r *http.Request) {
 	handlerLog.Info("Find by role request started", baseContext)
 
 	// Parse role parameter
-	role, apiErr := errorcustom.GetStringParam(r, "role", 1)
+	role, apiErr := errorcustom.GetStringParamWithDomain(r, "role", h.domain, 1)
 	if apiErr != nil {
 		context := utils.MergeContext(baseContext, map[string]interface{}{
 			"error": apiErr.Error(),
@@ -500,7 +525,8 @@ func (h *AccountHandler) FindByRole(w http.ResponseWriter, r *http.Request) {
 		
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 		
-		errorcustom.RespondWithAPIError(w, apiErr)
+		// Fix: Use HandleError for error responses, not RespondWithDomainSuccess
+		errorcustom.HandleError(w, apiErr, requestID)
 		return
 	}
 
@@ -538,7 +564,8 @@ func (h *AccountHandler) FindByRole(w http.ResponseWriter, r *http.Request) {
 			
 			logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 			
-			errorcustom.HandleValidationErrors(w, validationErrors, "find_by_role")
+			// Fix: Use HandleValidationErrors with domain and requestID
+			errorcustom.HandleValidationErrors(w, validationErrors, h.domain, requestID)
 		} else {
 			logger.ErrorWithCause(
 				"Unexpected validation error",
@@ -552,6 +579,7 @@ func (h *AccountHandler) FindByRole(w http.ResponseWriter, r *http.Request) {
 				errorcustom.ErrCodeValidationError,
 				"Invalid role",
 				http.StatusBadRequest,
+				h.domain,  // Fix: Add domain parameter
 				"handler",
 				"find_by_role",
 				err,
@@ -559,7 +587,8 @@ func (h *AccountHandler) FindByRole(w http.ResponseWriter, r *http.Request) {
 			
 			logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 			
-			errorcustom.HandleError(w, clientError, "find_by_role")
+			// Fix: Use requestID instead of hardcoded string
+			errorcustom.HandleError(w, clientError, requestID)
 		}
 		return
 	}
@@ -598,6 +627,7 @@ func (h *AccountHandler) FindByRole(w http.ResponseWriter, r *http.Request) {
 			errorcustom.ErrCodeServiceError,
 			"Failed to retrieve users by role",
 			http.StatusInternalServerError,
+			h.domain,  // Fix: Add domain parameter
 			"handler",
 			"find_by_role",
 			err,
@@ -605,7 +635,8 @@ func (h *AccountHandler) FindByRole(w http.ResponseWriter, r *http.Request) {
 		
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusInternalServerError, time.Since(start), baseContext)
 		
-		errorcustom.HandleError(w, clientError, "find_by_role")
+		// Fix: Use requestID instead of hardcoded string
+		errorcustom.HandleError(w, clientError, requestID)
 		return
 	}
 
@@ -641,10 +672,14 @@ func (h *AccountHandler) FindByRole(w http.ResponseWriter, r *http.Request) {
 	// Log API request completion
 	logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusOK, time.Since(start), resultContext)
 
-	errorcustom.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
+	// Create response data
+	responseData := map[string]interface{}{
 		"users": userResponses,
 		"count": len(userResponses),
-	}, "find_by_role")
+	}
+
+	// Fix: Use RespondWithDomainSuccess for successful responses
+	errorcustom.RespondWithDomainSuccess(w, responseData, h.domain, requestID)
 }
 
 // FindByBranch handles finding users by branch with comprehensive logging
@@ -662,7 +697,7 @@ func (h *AccountHandler) FindByBranch(w http.ResponseWriter, r *http.Request) {
 	handlerLog.Info("Find by branch request started", baseContext)
 
 	// Parse branch ID parameter
-	branchID, apiErr := errorcustom.ParseIDParam(r, "branch_id")
+	branchID, apiErr := errorcustom.ParseIDParamWithDomain(r, "branch_id", h.domain)
 	if apiErr != nil {
 		context := utils.MergeContext(baseContext, map[string]interface{}{
 			"error": apiErr.Error(),
@@ -678,7 +713,7 @@ func (h *AccountHandler) FindByBranch(w http.ResponseWriter, r *http.Request) {
 		
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 		
-		errorcustom.RespondWithAPIError(w, apiErr)
+		errorcustom.HandleDomainError(w, apiErr, h.domain, h.requestID)
 		return
 	}
 
@@ -720,6 +755,7 @@ func (h *AccountHandler) FindByBranch(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError,
 			"handler",
 			"find_by_branch",
+			h.domain,
 			err,
 		).WithDetail("branch_id", branchID)
 		
@@ -814,6 +850,7 @@ func (h *AccountHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 				http.StatusBadRequest,
 				"handler",
 				"search_users",
+				h.domain,
 				err,
 			).WithDetail("branch_id", branchIDStr)
 			
@@ -841,7 +878,7 @@ func (h *AccountHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 		
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 		
-		errorcustom.RespondWithAPIError(w, apiErr)
+		errorcustom.HandleDomainError(w, apiErr, h.domain, h.requestID)
 		return
 	}
 
@@ -917,6 +954,7 @@ func (h *AccountHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError,
 			"handler",
 			"search_users",
+			h.domain,
 			err,
 		).WithDetail("query", query).
 		  WithDetail("role", role).
@@ -999,7 +1037,7 @@ func (h *AccountHandler) GetUsersByBranch(w http.ResponseWriter, r *http.Request
 	handlerLog.Info("Get users by branch request started", baseContext)
 
 	// Get branch ID from URL parameter using utility function
-	branchID, apiErr := errorcustom.ParseIDParam(r, "branch_id")
+	branchID, apiErr := errorcustom.ParseIDParamWithDomain(r, "branch_id", h.domain)
 	if apiErr != nil {
 		context := utils.MergeContext(baseContext, map[string]interface{}{
 			"error": apiErr.Error(),
@@ -1015,7 +1053,7 @@ func (h *AccountHandler) GetUsersByBranch(w http.ResponseWriter, r *http.Request
 		
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 		
-		errorcustom.RespondWithAPIError(w, apiErr)
+		errorcustom.HandleDomainError(w, apiErr, h.domain, h.requestID)
 		return
 	}
 
@@ -1039,7 +1077,7 @@ func (h *AccountHandler) GetUsersByBranch(w http.ResponseWriter, r *http.Request
 		
 		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 		
-		errorcustom.RespondWithAPIError(w, paginationErr)
+		errorcustom.HandleDomainError(w, paginationErr, h.domain, h.requestID)
 		return
 	}
 
@@ -1089,6 +1127,7 @@ func (h *AccountHandler) GetUsersByBranch(w http.ResponseWriter, r *http.Request
 			http.StatusInternalServerError,
 			"handler",
 			"get_users_by_branch",
+			h.domain,
 			err,
 		).WithDetail("branch_id", branchID).
 		  WithDetail("page", page).

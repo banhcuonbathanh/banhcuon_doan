@@ -34,7 +34,7 @@ type BaseAccountHandler struct {
 
 // NewBaseHandler creates a new base account handler with comprehensive domain-aware setup
 func NewBaseHandler(userClient pb.AccountServiceClient, config *utils_config.Config) *BaseAccountHandler {
-	domain := "account" // Account handlers primarily work with user domain
+	domain := "account" 
 	
 	// Create handler-specific logger with domain context
 	handlerLogger := logger.NewHandlerLogger()

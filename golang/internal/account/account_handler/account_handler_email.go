@@ -561,7 +561,7 @@ func (h *AccountHandler) FindByEmail(w http.ResponseWriter, r *http.Request) {
 				context,
 			)
 
-			errorcustom.HandleValidationErrors(w, validationErrors, "find_by_email")
+			errorcustom.HandleValidationErrors(w, validationErrors, "find_by_email", h.domain)
 		} else {
 			logger.ErrorWithCause(
 				"Unexpected validation error during email validation",
@@ -611,7 +611,9 @@ func (h *AccountHandler) FindByEmail(w http.ResponseWriter, r *http.Request) {
 				httpStatus,
 				"handler",
 				"find_by_email",
+				h.domain,
 				err,
+			
 			).WithDetail("email", utils.MaskSensitiveValue("email", email)).
 			  WithDetail("step", "user_lookup")
 
@@ -633,6 +635,7 @@ func (h *AccountHandler) FindByEmail(w http.ResponseWriter, r *http.Request) {
 				httpStatus,
 				"handler",
 				"find_by_email",
+				h.domain,
 				err,
 			).WithDetail("email", utils.MaskSensitiveValue("email", email)).
 			  WithDetail("step", "service_call").

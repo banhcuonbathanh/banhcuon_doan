@@ -57,6 +57,8 @@ type Config struct {
 	// Domain configuration
 	Domains       DomainConfig        `mapstructure:"domains" json:"domains"`
 	ErrorHandling ErrorHandlingConfig `mapstructure:"error_handling" json:"error_handling"`
+	ValidAccountStatuses []string `mapstructure:"valid_account_statuses" json:"valid_account_statuses" validate:"required,min=1,dive,required"`
+	
 }
 
 // ServerConfig holds server-related configuration
