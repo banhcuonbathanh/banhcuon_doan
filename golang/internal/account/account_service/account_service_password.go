@@ -177,10 +177,26 @@ func (s *AccountService) ResetPassword(ctx context.Context, req *account.ResetPa
 	if err != nil {
 		// Check if it's token validation specific error
 		if strings.Contains(err.Error(), "expired") {
-			return nil, errorcustom.NewInvalidTokenError("reset_token", "token has expired")
+			return nil, errorcustom.NewAuthenticationErrorWithStep(
+    errorcustom.DomainAuth, 
+    "token has expired", 
+    "token_validation",
+    map[string]interface{}{
+        "token_type": "reset_token",
+        "reason":     "expired",
+    },
+)
 		}
 		if strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "not found") {
-			return nil, errorcustom.NewInvalidTokenError("reset_token", "token is invalid")
+		return nil, errorcustom.NewAuthenticationErrorWithStep(
+    errorcustom.DomainAuth, 
+    "token has expired", 
+    "token_validation",
+    map[string]interface{}{
+        "token_type": "reset_token",
+        "reason":     "expired",
+    },
+)
 		}
 		// For other repository errors
 		repoErr := errorcustom.NewRepositoryError(

@@ -409,7 +409,15 @@ func (s *AccountService) getCurrentUserFromContext(ctx context.Context) (int64, 
 		}
 	}
 
-	return 0, errorcustom.NewAuthenticationError("No user found in context")
+return 0, errorcustom.NewAuthenticationErrorWithStep(
+    errorcustom.DomainAuth,
+    "No user found in context",
+    "context_validation",
+    map[string]interface{}{
+        "step": "user_context_check",
+        "required": "valid user context",
+    },
+)
 }
 
 // ========================================
