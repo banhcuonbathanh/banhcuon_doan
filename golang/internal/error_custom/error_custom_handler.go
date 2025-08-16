@@ -641,43 +641,9 @@ func GetUserIDFromContext(r *http.Request) int64 {
 	return 0
 }
 
-// GetClientIP extracts the real client IP from request
-// func GetClientIP(r *http.Request) string {
-// 	// Get IP from X-Forwarded-For header
-// 	forwarded := r.Header.Get("X-Forwarded-For")
-// 	if forwarded != "" {
-// 		// Take the first IP (client IP)
-// 		return strings.Split(forwarded, ",")[0]
-// 	}
-	
-// 	// Get IP from X-Real-IP header
-// 	realIP := r.Header.Get("X-Real-IP")
-// 	if realIP != "" {
-// 		return realIP
-// 	}
-	
-// 	// Get IP from request RemoteAddr
-// 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-// 	if err != nil {
-// 		return r.RemoteAddr
-// 	}
-// 	return ip
-// }
 
-// ============================================================================
-// EMAIL VALIDATION (maintained for compatibility)
-// ============================================================================
 
-// Email validation regex pattern
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-// internal/error_custom/handler.go
-// Updated HTTP error handling with domain support
-
-
-// ============================================================================
-// HTTP MIDDLEWARE
-// ============================================================================
-
 
 
 
@@ -889,12 +855,8 @@ func detectDomainFromPath(path string) string {
 		return DomainAccount
 	case strings.Contains(path, "/api/branches"):
 		return "branch"
-	case strings.Contains(path, "/api/courses"):
-		return DomainCourse
-	case strings.Contains(path, "/api/payments"):
-		return DomainPayment
-	case strings.Contains(path, "/api/content"):
-		return DomainContent
+
+
 	case strings.Contains(path, "/api/admin"):
 		return DomainAdmin
 	case strings.Contains(path, "/swagger") || strings.Contains(path, "/health") || strings.Contains(path, "/metrics"):

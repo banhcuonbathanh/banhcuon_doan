@@ -141,12 +141,9 @@ func (em *ErrorMiddleware) detectDomainFromPath(path string) string {
 		return DomainAuth
 	case strings.Contains(path, "/api/branches"):
 		return "branch"
-	case strings.Contains(path, "/api/courses"):
-		return DomainCourse
-	case strings.Contains(path, "/api/payments"):
-		return DomainPayment
-	case strings.Contains(path, "/api/content"):
-		return DomainContent
+
+
+
 	case strings.Contains(path, "/api/admin"):
 		return DomainAdmin
 	default:

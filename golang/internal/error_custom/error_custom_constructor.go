@@ -262,157 +262,16 @@ func NewWeakPasswordError(requirements []string) *ValidationError {
 	)
 }
 
-// ============================================================================
-// COURSE DOMAIN ERROR CONSTRUCTORS (example for new domain)
-// ============================================================================
 
-// NewCourseNotFoundError creates a course not found error
-func NewCourseNotFoundError(courseID int64) *NotFoundError {
-	return NewNotFoundError(DomainCourse, "course", courseID)
-}
 
-// NewCourseNotFoundBySlugError creates a course not found error by slug
-func NewCourseNotFoundBySlugError(slug string) *NotFoundError {
-	return NewNotFoundErrorWithIdentifiers(DomainCourse, "course", map[string]interface{}{
-		"slug": slug,
-	})
-}
 
-// NewCourseAccessDeniedError creates a course access denied error
-func NewCourseAccessDeniedError(userID, courseID int64) *AuthorizationError {
-	return NewAuthorizationErrorWithContext(
-		DomainCourse,
-		"access",
-		"course",
-		map[string]interface{}{
-			"user_id":   userID,
-			"course_id": courseID,
-		},
-	)
-}
 
-// NewCourseEnrollmentClosedError creates a business logic error for closed enrollment
-func NewCourseEnrollmentClosedError(courseID int64) *BusinessLogicError {
-	return NewBusinessLogicErrorWithContext(
-		DomainCourse,
-		"enrollment_period",
-		"Course enrollment is closed",
-		map[string]interface{}{
-			"course_id": courseID,
-		},
-	)
-}
 
-// NewCourseCapacityExceededError creates a business logic error for capacity exceeded
-func NewCourseCapacityExceededError(courseID int64, maxCapacity, currentEnrollment int) *BusinessLogicError {
-	return NewBusinessLogicErrorWithContext(
-		DomainCourse,
-		"enrollment_capacity",
-		"Course has reached maximum capacity",
-		map[string]interface{}{
-			"course_id":          courseID,
-			"max_capacity":       maxCapacity,
-			"current_enrollment": currentEnrollment,
-		},
-	)
-}
 
-// ============================================================================
-// PAYMENT DOMAIN ERROR CONSTRUCTORS (example for new domain)
-// ============================================================================
 
-// NewPaymentNotFoundError creates a payment not found error
-func NewPaymentNotFoundError(paymentID string) *NotFoundError {
-	return NewNotFoundError(DomainPayment, "payment", paymentID)
-}
 
-// NewInsufficientFundsError creates a business logic error for insufficient funds
-func NewInsufficientFundsError(userID int64, required, available float64) *BusinessLogicError {
-	return NewBusinessLogicErrorWithContext(
-		DomainPayment,
-		"sufficient_funds",
-		"Insufficient funds for this transaction",
-		map[string]interface{}{
-			"user_id":   userID,
-			"required":  required,
-			"available": available,
-		},
-	)
-}
 
-// NewPaymentProviderError creates an external service error for payment providers
-func NewPaymentProviderError(provider, operation string, cause error, retryable bool) *ExternalServiceError {
-	return NewExternalServiceError(
-		DomainPayment,
-		provider,
-		operation,
-		"Payment provider service error",
-		cause,
-		retryable,
-	)
-}
 
-// NewPaymentExpiredError creates a business logic error for expired payments
-func NewPaymentExpiredError(paymentID string) *BusinessLogicError {
-	return NewBusinessLogicErrorWithContext(
-		DomainPayment,
-		"payment_expiry",
-		"Payment session has expired",
-		map[string]interface{}{
-			"payment_id": paymentID,
-		},
-	)
-}
-
-// ============================================================================
-// CONTENT DOMAIN ERROR CONSTRUCTORS (example for new domain)
-// ============================================================================
-
-// NewContentNotFoundError creates a content not found error
-func NewContentNotFoundError(contentID int64) *NotFoundError {
-	return NewNotFoundError(DomainContent, "content", contentID)
-}
-
-// NewContentAccessDeniedError creates a content access denied error
-func NewContentAccessDeniedError(userID, contentID int64, reason string) *AuthorizationError {
-	return NewAuthorizationErrorWithContext(
-		DomainContent,
-		"access",
-		"content",
-		map[string]interface{}{
-			"user_id":    userID,
-			"content_id": contentID,
-			"reason":     reason,
-		},
-	)
-}
-
-// NewContentTypeNotSupportedError creates a validation error for unsupported content types
-func NewContentTypeNotSupportedError(contentType string, supportedTypes []string) *ValidationError {
-	return NewValidationErrorWithRules(
-		DomainContent,
-		"content_type",
-		fmt.Sprintf("Content type '%s' is not supported", contentType),
-		contentType,
-		map[string]interface{}{
-			"supported_types": supportedTypes,
-		},
-	)
-}
-
-// NewContentSizeLimitError creates a validation error for content size limits
-func NewContentSizeLimitError(actualSize, maxSize int64) *ValidationError {
-	return NewValidationErrorWithRules(
-		DomainContent,
-		"content_size",
-		"Content size exceeds maximum allowed limit",
-		actualSize,
-		map[string]interface{}{
-			"max_size_bytes": maxSize,
-			"max_size_mb":    maxSize / (1024 * 1024),
-		},
-	)
-}
 
 // ============================================================================
 // ADMIN DOMAIN ERROR CONSTRUCTORS (example for new domain)
