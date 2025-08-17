@@ -7,29 +7,9 @@ import (
 	"reflect"
 	"strings"
 	"time"
+	"unicode"
 )
 
-// MergeContext combines two context maps, with additional context overriding base context
-// for any duplicate keys. This is useful for creating rich logging contexts.
-//
-// Parameters:
-//   - base: The base context map (typically contains common fields like request_id, user_id, etc.)
-//   - additional: Additional context to merge (specific to the current operation)
-//
-// Returns:
-//   - A new map containing all key-value pairs from both maps
-//
-// Example:
-//   base := map[string]interface{}{
-//       "user_id": "123",
-//       "request_id": "req_456",
-//   }
-//   additional := map[string]interface{}{
-//       "error": "validation failed",
-//       "field": "email",
-//   }
-//   merged := MergeContext(base, additional)
-//   // Result: {"user_id": "123", "request_id": "req_456", "error": "validation failed", "field": "email"}
 func MergeContext(base map[string]interface{}, additional map[string]interface{}) map[string]interface{} {
 	// Handle nil cases
 	if base == nil && additional == nil {
@@ -68,20 +48,6 @@ func MergeContext(base map[string]interface{}, additional map[string]interface{}
 	return merged
 }
 
-// MergeMultipleContexts merges multiple context maps into one.
-// Later contexts override earlier ones for duplicate keys.
-//
-// Parameters:
-//   - contexts: Variable number of context maps to merge
-//
-// Returns:
-//   - A new map containing all key-value pairs from all input maps
-//
-// Example:
-//   ctx1 := map[string]interface{}{"user_id": "123"}
-//   ctx2 := map[string]interface{}{"request_id": "req_456"}
-//   ctx3 := map[string]interface{}{"operation": "update"}
-//   merged := MergeMultipleContexts(ctx1, ctx2, ctx3)
 func MergeMultipleContexts(contexts ...map[string]interface{}) map[string]interface{} {
 	if len(contexts) == 0 {
 		return make(map[string]interface{})
@@ -102,21 +68,7 @@ func MergeMultipleContexts(contexts ...map[string]interface{}) map[string]interf
 	return merged
 }
 
-// AddToContext adds a single key-value pair to an existing context map.
-// If the context is nil, creates a new map.
-//
-// Parameters:
-//   - context: The existing context map (can be nil)
-//   - key: The key to add
-//   - value: The value to add
-//
-// Returns:
-//   - A new map with the added key-value pair
-//
-// Example:
-//   ctx := map[string]interface{}{"user_id": "123"}
-//   newCtx := AddToContext(ctx, "error", "validation failed")
-//   // Result: {"user_id": "123", "error": "validation failed"}
+
 func AddToContext(context map[string]interface{}, key string, value interface{}) map[string]interface{} {
 	if context == nil {
 		return map[string]interface{}{key: value}
@@ -132,21 +84,7 @@ func AddToContext(context map[string]interface{}, key string, value interface{})
 	return result
 }
 
-// CreateBaseContext creates a base context map with common fields for HTTP requests.
-// This is typically used at the start of request handlers.
-//
-// Parameters:
-//   - r: HTTP request object
-//   - additionalFields: Optional additional fields to include
-//
-// Returns:
-//   - A context map with common request fields
-//
-// Example:
-//   baseCtx := CreateBaseContext(r, map[string]interface{}{
-//       "user_id": "123",
-//       "tenant_id": "org_456",
-//   })
+
 func CreateBaseContext(r *http.Request, additionalFields map[string]interface{}) map[string]interface{} {
 	context := map[string]interface{}{
 		"method":     r.Method,
@@ -168,19 +106,7 @@ func CreateBaseContext(r *http.Request, additionalFields map[string]interface{})
 
 
 
-// GetTypeName returns the type name of an interface{} value
-// This is useful for logging the type of requests being processed
-//
-// Parameters:
-//   - obj: The object to get the type name for
-//
-// Returns:
-//   - A string representation of the type name
-//
-// Example:
-//   type User struct { Name string }
-//   user := User{Name: "John"}
-//   typeName := GetTypeName(user) // Returns "User"
+
 func GetTypeName(obj interface{}) string {
 	if obj == nil {
 		return "nil"
@@ -202,19 +128,7 @@ func GetTypeName(obj interface{}) string {
 	return t.Name()
 }
 
-// MaskSensitiveValue masks sensitive field values for logging
-// This prevents sensitive data from being logged in plain text
-//
-// Parameters:
-//   - fieldName: The name of the field being logged
-//   - value: The value to potentially mask
-//
-// Returns:
-//   - The original value if not sensitive, or a masked version if sensitive
-//
-// Example:
-//   masked := MaskSensitiveValue("password", "secret123") // Returns "***masked***"
-//   normal := MaskSensitiveValue("name", "John")          // Returns "John"
+
 func MaskSensitiveValue(fieldName string, value interface{}) interface{} {
 	if value == nil {
 		return nil
@@ -269,17 +183,7 @@ func MaskSensitiveValue(fieldName string, value interface{}) interface{} {
 	return value
 }
 
-// maskEmail masks email addresses for logging while preserving some structure
-// This is a helper function used by MaskSensitiveValue
-//
-// Parameters:
-//   - value: The email value to mask
-//
-// Returns:
-//   - A masked version of the email address
-//
-// Example:
-//   masked := maskEmail("user@example.com") // Returns "u***r@example.com"
+
 func maskEmail(value interface{}) interface{} {
 	str, ok := value.(string)
 	if !ok {
@@ -312,17 +216,6 @@ func maskEmail(value interface{}) interface{} {
 	return maskedUsername + "@" + domain
 }
 
-// GetRequestID extracts or generates a request ID for logging correlation
-// This helps in tracing requests across different components
-//
-// Parameters:
-//   - r: HTTP request object
-//
-// Returns:
-//   - A request ID string
-//
-// Example:
-//   requestID := GetRequestID(r) // Returns existing ID or generates new one
 func GetRequestID(r *http.Request) string {
 	// Check common request ID headers
 	requestIDHeaders := []string{
@@ -351,8 +244,7 @@ func GetRequestID(r *http.Request) string {
 	return generateSimpleID()
 }
 
-// generateSimpleID generates a simple unique identifier
-// This is a basic implementation - in production, you might want to use a proper UUID library
+
 func generateSimpleID() string {
 	// This is a simplified implementation
 	// In production, use a proper UUID library like github.com/google/uuid
@@ -370,21 +262,7 @@ func randomString(length int) string {
 	return string(b)
 }
 
-// ValidateAndSanitizeContext validates and sanitizes context data for logging
-// This ensures context data is safe and appropriate for logging
-//
-// Parameters:
-//   - context: The context map to validate and sanitize
-//
-// Returns:
-//   - A sanitized version of the context map
-//
-// Example:
-//   sanitized := ValidateAndSanitizeContext(map[string]interface{}{
-//       "user_id": 123,
-//       "password": "secret",
-//   })
-//   // Returns: {"user_id": 123, "password": "***masked***"}
+
 func ValidateAndSanitizeContext(context map[string]interface{}) map[string]interface{} {
 	if context == nil {
 		return make(map[string]interface{})
@@ -400,17 +278,7 @@ func ValidateAndSanitizeContext(context map[string]interface{}) map[string]inter
 	return sanitized
 }
 
-// FormatDuration formats a time.Duration for human-readable logging
-// This provides consistent duration formatting across the application
-//
-// Parameters:
-//   - duration: The duration to format
-//
-// Returns:
-//   - A human-readable string representation of the duration
-//
-// Example:
-//   formatted := FormatDuration(1500 * time.Millisecond) // Returns "1.50s"
+
 func FormatDuration(duration time.Duration) string {
 	if duration < time.Microsecond {
 		return duration.String()
@@ -429,4 +297,44 @@ func FormatDuration(duration time.Duration) string {
 	}
 	
 	return duration.String()
+}
+
+
+
+// ContainsUppercase checks if the string contains at least one uppercase letter
+func ContainsUppercase(s string) bool {
+	for _, r := range s {
+		if unicode.IsUpper(r) {
+			return true
+		}
+	}
+	return false
+}
+
+func ContainsLowercase(s string) bool {
+    for _, char := range s {
+        if unicode.IsLower(char) {
+            return true
+        }
+    }
+    return false
+}
+
+func ContainsNumbers(s string) bool {
+	for _, r := range s {
+		if unicode.IsDigit(r) {
+			return true
+		}
+	}
+	return false
+}
+
+func ContainsSpecialChars(s string) bool {
+	specialChars := "!@#$%^&*()_+-=[]{}|;':\",./<>?"
+	for _, char := range s {
+		if strings.ContainsRune(specialChars, char) {
+			return true
+		}
+	}
+	return false
 }

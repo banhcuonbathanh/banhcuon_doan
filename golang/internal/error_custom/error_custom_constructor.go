@@ -2,367 +2,319 @@
 // Domain-aware error constructors
 package errorcustom
 
-import "fmt"
+import (
+
+	"fmt"
+	
+)
 
 // ============================================================================
 // GENERIC ERROR CONSTRUCTORS
 // ============================================================================
 
-// NewNotFoundError creates a not found error for any domain
+// ----------------------------
+// NOT FOUND ERRORS
+// ----------------------------
+
+// NewNotFoundError creates a not found error with resource ID
 func NewNotFoundError(domain, resourceType string, resourceID interface{}) *NotFoundError {
-	return &NotFoundError{
-		BaseError: BaseError{
-			Domain:    domain,
-			ErrorType: ErrorTypeNotFound,
-		},
-		ResourceType: resourceType,
-		ResourceID:   resourceID,
-	}
+    return &NotFoundError{
+        BaseError:    BaseError{Domain: domain, ErrorType: ErrorTypeNotFound},
+        ResourceType: resourceType,
+        ResourceID:   resourceID,
+    }
 }
 
 // NewNotFoundErrorWithIdentifiers creates a not found error with multiple identifiers
 func NewNotFoundErrorWithIdentifiers(domain, resourceType string, identifiers map[string]interface{}) *NotFoundError {
-	return &NotFoundError{
-		BaseError: BaseError{
-			Domain:    domain,
-			ErrorType: ErrorTypeNotFound,
-		},
-		ResourceType: resourceType,
-		Identifiers:  identifiers,
-	}
+    return &NotFoundError{
+        BaseError:    BaseError{Domain: domain, ErrorType: ErrorTypeNotFound},
+        ResourceType: resourceType,
+        Identifiers:  identifiers,
+    }
 }
 
-// NewValidationError creates a validation error for any domain
+// NewNotFoundErrorWithContext creates a not found error with context only
+func NewNotFoundErrorWithContext(domain, resourceType string, context map[string]interface{}) *NotFoundError {
+    return &NotFoundError{
+        BaseError:    BaseError{Domain: domain, ErrorType: ErrorTypeNotFound},
+        ResourceType: resourceType,
+        Context:      context,
+    }
+}
+
+// ----------------------------
+// VALIDATION ERRORS
+// ----------------------------
+
+// NewValidationError creates a basic validation error
 func NewValidationError(domain, field, message string, value interface{}) *ValidationError {
-	return &ValidationError{
-		BaseError: BaseError{
-			Domain:    domain,
-			ErrorType: ErrorTypeValidation,
-		},
-		Field:   field,
-		Message: message,
-		Value:   value,
-	}
+    return &ValidationError{
+        BaseError: BaseError{Domain: domain, ErrorType: ErrorTypeValidation},
+        Field:     field,
+        Message:   message,
+        Value:     value,
+    }
 }
 
-// NewValidationErrorWithRules creates a validation error with rule details
+// NewValidationErrorWithRules creates a validation error with rule metadata
 func NewValidationErrorWithRules(domain, field, message string, value interface{}, rules map[string]interface{}) *ValidationError {
-	return &ValidationError{
-		BaseError: BaseError{
-			Domain:    domain,
-			ErrorType: ErrorTypeValidation,
-		},
-		Field:   field,
-		Message: message,
-		Value:   value,
-		Rules:   rules,
-	}
+    return &ValidationError{
+        BaseError: BaseError{Domain: domain, ErrorType: ErrorTypeValidation},
+        Field:     field,
+        Message:   message,
+        Value:     value,
+        Rules:     rules,
+    }
 }
 
-// NewDuplicateError creates a duplicate resource error for any domain
-func NewDuplicateError(domain, resourceType, field string, value interface{}) *DuplicateError {
-	return &DuplicateError{
-		BaseError: BaseError{
-			Domain:    domain,
-			ErrorType: ErrorTypeDuplicate,
-		},
-		ResourceType: resourceType,
-		Field:        field,
-		Value:        value,
-	}
+// NewValidationErrorWithContext creates a validation error with context
+func NewValidationErrorWithContext(domain, field, message string, value interface{}, context map[string]interface{}) *ValidationError {
+    return &ValidationError{
+        BaseError: BaseError{Domain: domain, ErrorType: ErrorTypeValidation},
+        Field:     field,
+        Message:   message,
+        Value:     value,
+        Context:   context,
+    }
 }
 
-// NewAuthenticationError creates an authentication error for any domain
+// ----------------------------
+// AUTHENTICATION ERRORS
+// ----------------------------
+
+// NewAuthenticationError creates a basic authentication error
 func NewAuthenticationError(domain, reason string) *AuthenticationError {
-	return &AuthenticationError{
-		BaseError: BaseError{
-			Domain:    domain,
-			ErrorType: ErrorTypeAuthentication,
-		},
-		Reason: reason,
-	}
+    return &AuthenticationError{
+        BaseError: BaseError{Domain: domain, ErrorType: ErrorTypeAuthentication},
+        Reason:    reason,
+    }
 }
 
-// NewAuthenticationErrorWithStep creates an authentication error with step info
+// NewAuthenticationErrorWithStep creates an auth error with step and context
 func NewAuthenticationErrorWithStep(domain, reason, step string, context map[string]interface{}) *AuthenticationError {
-	return &AuthenticationError{
-		BaseError: BaseError{
-			Domain:    domain,
-			ErrorType: ErrorTypeAuthentication,
-		},
-		Reason:  reason,
-		Step:    step,
-		Context: context,
-	}
+    return &AuthenticationError{
+        BaseError: BaseError{Domain: domain, ErrorType: ErrorTypeAuthentication},
+        Reason:    reason,
+        Step:      step,
+        Context:   context,
+    }
 }
 
-// NewAuthorizationError creates an authorization error for any domain
+// NewAuthenticationErrorWithContext creates an auth error with context (no step)
+func NewAuthenticationErrorWithContext(domain, reason string, context map[string]interface{}) *AuthenticationError {
+    return &AuthenticationError{
+        BaseError: BaseError{Domain: domain, ErrorType: ErrorTypeAuthentication},
+        Reason:    reason,
+        Context:   context,
+    }
+}
+
+// ----------------------------
+// AUTHORIZATION ERRORS
+// ----------------------------
+
+// NewAuthorizationError creates a basic authorization error
 func NewAuthorizationError(domain, action, resource string) *AuthorizationError {
-	return &AuthorizationError{
-		BaseError: BaseError{
-			Domain:    domain,
-			ErrorType: ErrorTypeAuthorization,
-		},
-		Action:   action,
-		Resource: resource,
-	}
+    return &AuthorizationError{
+        BaseError: BaseError{Domain: domain, ErrorType: ErrorTypeAuthorization},
+        Action:    action,
+        Resource:  resource,
+    }
 }
 
 // NewAuthorizationErrorWithContext creates an authorization error with context
 func NewAuthorizationErrorWithContext(domain, action, resource string, context map[string]interface{}) *AuthorizationError {
-	return &AuthorizationError{
-		BaseError: BaseError{
-			Domain:    domain,
-			ErrorType: ErrorTypeAuthorization,
-		},
-		Action:   action,
-		Resource: resource,
-		Context:  context,
-	}
+    return &AuthorizationError{
+        BaseError: BaseError{Domain: domain, ErrorType: ErrorTypeAuthorization},
+        Action:    action,
+        Resource:  resource,
+        Context:   context,
+    }
 }
 
-// NewBusinessLogicError creates a business logic error for any domain
+// ----------------------------
+// BUSINESS LOGIC ERRORS
+// ----------------------------
+
+// NewBusinessLogicError creates a basic business logic error
 func NewBusinessLogicError(domain, rule, description string) *BusinessLogicError {
-	return &BusinessLogicError{
-		BaseError: BaseError{
-			Domain:    domain,
-			ErrorType: ErrorTypeBusinessLogic,
-		},
-		Rule:        rule,
-		Description: description,
-	}
+    return &BusinessLogicError{
+        BaseError:   BaseError{Domain: domain, ErrorType: ErrorTypeBusinessLogic},
+        Rule:        rule,
+        Description: description,
+    }
 }
 
 // NewBusinessLogicErrorWithContext creates a business logic error with context
 func NewBusinessLogicErrorWithContext(domain, rule, description string, context map[string]interface{}) *BusinessLogicError {
-	return &BusinessLogicError{
-		BaseError: BaseError{
-			Domain:    domain,
-			ErrorType: ErrorTypeBusinessLogic,
-		},
-		Rule:        rule,
-		Description: description,
-		Context:     context,
-	}
+    return &BusinessLogicError{
+        BaseError:   BaseError{Domain: domain, ErrorType: ErrorTypeBusinessLogic},
+        Rule:        rule,
+        Description: description,
+        Context:     context,
+    }
 }
 
-// NewExternalServiceError creates an external service error for any domain
+// ----------------------------
+// DUPLICATE / CONFLICT ERRORS
+// ----------------------------
+
+// NewDuplicateError creates a duplicate field error (e.g., email)
+func NewDuplicateError(domain, resourceType, field string, value interface{}) *DuplicateError {
+    return &DuplicateError{
+        BaseError:    BaseError{Domain: domain, ErrorType: ErrorTypeDuplicate},
+        ResourceType: resourceType,
+        Field:        field,
+        Value:        value,
+    }
+}
+
+// NewConflictErrorWithContext creates a generic conflict error with message and context
+func NewConflictErrorWithContext(domain, resourceType, message string, context map[string]interface{}) *ConflictError {
+    return &ConflictError{
+        BaseError:    BaseError{Domain: domain, ErrorType: ErrorTypeConflict},
+        ResourceType: resourceType,
+        Message:      message,
+        Context:      context,
+    }
+}
+
+// ----------------------------
+// RATE LIMIT ERRORS
+// ----------------------------
+
+// NewRateLimitErrorWithContext creates a rate limit error with context
+func NewRateLimitErrorWithContext(domain, operation, message string, context map[string]interface{}) *RateLimitError {
+    return &RateLimitError{
+        BaseError: BaseError{Domain: domain, ErrorType: ErrorTypeRateLimit},
+        Operation: operation,
+        Message:   message,
+        Context:   context,
+    }
+}
+
+// ----------------------------
+// EXTERNAL SERVICE & SYSTEM ERRORS
+// ----------------------------
+
+// NewExternalServiceError creates an external service error
 func NewExternalServiceError(domain, service, operation, message string, cause error, retryable bool) *ExternalServiceError {
-	return &ExternalServiceError{
-		BaseError: BaseError{
-			Domain:    domain,
-			ErrorType: ErrorTypeExternalService,
-		},
-		Service:   service,
-		Operation: operation,
-		Message:   message,
-		Cause:     cause,
-		Retryable: retryable,
-	}
+    return &ExternalServiceError{
+        BaseError: BaseError{Domain: domain, ErrorType: ErrorTypeExternalService},
+        Service:   service,
+        Operation: operation,
+        Message:   message,
+        Cause:     cause,
+        Retryable: retryable,
+    }
 }
 
-// NewSystemError creates a system error for any domain
+// NewSystemError creates a system error
 func NewSystemError(domain, component, operation, message string, cause error) *SystemError {
-	return &SystemError{
-		BaseError: BaseError{
-			Domain:    domain,
-			ErrorType: ErrorTypeSystem,
-		},
-		Component: component,
-		Operation: operation,
-		Message:   message,
-		Cause:     cause,
-	}
+    return &SystemError{
+        BaseError: BaseError{Domain: domain, ErrorType: ErrorTypeSystem},
+        Component: component,
+        Operation: operation,
+        Message:   message,
+        Cause:     cause,
+    }
 }
 
 // ============================================================================
-// USER DOMAIN ERROR CONSTRUCTORS (for backward compatibility)
+// USER DOMAIN ERROR CONSTRUCTORS (backward compatibility)
 // ============================================================================
 
-// NewUserNotFoundByID creates a user not found error with ID
 func NewUserNotFoundByID(id int64) *NotFoundError {
-	return NewNotFoundError(DomainAccount, "user", id)
+    return NewNotFoundError(DomainAccount, "user", id)
 }
 
-// NewUserNotFoundByEmail creates a user not found error with email
 func NewUserNotFoundByEmail(email string) *NotFoundError {
-	return NewNotFoundErrorWithIdentifiers(DomainAccount, "user", map[string]interface{}{
-		"email": email,
-	})
+    return NewNotFoundErrorWithIdentifiers(DomainAccount, "user", map[string]interface{}{"email": email})
 }
 
-// NewEmailNotFoundError creates an authentication error for email not found
 func NewEmailNotFoundError(email string) *AuthenticationError {
-	return NewAuthenticationErrorWithStep(
-		DomainAccount,
-		"email not found",
-		"email_check",
-		map[string]interface{}{
-			"email":      email,
-			"user_found": false,
-		},
-	)
+    return NewAuthenticationErrorWithStep(DomainAccount, "email not found", "email_check", map[string]interface{}{"email": email, "user_found": false})
 }
 
-// NewPasswordMismatchError creates an authentication error for password mismatch
 func NewPasswordMismatchError(email string) *AuthenticationError {
-	return NewAuthenticationErrorWithStep(
-		DomainAccount,
-		"password mismatch",
-		"password_check",
-		map[string]interface{}{
-			"email":      email,
-			"user_found": true,
-		},
-	)
+    return NewAuthenticationErrorWithStep(DomainAccount, "password mismatch", "password_check", map[string]interface{}{"email": email, "user_found": true})
 }
 
-// NewAccountDisabledError creates an authentication error for disabled account
 func NewAccountDisabledError(email string) *AuthenticationError {
-	return NewAuthenticationErrorWithStep(
-		DomainAccount,
-		"account disabled",
-		"status_check",
-		map[string]interface{}{
-			"email":      email,
-			"user_found": true,
-		},
-	)
+    return NewAuthenticationErrorWithStep(DomainAccount, "account disabled", "status_check", map[string]interface{}{"email": email, "user_found": true})
 }
 
-// NewAccountLockedError creates an authentication error for locked account
 func NewAccountLockedError(email string, lockReason string) *AuthenticationError {
-	return NewAuthenticationErrorWithStep(
-		DomainAccount,
-		fmt.Sprintf("account locked: %s", lockReason),
-		"status_check",
-		map[string]interface{}{
-			"email":       email,
-			"user_found":  true,
-			"lock_reason": lockReason,
-		},
-	)
+    return NewAuthenticationErrorWithStep(DomainAccount, fmt.Sprintf("account locked: %s", lockReason), "status_check", map[string]interface{}{"email": email, "user_found": true, "lock_reason": lockReason})
 }
 
-// NewDuplicateEmailError creates a duplicate email error
 func NewDuplicateEmailError(email string) *DuplicateError {
-	return NewDuplicateError(DomainAccount, "user", "email", email)
+    return NewDuplicateError(DomainAccount, "user", "email", email)
 }
 
-// NewWeakPasswordError creates a password validation error
 func NewWeakPasswordError(requirements []string) *ValidationError {
-	return NewValidationErrorWithRules(
-		DomainAccount,
-		"password",
-		"Password does not meet security requirements",
-		"[REDACTED]",
-		map[string]interface{}{
-			"requirements": requirements,
-		},
-	)
+    return NewValidationErrorWithRules(DomainAccount, "password", "Password does not meet security requirements", "[REDACTED]", map[string]interface{}{"requirements": requirements})
 }
 
-
-
-
-
-
-
-
-
-
-
-
 // ============================================================================
-// ADMIN DOMAIN ERROR CONSTRUCTORS (example for new domain)
+// ADMIN DOMAIN ERROR CONSTRUCTORS
 // ============================================================================
 
-// NewInsufficientPrivilegesError creates an authorization error for admin operations
 func NewInsufficientPrivilegesError(userID int64, requiredRole, currentRole string) *AuthorizationError {
-	return NewAuthorizationErrorWithContext(
-		DomainAdmin,
-		"admin_operation",
-		"system",
-		map[string]interface{}{
-			"user_id":       userID,
-			"required_role": requiredRole,
-			"current_role":  currentRole,
-		},
-	)
+    return NewAuthorizationErrorWithContext(DomainAdmin, "admin_operation", "system", map[string]interface{}{
+        "user_id":       userID,
+        "required_role": requiredRole,
+        "current_role":  currentRole,
+    })
 }
 
-// NewBulkOperationLimitError creates a business logic error for bulk operation limits
 func NewBulkOperationLimitError(operation string, requested, maxAllowed int) *BusinessLogicError {
-	return NewBusinessLogicErrorWithContext(
-		DomainAdmin,
-		"bulk_operation_limit",
-		fmt.Sprintf("Bulk %s operation exceeds maximum limit", operation),
-		map[string]interface{}{
-			"operation":   operation,
-			"requested":   requested,
-			"max_allowed": maxAllowed,
-		},
-	)
+    return NewBusinessLogicErrorWithContext(DomainAdmin, "bulk_operation_limit", fmt.Sprintf("Bulk %s operation exceeds maximum limit", operation), map[string]interface{}{
+        "operation":   operation,
+        "requested":   requested,
+        "max_allowed": maxAllowed,
+    })
 }
 
 // ============================================================================
 // SYSTEM DOMAIN ERROR CONSTRUCTORS
 // ============================================================================
 
-// NewDatabaseError creates a system error for database operations
 func NewDatabaseError(operation, table string, cause error) *SystemError {
-	return NewSystemError(
-		DomainSystem,
-		"database",
-		operation,
-		fmt.Sprintf("Database operation failed on table '%s'", table),
-		cause,
-	)
+    return NewSystemError(DomainSystem, "database", operation, fmt.Sprintf("Database operation failed on table '%s'", table), cause)
 }
 
-// NewCacheError creates a system error for cache operations
 func NewCacheError(operation, key string, cause error) *SystemError {
-	return NewSystemError(
-		DomainSystem,
-		"cache",
-		operation,
-		fmt.Sprintf("Cache operation failed for key '%s'", key),
-		cause,
-	)
+    return NewSystemError(DomainSystem, "cache", operation, fmt.Sprintf("Cache operation failed for key '%s'", key), cause)
 }
 
-// NewFileSystemError creates a system error for file system operations
 func NewFileSystemError(operation, path string, cause error) *SystemError {
-	return NewSystemError(
-		DomainSystem,
-		"filesystem",
-		operation,
-		fmt.Sprintf("File system operation failed for path '%s'", path),
-		cause,
-	)
+    return NewSystemError(DomainSystem, "filesystem", operation, fmt.Sprintf("File system operation failed for path '%s'", path), cause)
 }
 
 // ============================================================================
-// LEGACY CONSTRUCTORS (for backward compatibility)
+// LEGACY CONSTRUCTORS (backward compatibility)
 // ============================================================================
 
-// Legacy constructors that map to the new system
 type UserNotFoundError = NotFoundError
 type DuplicateEmailError = DuplicateError
 type PasswordValidationError = ValidationError
 type ServiceError = ExternalServiceError
 type RepositoryError = SystemError
 
-// NewServiceError creates a legacy service error (maps to ExternalServiceError)
 func NewServiceError(service, method, message string, cause error, retryable bool) *ExternalServiceError {
-	return NewExternalServiceError("", service, method, message, cause, retryable)
+    return NewExternalServiceError("", service, method, message, cause, retryable)
 }
 
-// NewRepositoryError creates a legacy repository error (maps to SystemError)
 func NewRepositoryError(operation, table, message string, cause error) *SystemError {
-	return NewSystemError(DomainSystem, "repository", operation, fmt.Sprintf("%s on table %s", message, table), cause)
+    return NewSystemError(DomainSystem, "repository", operation, fmt.Sprintf("%s on table %s", message, table), cause)
 }
 
 func NewHandlerErrorManager() *HandlerErrorManager {
-	return &HandlerErrorManager{}
+    return &HandlerErrorManager{}
 }
+
+
+type HandlerErrorManager struct{}
+

@@ -22,8 +22,7 @@ const (
 // ============================================================================
 // CORE ERROR TYPES
 // ============================================================================
-// HandlerErrorManager manages HTTP handler layer errors
-type HandlerErrorManager struct{}
+
 // APIError represents a structured API error with detailed information
 type APIError struct {
 	Code       string                 `json:"code"`
@@ -79,6 +78,7 @@ type NotFoundError struct {
 	ResourceType string                 `json:"resource_type"`
 	ResourceID   interface{}            `json:"resource_id,omitempty"`
 	Identifiers  map[string]interface{} `json:"identifiers,omitempty"`
+		  Context  map[string]interface{} `json:"context,omitempty"` // ✅ Add this
 }
 
 // ValidationError represents validation failures
@@ -88,6 +88,7 @@ type ValidationError struct {
 	Message string                 `json:"message"`
 	Value   interface{}            `json:"value,omitempty"`
 	Rules   map[string]interface{} `json:"rules,omitempty"`
+	  Context  map[string]interface{} `json:"context,omitempty"` // ✅ Add this
 }
 
 // DuplicateError represents duplicate resource errors
@@ -122,7 +123,22 @@ type BusinessLogicError struct {
 	Description string                 `json:"description"`
 	Context     map[string]interface{} `json:"context,omitempty"`
 }
+type ConflictError struct {
+    BaseError // ✅ Anonymous embedding: promotes Domain, ErrorType
 
+    ResourceType string                 `json:"resource_type"`
+    Field        string                 `json:"field,omitempty"`
+    Value        interface{}            `json:"value,omitempty"`
+    Message      string                 `json:"message"`
+    Context      map[string]interface{} `json:"context,omitempty"`
+}
+
+type RateLimitError struct {
+    BaseError
+    Operation string                 `json:"operation"`
+    Message   string                 `json:"message"`
+    Context   map[string]interface{} `json:"context,omitempty"`
+}
 // ExternalServiceError represents errors from external services
 type ExternalServiceError struct {
 	BaseError
@@ -554,3 +570,28 @@ func (ec *ErrorCollection) Count() int {
 // new 1212121
 
 // new 1212121
+
+
+func (e *RateLimitError) Error() string {
+    if e == nil {
+        return "<nil>"
+    }
+    return fmt.Sprintf("[%s] %s: %s (operation=%s)",
+        e.Domain,
+        e.ErrorType,
+        e.Message,
+        e.Operation,
+    )
+}
+
+func (e *ConflictError) Error() string {
+    if e == nil {
+        return "<nil>"
+    }
+    return fmt.Sprintf("[%s] %s: %s (resource=%s)", 
+        e.Domain,
+        e.ErrorType,
+        e.Message,
+        e.ResourceType,
+    )
+}

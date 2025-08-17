@@ -20,12 +20,10 @@ func (h *BaseAccountHandler) HandleHTTPError(w http.ResponseWriter, r *http.Requ
 	h.errorHandler.HandleHTTPError(w, r, err)
 }
 
-// RespondWithSuccess sends successful response with domain context
 func (h *BaseAccountHandler) RespondWithSuccess(w http.ResponseWriter, r *http.Request, data interface{}) {
-	requestID := errorcustom.GetRequestIDFromContext(r.Context())
-	errorcustom.RespondWithDomainSuccess(w, data, h.domain, requestID)
+    // Use the corrected method
+    h.errorHandler.RespondWithSuccess(w,  data) // assuming h has UnifiedErrorHandler
 }
-
 // RespondWithError sends error response with domain context
 func (h *BaseAccountHandler) RespondWithError(w http.ResponseWriter, r *http.Request, err error) {
 	requestID := errorcustom.GetRequestIDFromContext(r.Context())

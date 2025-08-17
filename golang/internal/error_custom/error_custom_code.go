@@ -36,6 +36,7 @@ const (
 	ErrorTypeInvalidInput  = "INVALID_INPUT"
 	ErrorTypeRateLimit     = "RATE_LIMIT"
 	ErrorTypeTimeout       = "TIMEOUT"
+	  ErrorTypeConflict        = "conflict_error" // ✅ Add this
 )
 
 

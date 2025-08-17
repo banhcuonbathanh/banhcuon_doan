@@ -702,14 +702,14 @@ func (h *BaseAccountHandler) handleGRPCError(err error, operation string, contex
 	
 	// Map gRPC codes to custom errors
 	switch grpcStatus.Code() {
-	case codes.InvalidArgument:
-		return errorcustom.NewValidationErrorWithContext(
-			h.domain,
-			"grpc_request",
-			grpcStatus.Message(),
-			context,
-		)
-		
+case codes.InvalidArgument:
+    return errorcustom.NewValidationErrorWithContext(
+        h.domain,
+        "grpc_request",
+        grpcStatus.Message(),
+        nil,      // 👈 placeholder for invalid value
+        context,  // 👈 now in correct position
+    )
 	case codes.Unauthenticated:
 		return errorcustom.NewAuthenticationErrorWithContext(
 			h.domain,
@@ -740,13 +740,13 @@ func (h *BaseAccountHandler) handleGRPCError(err error, operation string, contex
 			context,
 		)
 		
-	case codes.ResourceExhausted:
-		return errorcustom.NewRateLimitErrorWithContext(
-			h.domain,
-			operation,
-			grpcStatus.Message(),
-			context,
-		)
+case codes.ResourceExhausted:
+    return errorcustom.NewRateLimitErrorWithContext(
+        h.domain,
+        operation,
+        grpcStatus.Message(),
+        context,
+    )
 		
 	case codes.FailedPrecondition:
 		return errorcustom.NewBusinessLogicErrorWithContext(
@@ -775,37 +775,3 @@ func (h *BaseAccountHandler) handleGRPCError(err error, operation string, contex
 		)
 	}
 }
-
-// ============================================================================
-// INTEGRATION NOTES
-// ============================================================================
-
-/*
-This file provides gRPC method implementations that match your existing protobuf schema.
-
-Key features:
-1. Uses your actual protobuf message types (AccountReq, UpdateUserReq, etc.)
-2. Handles proper error mapping from gRPC status codes to custom errors
-3. Includes comprehensive logging for all operations
-4. Provides validation and conversion helpers
-5. Supports bulk operations through individual calls (since bulk isn't in proto)
-6. Uses existing service methods like SearchUsers instead of separate ListUsers
-
-Usage:
-- These methods are called by the business logic layer
-- They handle the gRPC communication and error translation
-- All responses are properly validated and logged
-- Security events are logged for audit trails
-
-Error Handling:
-- Maps gRPC status codes to appropriate custom error types
-- Provides detailed context in error messages
-- Logs all errors for debugging and monitoring
-- Handles edge cases like empty responses
-
-Performance Considerations:
-- Uses context timeouts for gRPC calls
-- Bulk operations are optimized where possible
-- Proper resource cleanup with defer statements
-- Efficient string conversion and validation
-*/
