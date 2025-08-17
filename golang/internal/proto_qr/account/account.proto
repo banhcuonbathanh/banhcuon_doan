@@ -35,6 +35,12 @@ service AccountService {
   rpc RefreshToken(RefreshTokenReq) returns (RefreshTokenRes);
   rpc ValidateToken(ValidateTokenReq) returns (ValidateTokenRes);
 }
+enum AccountStatus {
+  UNKNOWN = 0;
+  ACTIVE = 1;
+  INACTIVE = 2;
+  SUSPENDED = 3;
+}
 
 message Account {
   int64 id = 1;
@@ -46,8 +52,9 @@ message Account {
   string title = 7;
   string role = 8;
   int64 owner_id = 9;
-  google.protobuf.Timestamp created_at = 10;
-  google.protobuf.Timestamp updated_at = 11;
+ AccountStatus status = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
 }
 
 message AccountReq {

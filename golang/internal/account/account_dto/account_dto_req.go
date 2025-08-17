@@ -15,19 +15,18 @@ type RegisterUserRequest struct {
 	Email    string `json:"email" validate:"required,email,uniqueemail" example:"john.doe@example.com"`
 	Password string `json:"password" validate:"required,password" example:"SecurePass123!"`
 }
-
-// CreateUserRequest represents the user creation request payload
 type CreateUserRequest struct {
-	 ID       int64  `json:"id"`  
-	BranchID int64  `json:"branch_id" validate:"required" example:"1"`
-	Name     string `json:"name" validate:"required,min=2,max=100" example:"John Doe"`
-	Email    string `json:"email" validate:"required,email,uniqueemail" example:"john.doe@example.com"`
-	Password string `json:"password" validate:"required,password" example:"SecurePass123!"`
-	Avatar   string `json:"avatar,omitempty" example:"https://example.com/avatar.jpg"`
-	Title    string `json:"title,omitempty" example:"Manager"`
-	Role     string `json:"role" validate:"required,role" example:"admin"`
-	OwnerID  int64  `json:"owner_id,omitempty" example:"1"`
+	BranchID int64  `json:"branch_id"`
+	Name     string `json:"name" validate:"required,min=2,max=100"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,strongpassword"`
+	Avatar   string `json:"avatar,omitempty" validate:"omitempty,url"`
+	Title    string `json:"title,omitempty" validate:"omitempty,max=200"`
+	Role     string `json:"role" validate:"required,userrole"`
+	OwnerID  int64  `json:"owner_id,omitempty"`
 }
+// CreateUserRequest represents the user creation request payload
+
 
 // UpdateUserRequest represents the user update request payload
 type UpdateUserRequest struct {

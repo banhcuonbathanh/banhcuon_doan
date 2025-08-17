@@ -347,13 +347,6 @@ func (h *BaseAccountHandler) alertOpsTeam(operation string, statusCode int, cont
 // COMPLETE HTTP HANDLER EXAMPLES
 // ============================================================================
 
-// CreateUserRequest represents the user creation request structure
-type CreateUserRequest struct {
-	Name     string `json:"name" validate:"required,min=2,max=100"`
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,strongpassword"`
-	Role     string `json:"role" validate:"required,userrole"`
-}
 
 // HandleGetUser demonstrates a complete HTTP handler using the unified approach
 func (h *BaseAccountHandler) HandleGetUser(w http.ResponseWriter, r *http.Request) {

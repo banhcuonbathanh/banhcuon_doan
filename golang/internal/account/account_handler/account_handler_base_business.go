@@ -317,35 +317,34 @@ func (h *BaseAccountHandler) updateUserProfile(ctx context.Context, userID int64
 
 // validateAccountStatus checks if account is in valid state for operations
 func (h *BaseAccountHandler) validateAccountStatus(user *pb.Account) error {
-	// Check if account is active
-	if user.Status != nil && *user.Status != "active" {
-		return errorcustom.NewBusinessLogicErrorWithContext(
-			h.domain,
-			"account_inactive",
-			"Account is not active",
-			map[string]interface{}{
-				"user_id": user.Id,
-				"status":  *user.Status,
-			},
-		)
-	}
-	
-	// Check if account is verified (if verification is required)
-	if h.config.IsEmailVerificationRequired() && !h.isAccountVerified(user) {
-		return errorcustom.NewBusinessLogicErrorWithContext(
-			h.domain,
-			"account_unverified",
-			"Account email verification required",
-			map[string]interface{}{
-				"user_id": user.Id,
-				"email":   user.Email,
-			},
-		)
-	}
-	
-	return nil
+    // Check if account is active
+    if user.Status != pb.AccountStatus_ACTIVE {  // Compare directly with enum value
+        return errorcustom.NewBusinessLogicErrorWithContext(
+            h.domain,
+            "account_inactive",
+            "Account is not active",
+            map[string]interface{}{
+                "user_id": user.Id,
+                "status":  user.Status.String(), // Convert enum to string for logging
+            },
+        )
+    }
+    
+    // Check if account is verified (if verification is required)
+    if h.config.IsEmailVerificationRequired() && !h.isAccountVerified(user) {
+        return errorcustom.NewBusinessLogicErrorWithContext(
+            h.domain,
+            "account_unverified",
+            "Account email verification required",
+            map[string]interface{}{
+                "user_id": user.Id,
+                "email":   user.Email,
+            },
+        )
+    }
+    
+    return nil
 }
-
 // validateUpdatePermissions checks if user can update specific fields
 func (h *BaseAccountHandler) validateUpdatePermissions(requestingUserID int64, updates map[string]interface{}) error {
 	// Get requesting user
