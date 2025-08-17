@@ -24,64 +24,50 @@ type BaseAccountHandler struct {
 	logger       *logger.Logger
 	config       *utils_config.Config
 	domain       string
-	errorHandler *utils_config.DomainErrorHandler
+
+	// REPLACE this old error handler
+	// errorHandler *utils_config.DomainErrorHandler
+
+	// WITH the new UnifiedErrorHandler
+	errorHandler *errorcustom.UnifiedErrorHandler
 
 	requestID    string
 }
-
 // User represents a user entity for business logic operations
 
 
-// NewBaseHandler creates a new base account handler with comprehensive domain-aware setup
 func NewBaseHandler(userClient pb.AccountServiceClient, config *utils_config.Config) *BaseAccountHandler {
-	domain := "account" 
+	domain := errorcustom.DomainAccount
 	
-	// Create handler-specific logger with domain context
+	// Create logger with context
 	handlerLogger := logger.NewHandlerLogger()
 	handlerLogger.AddGlobalField("component", "account_handler")
 	handlerLogger.AddGlobalField("layer", "handler")
 	handlerLogger.AddGlobalField("domain", domain)
 	
-	// Initialize validator with custom validations
+	// Initialize validator
 	v := validator.New()
 	
-	// Register domain-aware custom validation functions
-	logger.Debug("Registering domain-aware validation functions", map[string]interface{}{
-		"validations": []string{"password", "role", "uniqueemail"},
-		"component":   "account_handler",
-		"domain":      domain,
-	})
+	// Register only the validators you actually need and have implemented
+	if err := registerAccountValidators(v, domain); err != nil {
+		handlerLogger.Warning("Some custom validators failed to register", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
 	
-	// Register custom validators with domain context
-	v.RegisterValidation("password", func(fl validator.FieldLevel) bool {
-		return ValidatePasswordWithDomain(fl, domain)
-	})
-	v.RegisterValidation("role", ValidateRole)
-	v.RegisterValidation("uniqueemail", ValidateEmailUniqueWithDomain(userClient, domain))
-	
-	// Register the enhanced email format validator
-	v.RegisterValidation("email", errorcustom.ValidateEmailFormat)
-
-	// Create domain-aware error handler
-	errorHandler := utils_config.NewDomainAwareErrorHandler(config)
-
 	handler := &BaseAccountHandler{
 		userClient:   userClient,
 		validator:    v,
 		logger:       handlerLogger,
 		config:       config,
 		domain:       domain,
-		errorHandler: errorHandler,
+		errorHandler: errorcustom.NewUnifiedErrorHandler(),
 	}
 
-	logger.Info("Base account handler initialized successfully", map[string]interface{}{
-		"component":            "account_handler",
-		"domain":               domain,
-		"validator_setup":      true,
-		"custom_validations":   3,
-		"grpc_client_ready":    userClient != nil,
-		"config_loaded":        config != nil,
-		"error_handler_ready":  errorHandler != nil,
+	handlerLogger.Info("Base account handler initialized", map[string]interface{}{
+		"domain":            domain,
+		"grpc_client_ready": userClient != nil,
+		"config_loaded":     config != nil,
 	})
 
 	return handler
@@ -161,38 +147,44 @@ func (h *BaseAccountHandler) getUserIDFromContext(ctx context.Context) (int64, e
 	return userID, nil
 }
 
-// getPaginationParams extracts pagination with domain-aware validation
 func (h *BaseAccountHandler) getPaginationParams(r *http.Request) (page, pageSize int32, err error) {
-	requestID := errorcustom.GetRequestIDFromContext(r.Context())
-	
-	// Use the enhanced pagination utility with domain context
-	limit, offset, err := errorcustom.GetPaginationParamsWithDomain(r, h.domain)
+	// Use the unified error handler for consistent parameter parsing
+	limit, offset, err := h.errorHandler.ParsePaginationParams(r)
 	if err != nil {
+		// Error is already properly formatted by the error handler
 		return 0, 0, err
+	}
+	
+	// Handle edge case: avoid division by zero
+	if limit == 0 {
+		limit = 10 // default page size
 	}
 	
 	// Convert offset-based to page-based pagination
 	page = int32((offset / limit) + 1)
 	pageSize = int32(limit)
 	
-	// Log pagination parameters
-	h.logger.Debug("Pagination parameters processed", map[string]interface{}{
-		"page":       page,
-		"page_size":  pageSize,
-		"limit":      limit,
-		"offset":     offset,
-		"domain":     h.domain,
-		"request_id": requestID,
-	})
+	// Log pagination parameters (optional - you might want to remove this for performance)
+	if h.logger != nil {
+		requestID := errorcustom.GetRequestIDFromContext(r.Context())
+		h.logger.Debug("Pagination parameters processed", map[string]interface{}{
+			"page":       page,
+			"page_size":  pageSize,
+			"limit":      limit,
+			"offset":     offset,
+			"domain":     h.domain,
+			"request_id": requestID,
+		})
+	}
 	
 	return page, pageSize, nil
 }
 
 // getSortingParams extracts sorting parameters with domain-aware validation
-func (h *BaseAccountHandler) getSortingParams(r *http.Request, allowedFields []string) (sortBy, sortOrder string, err error) {
-	return errorcustom.GetSortParamsWithDomain(r, allowedFields, h.domain)
-}
 
+func (h *BaseAccountHandler) getSortingParams(r *http.Request, allowedFields []string) (sortBy, sortOrder string, err error) {
+	return h.errorHandler.GetSortParamsWithDomain(r, allowedFields, h.domain)
+}
 // ============================================================================
 // ENHANCED REQUEST VALIDATION
 // ============================================================================
@@ -1161,4 +1153,63 @@ func (h *BaseAccountHandler) getDiagnostics() map[string]interface{} {
 func (h *BaseAccountHandler) WithRequestID(r *http.Request) *BaseAccountHandler {
 	h.requestID = errorcustom.GetRequestIDFromContext(r.Context())
 	return h
+}
+
+func registerAccountValidators(v *validator.Validate, domain string) error {
+	validators := map[string]validator.Func{
+		"strong_password": validateStrongPassword,
+		"user_role":       validateUserRole,
+		// Add other validators as needed
+	}
+	
+	for name, validatorFunc := range validators {
+		if err := v.RegisterValidation(name, validatorFunc); err != nil {
+			return fmt.Errorf("failed to register %s validator: %w", name, err)
+		}
+	}
+	
+	return nil
+}
+
+// validateStrongPassword validates password strength
+func validateStrongPassword(fl validator.FieldLevel) bool {
+	password := fl.Field().String()
+	
+	if len(password) < 8 {
+		return false
+	}
+	
+	hasUpper := false
+	hasLower := false
+	hasNumber := false
+	hasSpecial := false
+	
+	for _, char := range password {
+		switch {
+		case char >= 'A' && char <= 'Z':
+			hasUpper = true
+		case char >= 'a' && char <= 'z':
+			hasLower = true
+		case char >= '0' && char <= '9':
+			hasNumber = true
+		case strings.ContainsRune("!@#$%^&*()_+-=[]{}|;:,.<>?", char):
+			hasSpecial = true
+		}
+	}
+	
+	return hasUpper && hasLower && hasNumber && hasSpecial
+}
+
+// validateUserRole validates user role
+func validateUserRole(fl validator.FieldLevel) bool {
+	role := fl.Field().String()
+	validRoles := []string{"admin", "user", "moderator", "guest"}
+	
+	for _, validRole := range validRoles {
+		if role == validRole {
+			return true
+		}
+	}
+	
+	return false
 }

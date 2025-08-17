@@ -3,6 +3,7 @@
 package errorcustom
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 )
@@ -449,3 +450,34 @@ func ShouldLogError(err error) bool {
 // 	}
 // 	return ""
 // }
+
+
+// HELPER FUNCTIONS FOR TYPE CONVERSION
+// ============================================================================
+
+// AsAPIError safely converts error to *APIError if possible
+func AsAPIError(err error) (*APIError, bool) {
+	if err == nil {
+		return nil, false
+	}
+	
+	if apiErr, ok := err.(*APIError); ok {
+		return apiErr, true
+	}
+	
+	// Try to convert using ConvertToAPIError
+	if apiErr := ConvertToAPIError(err); apiErr != nil {
+		return apiErr, true
+	}
+	
+	return nil, false
+}
+
+// MustAPIError converts error to *APIError, panics if not possible
+// Use with caution - only when you're certain the error is an APIError
+func MustAPIError(err error) *APIError {
+	if apiErr, ok := AsAPIError(err); ok {
+		return apiErr
+	}
+	panic(fmt.Sprintf("error is not an APIError: %T", err))
+}

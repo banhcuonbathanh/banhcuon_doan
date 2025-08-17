@@ -363,3 +363,6 @@ func NewRepositoryError(operation, table, message string, cause error) *SystemEr
 	return NewSystemError(DomainSystem, "repository", operation, fmt.Sprintf("%s on table %s", message, table), cause)
 }
 
+func NewHandlerErrorManager() *HandlerErrorManager {
+	return &HandlerErrorManager{}
+}

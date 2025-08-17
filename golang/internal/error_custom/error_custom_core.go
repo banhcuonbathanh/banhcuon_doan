@@ -10,7 +10,6 @@ import (
 	"time"
 )
 
-
 // Context keys for request metadata
 type contextKey string
 
@@ -23,7 +22,8 @@ const (
 // ============================================================================
 // CORE ERROR TYPES
 // ============================================================================
-
+// HandlerErrorManager manages HTTP handler layer errors
+type HandlerErrorManager struct{}
 // APIError represents a structured API error with detailed information
 type APIError struct {
 	Code       string                 `json:"code"`
@@ -550,3 +550,7 @@ func (ec *ErrorCollection) HasErrors() bool {
 func (ec *ErrorCollection) Count() int {
 	return len(ec.Errors)
 }
+
+// new 1212121
+
+// new 1212121
