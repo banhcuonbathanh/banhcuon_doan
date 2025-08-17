@@ -1155,21 +1155,7 @@ func (h *BaseAccountHandler) WithRequestID(r *http.Request) *BaseAccountHandler 
 	return h
 }
 
-func registerAccountValidators(v *validator.Validate, domain string) error {
-	validators := map[string]validator.Func{
-		"strong_password": validateStrongPassword,
-		"user_role":       validateUserRole,
-		// Add other validators as needed
-	}
-	
-	for name, validatorFunc := range validators {
-		if err := v.RegisterValidation(name, validatorFunc); err != nil {
-			return fmt.Errorf("failed to register %s validator: %w", name, err)
-		}
-	}
-	
-	return nil
-}
+
 
 // validateStrongPassword validates password strength
 func validateStrongPassword(fl validator.FieldLevel) bool {
@@ -1213,3 +1199,283 @@ func validateUserRole(fl validator.FieldLevel) bool {
 	
 	return false
 }
+
+
+func (h *BaseAccountHandler) ParseIDParam(r *http.Request, paramName string) (int64, error) {
+	return h.errorHandler.ParseIDParam(r, paramName)
+}
+
+
+
+// new 121212121212
+// ============================================================================
+// ENHANCED UNIFIED ERROR HANDLER USAGE IN BASE ACCOUNT HANDLER
+// ============================================================================
+
+
+
+
+
+
+
+// ============================================================================
+// 1. HTTP REQUEST/RESPONSE HANDLING - Using UnifiedErrorHandler
+// ============================================================================
+
+// HandleHTTPError - Use the unified handler's HTTP error handling
+func (h *BaseAccountHandler) HandleHTTPError(w http.ResponseWriter, r *http.Request, err error) {
+	// Let the UnifiedErrorHandler handle HTTP responses completely
+	h.errorHandler.HandleHTTPError(w, r, err)
+}
+
+
+
+// ParsePaginationParams - Use unified pagination parsing
+func (h *BaseAccountHandler) ParsePaginationParams(r *http.Request) (limit, offset int64, err error) {
+	return h.errorHandler.ParsePaginationParams(r)
+}
+
+// GetSortingParams - Use unified sorting parameter parsing
+func (h *BaseAccountHandler) GetSortingParams(r *http.Request, allowedFields []string) (sortBy, sortOrder string, err error) {
+	return h.errorHandler.GetSortParamsWithDomain(r, allowedFields, h.domain)
+}
+
+// DecodeJSONRequest - Use unified JSON decoding
+func (h *BaseAccountHandler) DecodeJSONRequest(r *http.Request, target interface{}) error {
+	return h.errorHandler.DecodeJSONRequest(r, target)
+}
+
+// RespondWithSuccess - Use unified success response
+func (h *BaseAccountHandler) RespondWithSuccess(w http.ResponseWriter, r *http.Request, data interface{}) {
+	// Note: You'll need to modify the UnifiedErrorHandler to accept context
+	// For now, we can use it directly but ideally pass the request context
+	h.errorHandler.RespondWithSuccess(w, data)
+}
+
+// ============================================================================
+// 2. DOMAIN-SPECIFIC ERROR CREATION - Leveraging Domain Errors
+// ============================================================================
+
+// Account domain errors using UnifiedErrorHandler
+func (h *BaseAccountHandler) NewAccountNotFoundError(accountID int64) error {
+	return h.errorHandler.NewAccountNotFoundError(accountID)
+}
+
+func (h *BaseAccountHandler) NewAccountClosedError(accountID int64) error {
+	return h.errorHandler.NewAccountClosedError(accountID)
+}
+
+// Auth domain errors
+func (h *BaseAccountHandler) NewInvalidTokenError(tokenType string) error {
+	return h.errorHandler.NewInvalidTokenError(tokenType)
+}
+
+func (h *BaseAccountHandler) NewSessionExpiredError(sessionID string) error {
+	return h.errorHandler.NewSessionExpiredError(sessionID)
+}
+
+func (h *BaseAccountHandler) NewInsufficientPermissionsError(userID int64, requiredPermission string, userPermissions []string) error {
+	return h.errorHandler.NewInsufficientPermissionsError(userID, requiredPermission, userPermissions)
+}
+
+// ============================================================================
+// 3. SERVICE LAYER ERROR HANDLING
+// ============================================================================
+
+// WrapRepositoryError - Handle repository errors with service context
+func (h *BaseAccountHandler) WrapRepositoryError(err error, operation string, context map[string]interface{}) error {
+	return h.errorHandler.WrapRepositoryError(err, h.domain, operation, context)
+}
+
+// HandleBusinessRuleViolation - Create business logic errors
+func (h *BaseAccountHandler) HandleBusinessRuleViolation(rule, description string, context map[string]interface{}) error {
+	return h.errorHandler.HandleBusinessRuleViolation(h.domain, rule, description, context)
+}
+
+// HandleExternalServiceError - Handle external service failures (like gRPC)
+func (h *BaseAccountHandler) HandleExternalServiceError(err error, service, operation string, retryable bool) error {
+	return h.errorHandler.HandleExternalServiceError(err, h.domain, service, operation, retryable)
+}
+
+// HandleContextError - Handle context-related errors
+func (h *BaseAccountHandler) HandleContextError(ctx context.Context, operation string) error {
+	return h.errorHandler.HandleContextError(ctx, h.domain, operation)
+}
+
+// ValidateBusinessRules - Validate multiple business rules
+func (h *BaseAccountHandler) ValidateBusinessRules(validations map[string]func() error) error {
+	return h.errorHandler.ValidateBusinessRules(h.domain, validations)
+}
+
+// ============================================================================
+// 4. DATABASE ERROR HANDLING
+// ============================================================================
+
+// HandleDatabaseError - Handle database-specific errors
+func (h *BaseAccountHandler) HandleDatabaseError(err error, table, operation string, context map[string]interface{}) error {
+	return h.errorHandler.HandleDatabaseError(err, h.domain, table, operation, context)
+}
+
+// ============================================================================
+// 5. GRPC ERROR HANDLING
+// ============================================================================
+
+// HandleGRPCError - Parse and handle gRPC errors
+func (h *BaseAccountHandler) HandleGRPCError(err error, operation string, context map[string]interface{}) error {
+	return h.errorHandler.ParseGRPCError(err, h.domain, operation, context)
+}
+
+
+
+
+
+func (h *BaseAccountHandler) checkEmailUniqueness(ctx context.Context, email string) error {
+	req := &pb.FindByEmailReq{Email: email}
+	resp, err := h.userClient.FindByEmail(ctx, req)
+	
+	if err != nil {
+		// If user not found, email is unique (good)
+		if strings.Contains(err.Error(), "not found") {
+			return nil
+		}
+		
+		// Handle other gRPC errors
+		return h.errorHandler.HandleExternalServiceError(
+			err, h.domain, "user_service", "check_email_uniqueness", true,
+		)
+	}
+	
+	// If we found a user, email is not unique
+	if resp != nil && resp.Account != nil {
+		return h.errorHandler.HandleBusinessRuleViolation(
+			h.domain,
+			"email_uniqueness",
+			"An account with this email already exists",
+			map[string]interface{}{
+				"email":              email,
+				"existing_account_id": resp.Account.Id,
+			},
+		)
+	}
+	
+	return nil
+}
+
+
+
+// ============================================================================
+// 11. COMPLETE HTTP HANDLER EXAMPLE
+// ============================================================================
+
+func (h *BaseAccountHandler) HandleGetUser(w http.ResponseWriter, r *http.Request) {
+	// Parse ID parameter using UnifiedErrorHandler
+	userID, err := h.errorHandler.ParseIDParam(r, "id")
+	if err != nil {
+		h.errorHandler.HandleHTTPError(w, r, err)
+		return
+	}
+	
+	// Get user ID from context
+	requestingUserID, err := h.getUserIDFromContext(r.Context())
+	if err != nil {
+		h.errorHandler.HandleHTTPError(w, r, err)
+		return
+	}
+	
+	// Check permissions
+	if err := h.checkUserPermissions(requestingUserID, "admin", "user_read"); err != nil {
+		h.errorHandler.HandleHTTPError(w, r, err)
+		return
+	}
+	
+	// Get user data
+	user, err := h.getUserByID(userID)
+	if err != nil {
+		h.errorHandler.HandleHTTPError(w, r, err)
+		return
+	}
+	
+	// Respond with success using UnifiedErrorHandler
+	h.errorHandler.RespondWithSuccess(w, user)
+}
+
+func (h *BaseAccountHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
+	var req CreateUserRequest
+	
+	// Decode JSON using UnifiedErrorHandler
+	if err := h.errorHandler.DecodeJSONRequest(r, &req); err != nil {
+		h.errorHandler.HandleHTTPError(w, r, err)
+		return
+	}
+	
+	// Validate request
+	if err := h.validateRequest(&req, "create_user", r); err != nil {
+		h.errorHandler.HandleHTTPError(w, r, err)
+		return
+	}
+	
+	// Validate business rules
+	if err := h.validateUserRegistrationRules(r.Context(), req.Email, req.Password); err != nil {
+		h.errorHandler.HandleHTTPError(w, r, err)
+		return
+	}
+	
+	// Create user via gRPC
+	grpcReq := &pb.CreateReq{
+		Name:     req.Name,
+		Email:    req.Email,
+		Password: req.Password,
+		Role:     req.Role,
+	}
+	
+	resp, err := h.userClient.Create(r.Context(), grpcReq)
+	if err != nil {
+		// Handle gRPC error using UnifiedErrorHandler
+		processedErr := h.errorHandler.ParseGRPCError(err, h.domain, "create_user", map[string]interface{}{
+			"email": req.Email,
+			"role":  req.Role,
+		})
+		h.errorHandler.HandleHTTPError(w, r, processedErr)
+		return
+	}
+	
+	// Success response
+	h.errorHandler.RespondWithSuccess(w, resp.Account)
+}
+
+// ============================================================================
+// 12. UTILITY METHODS
+// ============================================================================
+
+type CreateUserRequest struct {
+	Name     string `json:"name" validate:"required,min=2,max=100"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=8"`
+	Role     string `json:"role" validate:"required,oneof=admin teacher student"`
+}
+
+func (h *BaseAccountHandler) isValidEmail(email string) bool {
+	return strings.Contains(email, "@") && strings.Contains(email, ".")
+}
+
+func (h *BaseAccountHandler) isAllowedDomain(email string) bool {
+	allowedDomains := h.config.GetAllowedEmailDomains()
+	domain := strings.Split(email, "@")[1]
+	
+	for _, allowed := range allowedDomains {
+		if domain == allowed {
+			return true
+		}
+	}
+	return false
+}
+
+
+
+
+// Register validators (simplified version)
+func registerAccountValidators(v *validator.Validate, domain string) error {
+	// Register custom validators if needed
+	return nil
+}
+// new 12121212121212

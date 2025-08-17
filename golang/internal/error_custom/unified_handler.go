@@ -203,3 +203,5 @@ func (ueh *UnifiedErrorHandler) HandleError(domain string, err error) error {
 func (ueh *UnifiedErrorHandler) ParseGRPCError(err error, domain, operation string, context map[string]interface{}) error {
 	return ParseGRPCError(err, domain, operation, context)
 }
+
+
