@@ -12,7 +12,7 @@ import (
 	"english-ai-full/logger"
 )
 
-// ServiceErrorManager manages business logic layer errors
+
 type ServiceErrorManager struct{}
 
 // NewServiceErrorManager creates a new service error manager

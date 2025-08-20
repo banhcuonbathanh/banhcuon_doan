@@ -19,11 +19,6 @@ const (
 	ContextKeyUserID    contextKey = "user_id"
 )
 
-// ============================================================================
-// CORE ERROR TYPES
-// ============================================================================
-
-// APIError represents a structured API error with detailed information
 type APIError struct {
 	Code       string                 `json:"code"`
 	Message    string                 `json:"message"`
@@ -54,7 +49,7 @@ type DomainError interface {
 	GetErrorType() string
 }
 
-// BaseError provides common functionality for domain errors
+
 type BaseError struct {
 	Domain    string `json:"domain"`
 	ErrorType string `json:"error_type"`
@@ -68,11 +63,7 @@ func (b *BaseError) GetErrorType() string {
 	return b.ErrorType
 }
 
-// ============================================================================
-// GENERIC ERROR TYPES
-// ============================================================================
 
-// NotFoundError represents when a resource cannot be found
 type NotFoundError struct {
 	BaseError
 	ResourceType string                 `json:"resource_type"`
@@ -158,9 +149,7 @@ type SystemError struct {
 	Cause     error  `json:"-"`
 }
 
-// ============================================================================
-// CORE ERROR METHODS
-// ============================================================================
+
 
 // Error implements the error interface
 func (e *APIError) Error() string {
@@ -217,7 +206,7 @@ func (e *APIError) WithCause(cause error) *APIError {
 	return e
 }
 
-// WithRetryable sets whether the error is retryable
+
 func (e *APIError) WithRetryable(retryable bool) *APIError {
 	e.Retryable = retryable
 	return e
@@ -274,9 +263,7 @@ func (e *APIError) ToErrorResponse() ErrorResponse {
 	return response
 }
 
-// ============================================================================
-// GENERIC ERROR IMPLEMENTATIONS
-// ============================================================================
+
 
 func (e *NotFoundError) Error() string {
 	if e.ResourceID != nil {
@@ -509,44 +496,6 @@ func (er ErrorResponse) WithDetail(key string, value interface{}) ErrorResponse 
 	return er
 }
 
-// ============================================================================
-// CONSTRUCTOR FUNCTIONS
-// ============================================================================
-
-// NotFoundError constructors
-
-
-
-
-
-// DuplicateError constructor
-
-
-// AuthenticationError constructors
-
-
-
-
-// AuthorizationError constructor
-
-
-
-
-
-
-
-// ExternalServiceError constructor
-
-
-
-
-
-
-
-// NewErrorCollection creates a new error collection for a domain
-
-
-// Add adds an error to the collection
 func (ec *ErrorCollection) Add(err error) {
 	apiErr := ConvertToAPIError(err)
 	if apiErr != nil {

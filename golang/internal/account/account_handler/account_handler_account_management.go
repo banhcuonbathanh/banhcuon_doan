@@ -28,15 +28,15 @@ func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Requ
 	
 	// Get request ID for domain error handling
 	requestID := errorcustom.GetRequestIDFromContext(ctx)
-	domain := "account"
+
 	
 	handlerLog.Info("Account status update request started", baseContext)
 
-	// Parse ID parameter
-	id, err := errorcustom.ParseIDParam(r, "id", domain)
+	// Parse ID parameterx
+	id, err := h.errorHandler.ParseIDParam(r, "id", h.domain)
 if err != nil {
 	// Convert the error to APIError if it's not already one
-	var apiErr *errorcustom.APIError
+
 	if validationErr, ok := err.(*errorcustom.ValidationError); ok {
 		apiErr = validationErr.ToAPIError()
 	} else {
@@ -58,7 +58,7 @@ if err != nil {
 	// Log API request with error
 	logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
 	
-	errorcustom.HandleError(w, apiErr, domain)
+	h.errorHandler.HandleError(w, h.domain)
 	return
 }
 

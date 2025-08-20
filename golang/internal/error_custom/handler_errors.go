@@ -12,6 +12,14 @@ import (
 
 	"github.com/go-chi/chi"
 )
+func NewHandlerErrorManager() *HandlerErrorManager {
+    return &HandlerErrorManager{}
+}
+
+
+type HandlerErrorManager struct{}
+
+
 
 // RespondWithError converts various error types to APIError and responds appropriately
 func (h *HandlerErrorManager) RespondWithError(w http.ResponseWriter, err error, domain, requestID string) {
@@ -157,9 +165,7 @@ func (h *HandlerErrorManager) ParsePaginationParameters(r *http.Request, domain,
 	return limit, offset, nil
 }
 
-// ============================================================================
-// REQUEST BODY PARSING METHODS
-// ============================================================================
+
 
 // DecodeJSONRequest decodes JSON request body with error handling
 func (h *HandlerErrorManager) DecodeJSONRequest(r *http.Request, target interface{}, domain, requestID string) error {
@@ -387,21 +393,7 @@ func (h *HandlerErrorManager) isEmpty(value interface{}) bool {
 	}
 }
 
-// ============================================================================
-// UPDATED ERROR FACTORY
-// ============================================================================
 
-
-// ============================================================================
-// PLACEHOLDER DOMAIN ERROR MANAGERS (implement these properly)
-// ============================================================================
-
-
-
-// ============================================================================
-// UPDATED UNIFIED ERROR HANDLER - Now works correctly
-// ============================================================================
-// ParseSortingParameters safely parses sorting parameters from HTTP request
 func (hem *HandlerErrorManager) ParseSortingParameters(r *http.Request, allowedFields []string, domain, requestID string) (sortBy, sortOrder string, err error) {
 	// Get sort_by parameter
 	sortBy = r.URL.Query().Get("sort_by")

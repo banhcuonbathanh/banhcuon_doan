@@ -16,7 +16,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"english-ai-full/logger"
-	"github.com/go-chi/chi"
+
 	"github.com/go-playground/validator/v10"
 )
 
@@ -222,25 +222,9 @@ func DecodeJSON(body io.Reader, target interface{}, domain, requestID string) er
 	
 	return nil
 }
+// new 1212121
 
-// ParseIDParam securely parses ID parameter
-func ParseIDParam(r *http.Request, paramName, domain string) (int64, error) {
-	idStr := chi.URLParam(r, paramName)
-	if idStr == "" {
-		return 0, NewValidationError(domain, paramName, 
-			fmt.Sprintf("Missing required parameter: %s", paramName), nil)
-	}
 
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil || id <= 0 {
-		return 0, NewValidationError(domain, paramName,
-			fmt.Sprintf("Invalid %s: must be a positive integer", paramName), idStr)
-	}
-
-	return id, nil
-}
-
-// GetPaginationParams safely parses pagination parameters
 func GetPaginationParams(r *http.Request, domain string) (limit, offset int64, err error) {
 	limit = 10  // default
 	offset = 0  // default
@@ -268,9 +252,7 @@ func GetPaginationParams(r *http.Request, domain string) (limit, offset int64, e
 	return limit, offset, nil
 }
 
-// ============================================================================
-// VALIDATION UTILITIES
-// ============================================================================
+
 
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 
@@ -316,9 +298,7 @@ func ValidatePassword(password, domain string) error {
 	return nil
 }
 
-// ============================================================================
-// RESPONSE UTILITIES
-// ============================================================================
+
 
 // RespondWithJSON sends JSON response
 func RespondWithJSON(w http.ResponseWriter, statusCode int, data interface{}, requestID string) {

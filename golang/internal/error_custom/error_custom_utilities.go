@@ -129,9 +129,7 @@ func IsServerError(err error) bool {
 	return false
 }
 
-// ============================================================================
-// LEGACY ERROR DETECTION (for backward compatibility)
-// ============================================================================
+
 
 // IsUserNotFoundError determines if error is related to user not found
 func IsUserNotFoundError(err error) bool {
@@ -160,9 +158,7 @@ func IsPasswordError(err error) bool {
 	return isErrorByStringMatch(err, "password", "invalid credentials", "authentication failed")
 }
 
-// ============================================================================
-// GRPC ERROR PARSING
-// ============================================================================
+
 
 // ParseGRPCError parses gRPC error messages and creates appropriate domain errors
 func ParseGRPCError(err error, domain, operation string, context map[string]interface{}) error {
@@ -245,11 +241,7 @@ func ParseGRPCError(err error, domain, operation string, context map[string]inte
 	}
 }
 
-// ============================================================================
-// ERROR CONVERSION UTILITIES
-// ============================================================================
 
-// ConvertToAPIError converts various error types to APIError
 func ConvertToAPIError(err error) *APIError {
 	if err == nil {
 		return nil
@@ -293,11 +285,7 @@ func ConvertToAPIError(err error) *APIError {
 	}
 }
 
-// ============================================================================
-// ERROR AGGREGATION
-// ============================================================================
 
-// ErrorCollection represents a collection of errors
 type ErrorCollection struct {
 	Errors []error `json:"errors"`
 	Domain string  `json:"domain"`
@@ -473,8 +461,7 @@ func AsAPIError(err error) (*APIError, bool) {
 	return nil, false
 }
 
-// MustAPIError converts error to *APIError, panics if not possible
-// Use with caution - only when you're certain the error is an APIError
+
 func MustAPIError(err error) *APIError {
 	if apiErr, ok := AsAPIError(err); ok {
 		return apiErr

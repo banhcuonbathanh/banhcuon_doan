@@ -18,9 +18,7 @@ const (
 	// Add more domains as needed
 )
 
-// ============================================================================
-// BASE ERROR CODES
-// ============================================================================
+
 
 const (
 	// Generic error types
@@ -37,6 +35,8 @@ const (
 	ErrorTypeRateLimit     = "RATE_LIMIT"
 	ErrorTypeTimeout       = "TIMEOUT"
 	  ErrorTypeConflict        = "conflict_error" // ✅ Add this
+
+	   ErrorTypeDatabase = "DATABASE"
 )
 
 
@@ -128,12 +128,12 @@ func GetSystemCode(domain string) string {
 	return GetDomainCode(ErrorTypeSystem, domain)
 }
 
-// GetDatabaseCode returns domain-aware DATABASE_ERROR code
-// func GetDatabaseCode(domain string) string {
-// 	return GetDomainCode(ErrorTypeDatabase, domain)
-// }
 
-// GetRateLimitCode returns domain-aware RATE_LIMIT_ERROR code
+func GetDatabaseCode(domain string) string {
+	return GetDomainCode(ErrorTypeDatabase, domain)
+} 
+
+
 func GetRateLimitCode(domain string) string {
 	return GetDomainCode(ErrorTypeRateLimit, domain)
 }

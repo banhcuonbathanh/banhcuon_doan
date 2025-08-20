@@ -8,13 +8,6 @@ import (
 	
 )
 
-// ============================================================================
-// GENERIC ERROR CONSTRUCTORS
-// ============================================================================
-
-// ----------------------------
-// NOT FOUND ERRORS
-// ----------------------------
 
 // NewNotFoundError creates a not found error with resource ID
 func NewNotFoundError(domain, resourceType string, resourceID interface{}) *NotFoundError {
@@ -180,11 +173,9 @@ func NewConflictErrorWithContext(domain, resourceType, message string, context m
     }
 }
 
-// ----------------------------
-// RATE LIMIT ERRORS
-// ----------------------------
 
-// NewRateLimitErrorWithContext creates a rate limit error with context
+
+
 func NewRateLimitErrorWithContext(domain, operation, message string, context map[string]interface{}) *RateLimitError {
     return &RateLimitError{
         BaseError: BaseError{Domain: domain, ErrorType: ErrorTypeRateLimit},
@@ -221,9 +212,7 @@ func NewSystemError(domain, component, operation, message string, cause error) *
     }
 }
 
-// ============================================================================
-// USER DOMAIN ERROR CONSTRUCTORS (backward compatibility)
-// ============================================================================
+
 
 func NewUserNotFoundByID(id int64) *NotFoundError {
     return NewNotFoundError(DomainAccount, "user", id)
@@ -277,9 +266,7 @@ func NewBulkOperationLimitError(operation string, requested, maxAllowed int) *Bu
     })
 }
 
-// ============================================================================
-// SYSTEM DOMAIN ERROR CONSTRUCTORS
-// ============================================================================
+
 
 func NewDatabaseError(operation, table string, cause error) *SystemError {
     return NewSystemError(DomainSystem, "database", operation, fmt.Sprintf("Database operation failed on table '%s'", table), cause)
@@ -311,21 +298,8 @@ func NewRepositoryError(operation, table, message string, cause error) *SystemEr
     return NewSystemError(DomainSystem, "repository", operation, fmt.Sprintf("%s on table %s", message, table), cause)
 }
 
-func NewHandlerErrorManager() *HandlerErrorManager {
-    return &HandlerErrorManager{}
-}
 
 
-type HandlerErrorManager struct{}
-
-
-
-
-// Add this to your constructors.go file (paste.txt) in the appropriate section
-
-// ----------------------------
-// SECURITY ERRORS
-// ----------------------------
 
 // NewSecurityError creates a security-related error (unauthorized origin, suspicious activity, etc.)
 func NewSecurityError(domain, securityCode, message string) *BusinessLogicError {
