@@ -33,28 +33,34 @@ func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Requ
 	handlerLog.Info("Account status update request started", baseContext)
 
 	// Parse ID parameter
-	id, apiErr := errorcustom.ParseIDParamWithDomain(r, "id", domain)
-
-	if apiErr != nil {
-		context := utils.MergeContext(baseContext, map[string]interface{}{
-			"error": apiErr.Error(),
-		})
-		
-		logger.ErrorWithCause(
-			"Invalid ID parameter",
-			"invalid_parameter",
-			logger.LayerHandler,
-			"parse_id",
-			context,
-		)
-		
-		// Log API request with error
-		logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
-		
-		// FIXED: Use HandleDomainError instead of RespondWithAPIError
-		errorcustom.HandleDomainError(w, apiErr, domain, requestID)
-		return
+	id, err := errorcustom.ParseIDParam(r, "id", domain)
+if err != nil {
+	// Convert the error to APIError if it's not already one
+	var apiErr *errorcustom.APIError
+	if validationErr, ok := err.(*errorcustom.ValidationError); ok {
+		apiErr = validationErr.ToAPIError()
+	} else {
+		apiErr = errorcustom.ConvertToAPIError(err)
 	}
+	
+	context := utils.MergeContext(baseContext, map[string]interface{}{
+		"error": err.Error(),
+	})
+	
+	logger.ErrorWithCause(
+		"Invalid ID parameter",
+		"invalid_parameter",
+		logger.LayerHandler,
+		"parse_id",
+		context,
+	)
+	
+	// Log API request with error
+	logger.LogAPIRequest(r.Method, r.URL.Path, http.StatusBadRequest, time.Since(start), context)
+	
+	errorcustom.HandleError(w, apiErr, domain)
+	return
+}
 
 	// Add user ID to context for subsequent logs
 	baseContext["user_id"] = id
@@ -64,7 +70,7 @@ func (h *AccountHandler) UpdateAccountStatus(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Decode request body
-	if err := errorcustom.DecodeJSON(r.Body, &req, "update_account_status", false); err != nil {
+	if err := errorcustom.DecodeJSON(r.Body, &req, "update_account_status",h.domain); err != nil {
 		context := utils.MergeContext(baseContext, map[string]interface{}{
 			"error": err.Error(),
 		})

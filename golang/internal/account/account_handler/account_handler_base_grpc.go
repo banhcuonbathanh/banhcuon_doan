@@ -607,7 +607,7 @@ func (h *BaseAccountHandler) convertProtoStatusToString(status pb.AccountStatus)
 
 // validatePasswordStrength validates password meets security requirements
 func (h *BaseAccountHandler) validatePasswordStrength(password string) error {
-	policy := h.getPasswordPolicy()
+	policy := h.config.GetPasswordPolicy()
 	
 	errorCollection := errorcustom.NewErrorCollection(h.domain)
 	

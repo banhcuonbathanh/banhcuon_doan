@@ -5,6 +5,7 @@ package utils_config
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // Utility methods for the Config struct
@@ -336,3 +337,209 @@ func (c *Config) GetValidAccountStatusesMap() map[string]bool {
 // IsValidAccountStatus checks if the given status is valid
 
 
+// Add these methods to your Config struct in the utils_config package
+
+// GetAllowedOrigins returns the list of allowed origins from security config
+func (c *Config) GetAllowedOrigins() []string {
+	if c == nil || len(c.Security.AllowedOrigins) == 0 {
+		// Return default allowed origins if none configured
+		return []string{"http://localhost:3000", "http://localhost:8080"}
+	}
+	return c.Security.AllowedOrigins
+}
+
+// IsOriginAllowed checks if the given origin is in the allowed origins list
+func (c *Config) IsOriginAllowed(origin string) bool {
+	if origin == "" {
+		return true // Allow empty origin (same-origin requests)
+	}
+	
+	allowedOrigins := c.GetAllowedOrigins()
+	for _, allowed := range allowedOrigins {
+		if origin == allowed {
+			return true
+		}
+	}
+	return false
+}
+
+
+// GetAccountLockoutMinutes returns account lockout duration in minutes
+func (c *Config) GetAccountLockoutMinutes() int {
+	if c == nil {
+		return 15 // Default value
+	}
+	return c.Security.AccountLockoutMinutes
+}
+
+
+
+// IsCSRFEnabled returns whether CSRF protection is enabled
+func (c *Config) IsCSRFEnabled() bool {
+	if c == nil {
+		return true // Default to enabled for security
+	}
+	return c.Security.CSRFEnabled
+}
+
+// IsCORSEnabled returns whether CORS is enabled
+func (c *Config) IsCORSEnabled() bool {
+	if c == nil {
+		return false
+	}
+	return c.Security.CORSEnabled
+}
+
+// Add these methods to your utils_config_utility.go file
+
+// GetAllowedEmailDomains returns the list of allowed email domains from security config
+func (c *Config) GetAllowedEmailDomains() []string {
+	if c == nil || len(c.Security.AllowedEmailDomains) == 0 {
+		// Return empty slice if no restrictions configured (allows all domains)
+		return []string{}
+	}
+	return c.Security.AllowedEmailDomains
+}
+
+// IsEmailDomainAllowed checks if the given email domain is in the allowed domains list
+func (c *Config) IsEmailDomainAllowed(domain string) bool {
+	if domain == "" {
+		return false
+	}
+	
+	allowedDomains := c.GetAllowedEmailDomains()
+	
+	// If no restrictions are configured, allow all domains
+	if len(allowedDomains) == 0 {
+		return true
+	}
+	
+	for _, allowed := range allowedDomains {
+		if strings.EqualFold(domain, allowed) { // Case-insensitive comparison
+			return true
+		}
+	}
+	return false
+}
+
+// IsEmailAllowed checks if the complete email address has an allowed domain
+func (c *Config) IsEmailAllowed(email string) bool {
+	if !strings.Contains(email, "@") {
+		return false
+	}
+	
+	domain := strings.Split(email, "@")[1]
+	return c.IsEmailDomainAllowed(domain)
+}
+
+// GetAllowedEmailDomainsString returns allowed email domains as a comma-separated string
+func (c *Config) GetAllowedEmailDomainsString() string {
+	domains := c.GetAllowedEmailDomains()
+	if len(domains) == 0 {
+		return "All domains allowed"
+	}
+	return strings.Join(domains, ", ")
+}
+
+// Add these methods to your utils_config_utility.go file
+
+
+
+// GetSessionTimeout returns the session timeout duration
+
+
+// GetPasswordPolicy returns password policy settings as a map
+func (c *Config) GetPasswordPolicy() map[string]interface{} {
+	if c == nil {
+		// Return default password policy
+		return map[string]interface{}{
+			"min_length":      8,
+			"max_length":      128,
+			"require_upper":   true,
+			"require_lower":   true,
+			"require_numbers": true,
+			"require_special": true,
+			"special_chars":   "!@#$%^&*()_+-=[]{}|;:,.<>?/",
+		}
+	}
+	
+	return map[string]interface{}{
+		"min_length":      c.Password.MinLength,
+		"max_length":      c.Password.MaxLength,
+		"require_upper":   c.Password.RequireUppercase,
+		"require_lower":   c.Password.RequireLowercase,
+		"require_numbers": c.Password.RequireNumbers,
+		"require_special": c.Password.RequireSpecial,
+		"special_chars":   c.Password.SpecialChars,
+	}
+}
+
+// Additional password-related utility methods
+func (c *Config) GetMinPasswordLength() int {
+	if c == nil {
+		return 8
+	}
+	return c.Password.MinLength
+}
+
+func (c *Config) GetMaxPasswordLength() int {
+	if c == nil {
+		return 128
+	}
+	return c.Password.MaxLength
+}
+
+
+
+func (c *Config) GetPasswordSpecialChars() string {
+	if c == nil {
+		return "!@#$%^&*()_+-=[]{}|;:,.<>?/"
+	}
+	return c.Password.SpecialChars
+}
+
+
+
+// Add the missing field to your setDefaults() method:
+// In your setDefaults() function, make sure you have:
+// cm.viper.SetDefault("security.session_timeout", "24h")
+// cm.viper.SetDefault("security.max_login_attempts", 5)
+
+
+// Add these methods to your utils_config_utility.go file
+
+
+// GetSessionTimeout returns the session timeout duration
+func (c *Config) GetSessionTimeout() time.Duration {
+	if c == nil {
+		return 24 * time.Hour // Default fallback
+	}
+	
+	// SessionTimeout is already a time.Duration, no parsing needed
+	if c.Security.SessionTimeout > 0 {
+		return c.Security.SessionTimeout
+	}
+	
+	// Fallback to default if not set
+	return 24 * time.Hour
+}
+
+// GetPasswordPolicy returns password policy settings as a map
+
+
+
+
+
+
+
+func (c *Config) GetAccountLockoutDuration() time.Duration {
+	if c == nil {
+		return 15 * time.Minute
+	}
+	return time.Duration(c.Security.AccountLockoutMinutes) * time.Minute
+}
+
+// Add the missing field to your setDefaults() method:
+// In your setDefaults() function, make sure you have:
+// cm.viper.SetDefault("security.session_timeout", "24h")
+// cm.viper.SetDefault("security.max_login_attempts", 5)

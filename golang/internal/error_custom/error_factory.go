@@ -4,7 +4,13 @@
 // ============================================================================
 package errorcustom
 
+import (
 
+	
+
+	error_custom_domain "english-ai-full/internal/error_custom/domain"
+
+)
 
 // ErrorFactory provides centralized access to all error managers
 type ErrorFactory struct {
@@ -12,7 +18,7 @@ type ErrorFactory struct {
 	AuthErrors    *AuthDomainErrors
 	BranchErrors  *BranchDomainErrors
 	AdminErrors   *AdminDomainErrors
-	AccountErrors *AccountDomainErrors
+	AccountErrors *error_custom_domain.AccountDomainErrors
 
 	// Layer error managers
 	HandlerErrorMgr    *HandlerErrorManager  // ← Added this missing field

@@ -6,6 +6,7 @@ import (
 
 	"time"
 
+	"english-ai-full/internal/account/account_dto"
 	errorcustom "english-ai-full/internal/error_custom"
 	"english-ai-full/logger"
 	"english-ai-full/utils"
@@ -26,13 +27,13 @@ func (h *BaseAccountHandler) RespondWithSuccess(w http.ResponseWriter, r *http.R
 }
 // RespondWithError sends error response with domain context
 func (h *BaseAccountHandler) RespondWithError(w http.ResponseWriter, r *http.Request, err error) {
-	requestID := errorcustom.GetRequestIDFromContext(r.Context())
+
 	
 	// Process error through domain handler
 	processedErr := h.errorHandler.HandleError(h.domain, err)
 	
 	// Handle with domain context
-	errorcustom.HandleDomainError(w, processedErr, h.domain, requestID)
+	errorcustom.HandleError(w, processedErr, h.domain, )
 }
 
 // DecodeJSONRequest decodes JSON request using unified error handler
@@ -51,9 +52,8 @@ func (h *BaseAccountHandler) ParseIDParam(r *http.Request, paramName string) (in
 
 // parseStringParam safely parses string parameters with domain validation
 func (h *BaseAccountHandler) parseStringParam(r *http.Request, paramName string, minLen int) (string, error) {
-	return errorcustom.GetStringParamWithDomain(r, paramName, h.domain, minLen)
+	return h.errorHandler.ParseStringParam(r, paramName, minLen)
 }
-
 // getPaginationParams extracts pagination parameters
 func (h *BaseAccountHandler) getPaginationParams(r *http.Request) (page, pageSize int32, err error) {
 	limit, offset, err := h.errorHandler.ParsePaginationParams(r)
@@ -306,13 +306,13 @@ func (h *BaseAccountHandler) measureOperation(operation string, fn func() error)
 
 // handleDomainError handles errors with full domain context and configuration
 func (h *BaseAccountHandler) handleDomainError(w http.ResponseWriter, r *http.Request, err error) {
-	requestID := errorcustom.GetRequestIDFromContext(r.Context())
+
 	
 	// Process error through domain-aware error handler
 	processedErr := h.errorHandler.HandleError(h.domain, err)
 	
 	// Handle the processed error with domain context
-	errorcustom.HandleDomainError(w, processedErr, h.domain, requestID)
+	errorcustom.HandleError(w, processedErr, h.domain)
 }
 
 // alertOpsTeam sends alerts for critical errors in production
@@ -392,7 +392,7 @@ func (h *BaseAccountHandler) HandleCreateUser(w http.ResponseWriter, r *http.Req
 	opCtx := h.setupOperationContext(r, "create_user")
 	h.logOperationStart(opCtx)
 	
-	var req CreateUserRequest
+	var req account_dto.CreateUserRequest
 	
 	// Decode and validate JSON request
 	if err := h.validateAndDecodeRequest(r, &req, "create_user"); err != nil {
@@ -458,12 +458,18 @@ func (h *BaseAccountHandler) applyRateLimit(w http.ResponseWriter, r *http.Reque
 			},
 		)
 		
-		return errorcustom.NewRateLimitError(h.domain, operation)
+		message := fmt.Sprintf("Rate limit exceeded for operation: %s. Please try again later.", operation)
+		context := map[string]interface{}{
+			"client_ip": clientIP,
+			"operation": operation,
+			"timestamp": time.Now().UTC(),
+		}
+		
+		return errorcustom.NewRateLimitErrorWithContext(h.domain, operation, message, context)
 	}
 	
 	return nil
 }
-
 // isRateLimitEnabled checks if rate limiting is enabled
 func (h *BaseAccountHandler) isRateLimitEnabled() bool {
 	if h.config != nil {

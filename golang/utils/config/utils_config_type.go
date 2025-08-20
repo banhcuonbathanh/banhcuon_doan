@@ -99,6 +99,7 @@ type SecurityConfig struct {
 	CORSEnabled           bool          `mapstructure:"cors_enabled" json:"cors_enabled"`
 	AllowedOrigins        []string      `mapstructure:"allowed_origins" json:"allowed_origins"`
 	RequireHTTPS          bool          `mapstructure:"require_https" json:"require_https"`
+		AllowedEmailDomains   []string `mapstructure:"allowed_email_domains" yaml:"allowed_email_domains" json:"allowed_email_domains"`
 }
 
 // PasswordConfig holds password validation settings
@@ -273,5 +274,4 @@ type WebSocketDomainConfig struct {
 // }
 
 // new 1212121221
-
 

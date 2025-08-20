@@ -1,4 +1,3 @@
-
 // ============================================================================
 // FILE: golang/internal/error_custom/unified_handler.go
 // ============================================================================
@@ -6,9 +5,11 @@ package errorcustom
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strings"
 
-
+	"github.com/go-chi/chi"
 )
 
 // UnifiedErrorHandler provides a single interface for all error handling needs
@@ -171,7 +172,25 @@ func (ueh *UnifiedErrorHandler) RespondWithSuccess(w http.ResponseWriter, data i
 
 
 
+func (ueh *UnifiedErrorHandler) ParseStringParam(r *http.Request, paramName string, minLen int) (string, error) {
 
+	domain := GetDomainFromContext(r.Context())
+	
+	value := chi.URLParam(r, paramName)
+	if value == "" {
+		return "", NewValidationError(domain, paramName, 
+			fmt.Sprintf("Missing required parameter: %s", paramName), nil)
+	}
+
+	value = strings.TrimSpace(value)
+	
+	if len(value) < minLen {
+		return "", NewValidationError(domain, paramName,
+			fmt.Sprintf("%s must be at least %d characters long", paramName, minLen), value)
+	}
+
+	return value, nil
+}
 
 
 // HandleError processes errors through the unified error handling system

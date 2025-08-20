@@ -7,9 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"english-ai-full/internal/account/account_dto"
 	errorcustom "english-ai-full/internal/error_custom"
 	pb "english-ai-full/internal/proto_qr/account"
-	
+
 	"english-ai-full/utils"
 )
 
@@ -103,7 +104,7 @@ func (h *BaseAccountHandler) checkResourceOwnership(userID int64, resourceOwnerI
 // ============================================================================
 
 // registerNewUser handles the complete user registration process
-func (h *BaseAccountHandler) registerNewUser(ctx context.Context, req CreateUserRequest) (*pb.Account, error) {
+func (h *BaseAccountHandler) registerNewUser(ctx context.Context, req account_dto.CreateUserRequest) (*pb.Account, error) {
 	operation := "register_new_user"
 	opCtx := &OperationContext{
 		RequestID: errorcustom.GetRequestIDFromContext(ctx),
@@ -695,7 +696,7 @@ func (h *BaseAccountHandler) initiatePasswordReset(ctx context.Context, email st
 
 // completePasswordReset completes the password reset process
 func (h *BaseAccountHandler) completePasswordReset(ctx context.Context, resetToken, newPassword string) error {
-	operation := "complete_password_reset"
+
 	
 	// Step 1: Validate new password
 	if err := h.validatePasswordStrength(newPassword); err != nil {
@@ -724,10 +725,7 @@ func (h *BaseAccountHandler) completePasswordReset(ctx context.Context, resetTok
 // ============================================================================
 // USER SEARCH AND FILTERING
 // ============================================================================
-
-// searchUsers searches users based on criteria
 func (h *BaseAccountHandler) searchUsers(ctx context.Context, requestingUserID int64, criteria SearchCriteria) (*UserSearchResult, error) {
-	operation := "search_users"
 	
 	// Check permissions
 	if err := h.checkUserPermissions(requestingUserID, "admin", "user_search"); err != nil {
@@ -756,7 +754,7 @@ func (h *BaseAccountHandler) searchUsers(ctx context.Context, requestingUserID i
 	// Convert to search result
 	result := &UserSearchResult{
 		Users:      resp.Accounts,
-		TotalCount: resp.TotalCount,
+		TotalCount: int64(resp.Total) , // Fixed: Use resp.Total instead of resp.TotalCount
 		Page:       criteria.Page,
 		PageSize:   criteria.PageSize,
 	}
@@ -773,7 +771,7 @@ func (h *BaseAccountHandler) searchUsers(ctx context.Context, requestingUserID i
 
 // batchUpdateUsers updates multiple users with validation
 func (h *BaseAccountHandler) batchUpdateUsers(ctx context.Context, requestingUserID int64, updates map[int64]map[string]interface{}) (*BatchUpdateResult, error) {
-	operation := "batch_update_users"
+
 	
 	// Check permissions
 	if err := h.checkUserPermissions(requestingUserID, "admin", "user_batch_update"); err != nil {
@@ -946,13 +944,6 @@ type UserStatistics struct {
 // CONFIGURATION ACCESS HELPERS
 // ============================================================================
 
-// getSessionTimeout returns session timeout from configuration
-func (h *BaseAccountHandler) getSessionTimeout() time.Duration {
-	if h.config != nil {
-		return h.config.GetSessionTimeout()
-	}
-	return 24 * time.Hour // Default fallback
-}
 
 // isEmailVerificationRequired checks if email verification is required
 func (h *BaseAccountHandler) isEmailVerificationRequired() bool {
@@ -960,20 +951,4 @@ func (h *BaseAccountHandler) isEmailVerificationRequired() bool {
 		return h.config.IsEmailVerificationRequired()
 	}
 	return false
-}
-
-// getPasswordPolicy returns password policy configuration
-func (h *BaseAccountHandler) getPasswordPolicy() map[string]interface{} {
-	if h.config != nil {
-		return h.config.GetPasswordPolicy()
-	}
-	
-	// Default password policy
-	return map[string]interface{}{
-		"min_length":      8,
-		"require_upper":   true,
-		"require_lower":   true,
-		"require_numbers": true,
-		"require_special": true,
-	}
 }

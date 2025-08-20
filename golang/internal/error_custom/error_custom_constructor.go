@@ -318,3 +318,66 @@ func NewHandlerErrorManager() *HandlerErrorManager {
 
 type HandlerErrorManager struct{}
 
+
+
+
+// Add this to your constructors.go file (paste.txt) in the appropriate section
+
+// ----------------------------
+// SECURITY ERRORS
+// ----------------------------
+
+// NewSecurityError creates a security-related error (unauthorized origin, suspicious activity, etc.)
+func NewSecurityError(domain, securityCode, message string) *BusinessLogicError {
+    return &BusinessLogicError{
+        BaseError:   BaseError{Domain: domain, ErrorType: ErrorTypeBusinessLogic},
+        Rule:        securityCode,
+        Description: message,
+    }
+}
+
+// NewSecurityErrorWithContext creates a security error with additional context
+func NewSecurityErrorWithContext(domain, securityCode, message string, context map[string]interface{}) *BusinessLogicError {
+    return &BusinessLogicError{
+        BaseError:   BaseError{Domain: domain, ErrorType: ErrorTypeBusinessLogic},
+        Rule:        securityCode,
+        Description: message,
+        Context:     context,
+    }
+}
+
+// NewOriginNotAllowedError creates a specific error for unauthorized origins
+func NewOriginNotAllowedError(domain, origin string, allowedOrigins []string) *BusinessLogicError {
+    return NewSecurityErrorWithContext(
+        domain,
+        "unauthorized_origin",
+        "Request origin not allowed",
+        map[string]interface{}{
+            "origin":          origin,
+            "allowed_origins": allowedOrigins,
+        },
+    )
+}
+
+// NewSuspiciousActivityError creates an error for suspicious security activities
+func NewSuspiciousActivityError(domain, activity, reason string, context map[string]interface{}) *BusinessLogicError {
+    return NewSecurityErrorWithContext(
+        domain,
+        "suspicious_activity",
+        fmt.Sprintf("Suspicious %s detected: %s", activity, reason),
+        context,
+    )
+}
+
+// NewRateLimitExceededError creates a rate limit error
+func NewRateLimitExceededError(domain, operation string, limit int, timeWindow string) *RateLimitError {
+    return NewRateLimitErrorWithContext(
+        domain,
+        operation,
+        fmt.Sprintf("Rate limit exceeded: %d requests per %s", limit, timeWindow),
+        map[string]interface{}{
+            "limit":       limit,
+            "time_window": timeWindow,
+        },
+    )
+}

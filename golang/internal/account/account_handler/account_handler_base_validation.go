@@ -80,7 +80,7 @@ func (h *BaseAccountHandler) validateAndDecodeRequest(r *http.Request, target in
 	requestID := errorcustom.GetRequestIDFromContext(r.Context())
 	
 	// Decode JSON with domain context
-	if err := errorcustom.DecodeJSONWithDomain(r.Body, target, h.domain, requestID); err != nil {
+	if err := errorcustom.DecodeJSON(r.Body, target, h.domain, requestID); err != nil {
 		return err
 	}
 	
@@ -93,18 +93,51 @@ func (h *BaseAccountHandler) validateAndDecodeRequest(r *http.Request, target in
 // ============================================================================
 
 // validateBusinessRules validates domain-specific business rules
-func (h *BaseAccountHandler) validateBusinessRules(operation string, context map[string]interface{}) error {
+func (h *BaseAccountHandler) validateBusinessRules(r *http.Request, operation string, context map[string]interface{}) error {
+	ctx := r.Context()
+	
 	switch operation {
 	case "user_registration":
-		return h.validateUserRegistrationRules(context)
+		// Extract required parameters from context map
+		email := ""
+		password := ""
+		if e, ok := context["email"].(string); ok {
+			email = e
+		}
+		if p, ok := context["password"].(string); ok {
+			password = p
+		}
+		return h.validateUserRegistrationRules(ctx, email, password)
+		
 	case "user_login":
-		return h.validateUserLoginRules(context)
+		// Extract required parameters from context map
+		email := ""
+		password := ""
+		if e, ok := context["email"].(string); ok {
+			email = e
+		}
+		if p, ok := context["password"].(string); ok {
+			password = p
+		}
+		return h.validateUserLoginRules(ctx, email, password)
+		
 	case "user_update":
-		return h.validateUserUpdateRules(context)
+		// Extract required parameters from context map
+		userID := ""
+		field := ""
+		if id, ok := context["user_id"].(string); ok {
+			userID = id
+		}
+		if f, ok := context["field"].(string); ok {
+			field = f
+		}
+		return h.validateUserUpdateRules(ctx, userID, field)
+		
 	default:
 		return nil
 	}
 }
+
 
 // validateUserRegistrationRules applies user registration business rules
 func (h *BaseAccountHandler) validateUserRegistrationRules(context map[string]interface{}) error {

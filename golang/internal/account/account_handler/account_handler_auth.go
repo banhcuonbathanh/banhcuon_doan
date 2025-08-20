@@ -34,7 +34,7 @@ func (h *AccountHandler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 
 	var req account_dto.LoginRequest
-	if err := errorcustom.DecodeJSON(r.Body, &req, "login", false); err != nil {
+	if err := errorcustom.DecodeJSON(r.Body, &req, "login", h.domain); err != nil {
 		logger.Error("Failed to decode login request", map[string]interface{}{
 			"error":      err.Error(),
 			"ip":         clientIP,
@@ -390,7 +390,7 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	})
 
 	var req account_dto.RegisterUserRequest
-	if err := errorcustom.DecodeJSON(r.Body, &req, "register", false); err != nil {
+	if err := errorcustom.DecodeJSON(r.Body, &req, "register", h.domain); err != nil {
 		logger.Error("Failed to decode registration request", map[string]interface{}{
 			"error":      err.Error(),
 			"ip":         clientIP,
@@ -423,7 +423,7 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate password - FIXED: Use proper password validation
-	if err := errorcustom.ValidatePassword(req.Password); err != nil {
+	if err := errorcustom.ValidatePassword(req.Password, h.domain); err != nil {
 		logger.LogValidationError("password", "Password validation failed", "***hidden***")
 		
 		// Create detailed password validation error using the constructor
