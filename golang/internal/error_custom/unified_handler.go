@@ -35,50 +35,6 @@ func NewUnifiedErrorHandler() *UnifiedErrorHandler {
 
 
 
-// Auth Domain Errors
-func (ueh *UnifiedErrorHandler) NewInvalidTokenError(tokenType string) error {
-	return ueh.errorFactory.AuthErrors.NewInvalidTokenError(tokenType)
-}
-
-func (ueh *UnifiedErrorHandler) NewSessionExpiredError(sessionID string) error {
-	return ueh.errorFactory.AuthErrors.NewSessionExpiredError(sessionID)
-}
-
-func (ueh *UnifiedErrorHandler) NewInsufficientPermissionsError(userID int64, requiredPermission string, userPermissions []string) error {
-	return ueh.errorFactory.AuthErrors.NewInsufficientPermissionsError(userID, requiredPermission, userPermissions)
-}
-
-// Branch Domain Errors
-func (ueh *UnifiedErrorHandler) NewBranchNotFoundError(branchID int64) error {
-	return ueh.errorFactory.BranchErrors.NewBranchNotFoundError(branchID)
-}
-
-func (ueh *UnifiedErrorHandler) NewBranchNotFoundByCodeError(branchCode string) error {
-	return ueh.errorFactory.BranchErrors.NewBranchNotFoundByCodeError(branchCode)
-}
-
-func (ueh *UnifiedErrorHandler) NewBranchInactiveError(branchID int64) error {
-	return ueh.errorFactory.BranchErrors.NewBranchInactiveError(branchID)
-}
-
-// Admin Domain Errors
-func (ueh *UnifiedErrorHandler) NewInsufficientAdminPrivilegesError(userID int64, requiredRole, currentRole string) error {
-	return ueh.errorFactory.AdminErrors.NewInsufficientAdminPrivilegesError(userID, requiredRole, currentRole)
-}
-
-func (ueh *UnifiedErrorHandler) NewBulkOperationLimitError(operation string, requested, maxAllowed int) error {
-	return ueh.errorFactory.AdminErrors.NewBulkOperationLimitError(operation, requested, maxAllowed)
-}
-
-// Account Domain Errors
-func (ueh *UnifiedErrorHandler) NewAccountNotFoundError(accountID int64) error {
-	return ueh.errorFactory.AccountErrors.NewAccountNotFoundError(accountID)
-}
-
-func (ueh *UnifiedErrorHandler) NewAccountClosedError(accountID int64) error {
-	return ueh.errorFactory.AccountErrors.NewAccountClosedError(accountID)
-}
-
 // new 1212121212
 
 
