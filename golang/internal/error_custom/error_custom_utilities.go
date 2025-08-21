@@ -3,9 +3,13 @@
 package errorcustom
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // ============================================================================
@@ -467,4 +471,88 @@ func MustAPIError(err error) *APIError {
 		return apiErr
 	}
 	panic(fmt.Sprintf("error is not an APIError: %T", err))
+}
+
+// IsDuplicateError checks if the error is a duplicate resource error
+func IsDuplicateError(err error) bool {
+	if err == nil {
+		return false
+	}
+	
+	// Check for custom duplicate error type
+	var duplicateErr *DuplicateError
+	if errors.As(err, &duplicateErr) {
+		return true
+	}
+	
+	// Check error message for common duplicate patterns
+	errMsg := strings.ToLower(err.Error())
+	duplicatePatterns := []string{
+		"duplicate",
+		"already exists",
+		"unique constraint",
+		"duplicate key",
+		"duplicate entry",
+		"constraint violation",
+		"already registered",
+		"email already exists",
+	}
+	
+	for _, pattern := range duplicatePatterns {
+		if strings.Contains(errMsg, pattern) {
+			return true
+		}
+	}
+	
+	// Check for gRPC status codes that indicate duplicates
+	if status, ok := status.FromError(err); ok {
+		return status.Code() == codes.AlreadyExists
+	}
+	
+	return false
+}
+
+// IsRateLimitError checks if the error is a rate limiting error
+func IsRateLimitError(err error) bool {
+	if err == nil {
+		return false
+	}
+	
+	// Check for custom rate limit error type
+	var rateLimitErr *RateLimitError
+	if errors.As(err, &rateLimitErr) {
+		return true
+	}
+	
+	// Check error message for rate limit patterns
+	errMsg := strings.ToLower(err.Error())
+	rateLimitPatterns := []string{
+		"rate limit",
+		"rate exceeded",
+		"too many requests",
+		"quota exceeded",
+		"throttled",
+		"limit exceeded",
+		"request limit",
+		"api limit",
+	}
+	
+	for _, pattern := range rateLimitPatterns {
+		if strings.Contains(errMsg, pattern) {
+			return true
+		}
+	}
+	
+	// Check for gRPC status codes that indicate rate limiting
+	if status, ok := status.FromError(err); ok {
+		return status.Code() == codes.ResourceExhausted
+	}
+	
+	// Check for HTTP status code 429 in wrapped errors
+	var httpErr interface{ HTTPStatus() int }
+	if errors.As(err, &httpErr) {
+		return httpErr.HTTPStatus() == 429
+	}
+	
+	return false
 }

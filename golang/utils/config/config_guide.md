@@ -1,218 +1,381 @@
-# Go Configuration Management System - Complete Guide
+# Go Configuration Package Usage Guide
 
 ## Overview
+This package provides a comprehensive configuration management system for a Go application with hot-reloading, environment-specific overrides, and validation capabilities.
 
-This is a comprehensive configuration management system for a Go application called "English AI". It provides flexible configuration loading from YAML files and environment variables, with validation, hot-reloading, and support for multiple deployment environments.
+## Quick Start
 
-## Architecture
+### 1. Initialize Configuration
+```go
+// Initialize with config file
+err := InitializeConfig("./config/config.yaml")
+if err != nil {
+    panic(err)
+}
 
-The system is built around these core components:
+// Or use the must version that panics on error
+MustInitializeConfig("./config/config.yaml")
 
-- **ConfigManager**: Main configuration manager with hot-reloading capabilities
-- **Config Struct**: Type-safe configuration structure with validation
-- **Environment Overrides**: Environment-specific configuration handling
-- **Global Configuration**: Singleton pattern for application-wide access
-- **Backward Compatibility**: Legacy support for existing code
-
-## File Structure
-
+// Get the global config
+config := GetConfig()
 ```
-golang/utils/config/
-├── config.yaml                    # Default configuration file
-├── utils_config_manager.go        # Core configuration manager
-├── utils_config_type.go           # Configuration data structures
-├── utils_config_default.go       # Default configuration values
-├── utils_config_env.go            # Environment-specific overrides
-├── utils_config_global.go         # Global configuration access
-├── utils_config_interface.go      # Configuration interfaces
-├── utils_config_utility.go       # Helper utility methods
-└── simple.go                      # Backward compatibility layer
+
+### 2. Basic Usage Examples
+```go
+// Check environment
+if config.IsDevelopment() {
+    // Development-specific logic
+}
+
+// Get database URL
+dbURL := config.GetDatabaseURL()
+
+// Check if role is valid
+if config.IsValidRole("admin") {
+    // Allow access
+}
+
+// Get server address
+serverAddr := config.GetServerAddress()
+```
+
+## All Function Signatures
+
+### ConfigManager Functions
+
+#### Core Manager Functions
+```go
+func NewConfigManager() *ConfigManager {}
+
+func (cm *ConfigManager) Load(ctx context.Context, configPath string) (*Config, error) {}
+
+func (cm *ConfigManager) Reload(ctx context.Context) error {}
+
+func (cm *ConfigManager) Watch(ctx context.Context) error {}
+
+func (cm *ConfigManager) GetConfig() *Config {}
+
+func (cm *ConfigManager) RegisterCallback(callback ConfigChangeCallback) {}
+
+func (cm *ConfigManager) Validate() error {}
+
+func (cm *ConfigManager) Stop() error {}
+```
+
+#### Internal Manager Functions
+```go
+func (cm *ConfigManager) setDefaults() {}
+
+func (cm *ConfigManager) handleEnvironmentOverrides() error {}
+
+func (cm *ConfigManager) handleCommonEnvironmentVariables() {}
+
+func (cm *ConfigManager) handleDockerOverrides() error {}
+
+func (cm *ConfigManager) handleProductionOverrides() error {}
+
+func (cm *ConfigManager) handleTestingOverrides() error {}
+
+func (cm *ConfigManager) validateConfig(config *Config) error {}
+
+func (cm *ConfigManager) validateCrossFields(config *Config) error {}
+
+func (cm *ConfigManager) setEnvironmentDefaults(env string) {}
+```
+
+### Global Configuration Functions
+
+#### Initialization Functions
+```go
+func InitializeConfig(configPath string) error {}
+
+func MustInitializeConfig(configPath string) {}
+
+func GetConfig() *Config {}
+
+func GetConfigManager() *ConfigManager {}
+
+func ReloadGlobalConfig() error {}
+
+func IsConfigInitialized() bool {}
+```
+
+#### Legacy Support Functions
+```go
+func LoadServerLegacy() (*LegacyServerConfig, error) {}
+```
+
+### Config Utility Functions
+
+#### Environment Check Functions
+```go
+func (c *Config) IsDevelopment() bool {}
+
+func (c *Config) IsProduction() bool {}
+
+func (c *Config) IsStaging() bool {}
+
+func (c *Config) IsTesting() bool {}
+
+func (c *Config) IsDocker() bool {}
+
+func (c *Config) IsDebugEnabled() bool {}
+```
+
+#### Server Configuration Functions
+```go
+func (c *Config) GetServerAddress() string {}
+
+func (c *Config) GetGRPCAddress() string {}
+
+func (c *Config) IsHTTPSRequired() bool {}
+```
+
+#### Database Configuration Functions
+```go
+func (c *Config) GetDatabaseURL() string {}
+
+func (c *Config) GetDatabaseDSN() string {}
+```
+
+#### Security Configuration Functions
+```go
+func (c *Config) GetAllowedOrigins() []string {}
+
+func (c *Config) IsOriginAllowed(origin string) bool {}
+
+func (c *Config) GetAllowedOriginsString() string {}
+
+func (c *Config) GetAccountLockoutMinutes() int {}
+
+func (c *Config) GetAccountLockoutDuration() time.Duration {}
+
+func (c *Config) GetSessionTimeout() time.Duration {}
+
+func (c *Config) IsCSRFEnabled() bool {}
+
+func (c *Config) IsCORSEnabled() bool {}
+```
+
+#### Role and Status Validation Functions
+```go
+func (c *Config) IsValidRole(role string) bool {}
+
+func (c *Config) GetValidRolesString() string {}
+
+func (c *Config) IsValidAccountStatus(status string) bool {}
+
+func (c *Config) GetValidAccountStatusesString() string {}
+
+func (c *Config) GetValidAccountStatusesMap() map[string]bool {}
+```
+
+#### Email Configuration Functions
+```go
+func (c *Config) GetEmailFromAddress() string {}
+
+func (c *Config) GetSMTPAddress() string {}
+
+func (c *Config) IsEmailVerificationRequired() bool {}
+
+func (c *Config) GetAllowedEmailDomains() []string {}
+
+func (c *Config) IsEmailDomainAllowed(domain string) bool {}
+
+func (c *Config) IsEmailAllowed(email string) bool {}
+
+func (c *Config) GetAllowedEmailDomainsString() string {}
+```
+
+#### Password Policy Functions
+```go
+func (c *Config) GetPasswordPolicy() map[string]interface{} {}
+
+func (c *Config) GetMinPasswordLength() int {}
+
+func (c *Config) GetMaxPasswordLength() int {}
+
+func (c *Config) GetPasswordSpecialChars() string {}
+
+func (c *Config) IsPasswordComplexityRequired() bool {}
+```
+
+#### JWT Configuration Functions
+```go
+func (c *Config) GetJWTSecretBytes() []byte {}
+```
+
+#### Rate Limiting Functions
+```go
+func (c *Config) IsRateLimitEnabled() bool {}
+```
+
+#### External API Functions
+```go
+func (c *Config) GetAnthropicAPIURL() string {}
+
+func (c *Config) GetQuanAnAddress() string {}
+```
+
+#### Domain Configuration Functions
+```go
+func (c *Config) IsDomainEnabled(domain string) bool {}
+
+func (c *Config) GetDefaultDomain() string {}
+
+func (c *Config) GetEnabledDomains() []string {}
+
+func (c *Config) GetMaxLoginAttempts() int {}
+```
+
+#### Error Handling Functions
+```go
+func (c *Config) GetDomainErrorLogLevel() string {}
+
+func (c *Config) ShouldIncludeStackTrace() bool {}
+
+func (c *Config) ShouldSanitizeSensitiveData() bool {}
+```
+
+### Domain Error Handling Functions
+```go
+func NewDomainAwareErrorHandler(config *Config) *DomainErrorHandler {}
+
+func (deh *DomainErrorHandler) HandleError(domain string, err error) error {}
+
+func (deh *DomainErrorHandler) handleUserError(err error) error {}
+
+func (deh *DomainErrorHandler) handleSystemError(err error) error {}
+
+func InitializeDomainErrorHandling() {}
+```
+
+### Utility Functions
+```go
+func getEnvOrDefault(key, defaultValue string) string {}
+```
+
+### Interface Types
+```go
+type ConfigChangeCallback func(oldConfig, newConfig *Config) error
+
+type ConfigLoader interface {
+    Load(ctx context.Context, configPath string) (*Config, error)
+    Reload(ctx context.Context) error
+    Watch(ctx context.Context) error
+    GetConfig() *Config
+    RegisterCallback(callback ConfigChangeCallback)
+    Validate() error
+    Stop() error
+}
 ```
 
 ## Configuration Structure
 
-### Main Configuration Sections
+### Main Configuration Fields
+- `Environment` - Current environment (development, production, staging, testing, docker)
+- `AppName` - Application name
+- `Version` - Application version
+- `Debug` - Debug mode flag
+- `Server` - Server configuration (ports, timeouts, TLS)
+- `Database` - Database connection settings
+- `Security` - Security policies and settings
+- `Password` - Password validation rules
+- `Pagination` - Default pagination settings
+- `JWT` - JSON Web Token configuration
+- `Email` - Email service settings
+- `RateLimit` - Rate limiting configuration
+- `ExternalAPIs` - External service configurations
+- `Logging` - Logging configuration
+- `ValidRoles` - List of valid user roles
+- `ValidAccountStatuses` - List of valid account statuses
+- `Domains` - Domain-specific configurations
+- `ErrorHandling` - Error handling policies
 
-1. **Environment Settings**
-   - `environment`: development, staging, production, testing, docker
-   - `app_name`: Application name
-   - `version`: Application version
-   - `debug`: Debug mode flag
+## Environment Variables Support
 
-2. **Server Configuration**
-   - HTTP server settings (address, port, timeouts)
-   - gRPC server settings
-   - TLS configuration
+The package automatically reads from environment variables with the `ENGLISH_AI_` prefix:
+- `ENGLISH_AI_DATABASE_HOST` → `database.host`
+- `ENGLISH_AI_JWT_SECRET_KEY` → `jwt.secret_key`
+- `ENGLISH_AI_EXTERNAL_APIS_ANTHROPIC_API_KEY` → `external_apis.anthropic.api_key`
 
-3. **Database Configuration**
-   - PostgreSQL connection settings
-   - Connection pool configuration
-   - SSL mode settings
+Common environment variables:
+- `APP_ENV` - Override environment
+- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
+- `JWT_SECRET`
+- `ANTHROPIC_API_KEY`
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`
 
-4. **Security Settings**
-   - Login attempt limits
-   - Session timeouts
-   - CORS and CSRF configuration
-   - HTTPS requirements
+## Configuration File Structure
 
-5. **Authentication (JWT)**
-   - Secret key management
-   - Token expiration settings
-   - Refresh token configuration
+The package supports YAML configuration files with environment-specific overrides:
 
-6. **External APIs**
-   - Anthropic API configuration
-   - QuanAn service configuration
+```yaml
+# Main configuration
+environment: development
+app_name: "English AI"
+# ... other settings
 
-7. **Additional Features**
-   - Email configuration
-   - Rate limiting
-   - Pagination settings
-   - Logging configuration
+---
+# Production overrides
+environment: "production"
+# Production-specific overrides
+```
 
-## Quick Start Guide
+## Usage Patterns
 
-### 1. Basic Usage
-
+### 1. Application Startup
 ```go
-package main
-
-import (
-    "context"
-    "log"
-    "your-app/utils/config"
-)
-
 func main() {
     // Initialize configuration
-    err := utils_config.InitializeConfig("./config/config.yaml")
+    err := InitializeConfig("./config/config.yaml")
     if err != nil {
-        log.Fatal("Failed to initialize config:", err)
+        log.Fatal("Failed to load config:", err)
     }
-
-    // Get configuration
-    config := utils_config.GetConfig()
     
-    // Use configuration
-    fmt.Printf("Server will run on %s\n", config.GetServerAddress())
-    fmt.Printf("Database URL: %s\n", config.GetDatabaseURL())
+    config := GetConfig()
+    
+    // Start server
+    server := NewServer(config.GetServerAddress())
+    server.Start()
 }
 ```
 
-### 2. Using Configuration Manager Directly
-
+### 2. Configuration Watching
 ```go
-package main
-
-import (
-    "context"
-    "your-app/utils/config"
-)
-
-func main() {
-    // Create config manager
-    cm := utils_config.NewConfigManager()
+func setupConfigWatching(ctx context.Context) {
+    cm := GetConfigManager()
     
-    // Load configuration
-    ctx := context.Background()
-    config, err := cm.Load(ctx, "./config.yaml")
-    if err != nil {
-        panic(err)
-    }
-    
-    // Use configuration
-    fmt.Printf("App Name: %s\n", config.AppName)
-    fmt.Printf("Environment: %s\n", config.Environment)
-}
-```
-
-### 3. Hot Reloading (Advanced)
-
-```go
-func setupConfigWithHotReload() {
-    cm := utils_config.NewConfigManager()
-    ctx := context.Background()
-    
-    // Load initial configuration
-    config, err := cm.Load(ctx, "./config.yaml")
-    if err != nil {
-        panic(err)
-    }
-    
-    // Register change callback
-    cm.RegisterCallback(func(oldConfig, newConfig *utils_config.Config) error {
-        fmt.Println("Configuration changed!")
-        // Handle configuration changes here
+    // Register callback for config changes
+    cm.RegisterCallback(func(old, new *Config) error {
+        log.Println("Configuration changed, reloading...")
         return nil
     })
     
-    // Start watching for changes
-    err = cm.Watch(ctx)
-    if err != nil {
-        panic(err)
+    // Start watching
+    if err := cm.Watch(ctx); err != nil {
+        log.Fatal("Failed to start config watcher:", err)
     }
 }
 ```
 
-## Environment Configuration
-
-### Supported Environments
-
-- **development**: Local development with debug enabled
-- **staging**: Pre-production environment
-- **production**: Production environment with security enforced
-- **testing**: Unit/integration testing
-- **docker**: Containerized deployment
-
-### Environment Variable Override
-
-The system automatically reads environment variables with the prefix `ENGLISH_AI_`. For example:
-
-```bash
-# Override database settings
-export ENGLISH_AI_DATABASE_HOST=prod-db.example.com
-export ENGLISH_AI_DATABASE_PASSWORD=secret123
-
-# Override JWT secret
-export ENGLISH_AI_JWT_SECRET_KEY=your-secure-secret
-
-# Override API keys
-export ENGLISH_AI_EXTERNAL_APIS_ANTHROPIC_API_KEY=your-api-key
+### 3. Domain-Specific Error Handling
+```go
+func handleUserRequest(domain string) {
+    config := GetConfig()
+    errorHandler := NewDomainAwareErrorHandler(config)
+    
+    // Use domain-aware error handling
+    if err := someOperation(); err != nil {
+        return errorHandler.HandleError("user", err)
+    }
+}
 ```
 
-### Common Environment Variables
+This configuration system provides a robust, flexible way to manage application settings across different environments with comprehensive validation and hot-reloading capabilities.
 
-```bash
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=password
-DB_NAME=english_ai
 
-# Server
-SERVER_PORT=8080
-GRPC_PORT=50051
-
-# Security
-JWT_SECRET=your-jwt-secret
-
-# External Services
-ANTHROPIC_API_KEY=your-anthropic-key
-QUAN_AN_ADDRESS=localhost:8081
-
-# Email
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-```
-
-## Configuration File Examples
-
-### Development Configuration (config.yaml)
-
-```yaml
+# Development configuration
 environment: development
 app_name: "English AI"
 version: "1.0.0"
@@ -221,378 +384,311 @@ debug: true
 server:
   address: "localhost"
   port: 8888
+  grpc_address: "localhost" 
   grpc_port: 50051
   read_timeout: "30s"
   write_timeout: "30s"
+  idle_timeout: "120s"
+  tls_enabled: false
 
 database:
   host: "localhost"
   port: 5432
   name: "english_ai_dev"
   user: "postgres"
-  password: ""  # Set via environment
+  password: "" # Set via environment variable
   ssl_mode: "disable"
   max_connections: 25
+  max_idle_conns: 10
+  conn_max_lifetime: "1h"
+  conn_max_idle_time: "10m"
 
 security:
   max_login_attempts: 5
+  account_lockout_minutes: 15
   session_timeout: "24h"
+  csrf_enabled: true
   cors_enabled: true
   allowed_origins:
     - "http://localhost:3000"
+    - "http://localhost:8080"
     - "http://localhost:8888"
+  require_https: false
+
+password:
+  min_length: 8
+  max_length: 128
+  require_uppercase: true
+  require_lowercase: true
+  require_numbers: true
+  require_special: true
+  special_chars: "!@#$%^&*()_+-=[]{}|;:,.<>?/"
+
+pagination:
+  default_size: 10
+  max_size: 100
+  limit: 1000
 
 jwt:
-  secret_key: "your-secret-key"
+  secret_key: "kIOopC3C7wA8DQH6FOF2Jfn+UZP8Q02nGxr/EgFMOmo="
   expiration_hours: 24
+  refresh_token_expiration_days: 30
   issuer: "english-ai-dev"
+  algorithm: "HS256"
+  refresh_threshold: "2h"
+
+email:
+  verification_enabled: false
+  verification_expiry_hours: 24
+  require_verification: false
+  smtp_host: "localhost"
+  smtp_port: 1025
+  from_address: "noreply@english-ai.dev"
+  from_name: "English AI Development"
+  templates:
+    verification_template: "./templates/email/verification.html"
+    welcome_template: "./templates/email/welcome.html"
+    reset_password_template: "./templates/email/reset_password.html"
+
+rate_limit:
+  enabled: true
+  per_minute: 60
+  per_hour: 3600
+  burst_size: 10
+  window_size: "1m"
 
 external_apis:
   anthropic:
-    api_key: ""  # Set via environment
+    api_key: "dummy_key_for_dev"
     api_url: "https://api.anthropic.com"
     timeout: "30s"
+    max_retries: 3
   quan_an:
     address: "localhost:8081"
     timeout: "10s"
-```
+    max_retries: 3
 
-### Production Configuration
+logging:
+  level: "debug"
+  format: "text"
+  output: "stdout"
+  max_size: 100
+  max_backups: 3
+  max_age: 28
+  compress: false
 
-```yaml
-environment: production
-debug: false
+# Global valid roles and statuses (applies to ALL environments)
+valid_roles:
+  - "admin"
+  - "user"
+  - "manager"
+  - "guest"    # Added guest role from your original code
 
-server:
-  address: "0.0.0.0"
-  port: 8080
-  tls_enabled: true
-  cert_file: "/etc/ssl/certs/app.crt"
-  key_file: "/etc/ssl/private/app.key"
+valid_account_statuses:
+  - "active"
+  - "inactive"
+  - "suspended"
+  - "pending"
 
+# Domain-specific configuration
+domains:
+  enabled:
+    - "account"
+    - "branch"
+    - "order"
+    - "delivery"
+    - "dish"
+    - "table"
+    - "guest"
+    - "set"
+    - "websocket"
+    - "system"
+    - "image"
+  default: "system"
+  
+  account:
+    max_login_attempts: 5
+    password_complexity: true
+    jwt_required: true
+    
+  branch:
+    validation_required: true
+    cache_enabled: true
+    
+  order:
+    status_transitions: true
+    websocket_notifications: true
+    payment_validation: true
+    
+  delivery:
+    real_time_tracking: true
+    status_updates: true
+    websocket_required: true
+    
+  websocket:
+    jwt_validation: true
+    message_size_limit: "1MB"
+    connection_timeout: "30s"
+
+# Error handling configuration
+error_handling:
+  include_stack_trace: true    # true for development
+  sanitize_sensitive_data: false # false for development
+  log_level: "debug"
+
+---
+# Production overrides (this section overrides above values in production)
+environment: "production"
+
+# Production-specific security
 security:
   require_https: true
-  csrf_enabled: true
-  allowed_origins:
-    - "https://yourdomain.com"
+  max_login_attempts: 3  # Stricter in production
 
-database:
-  ssl_mode: "require"
-  max_connections: 50
+# Production error handling
+error_handling:
+  include_stack_trace: false
+  sanitize_sensitive_data: true
+  log_level: "info"
 
+# Production logging
 logging:
   level: "info"
   format: "json"
-```
 
-## Utility Methods
+# Production can have different valid roles if needed
+# valid_roles:
+#   - "admin"
+#   - "user"
+#   - "manager"
+#   # Note: No "guest" role in production
 
-The configuration struct provides many utility methods:
+domains:
+  account:
+    max_login_attempts: 3  # Different from development
 
-```go
-config := utils_config.GetConfig()
+    package utils_config
 
-// Environment checks
-if config.IsProduction() {
-    // Production-specific logic
+// setDefaults sets default configuration values
+func (cm *ConfigManager) setDefaults() {
+	// Environment settings
+	cm.viper.SetDefault("environment", EnvDevelopment)
+	cm.viper.SetDefault("app_name", "English AI")
+	cm.viper.SetDefault("version", "1.0.0")
+	cm.viper.SetDefault("debug", false)
+
+	// Server settings
+	cm.viper.SetDefault("server.address", "localhost")
+	cm.viper.SetDefault("server.port", 8080)
+	cm.viper.SetDefault("server.grpc_address", "localhost")
+	cm.viper.SetDefault("server.grpc_port", 50051)
+	cm.viper.SetDefault("server.read_timeout", "30s")
+	cm.viper.SetDefault("server.write_timeout", "30s")
+	cm.viper.SetDefault("server.idle_timeout", "120s")
+	cm.viper.SetDefault("server.tls_enabled", false)
+
+	// Database settings
+	cm.viper.SetDefault("database.host", "localhost")
+	cm.viper.SetDefault("database.port", 5432)
+	cm.viper.SetDefault("database.name", "english_ai")
+	cm.viper.SetDefault("database.user", "postgres")
+	cm.viper.SetDefault("database.password", "")
+	cm.viper.SetDefault("database.ssl_mode", "disable")
+	cm.viper.SetDefault("database.max_connections", 25)
+	cm.viper.SetDefault("database.max_idle_conns", 10)
+	cm.viper.SetDefault("database.conn_max_lifetime", "1h")
+	cm.viper.SetDefault("database.conn_max_idle_time", "10m")
+	// Set a default database URL
+	cm.viper.SetDefault("database.url", "postgres://postgres:@localhost:5432/english_ai?sslmode=disable")
+
+	// Security settings
+	cm.viper.SetDefault("security.max_login_attempts", 5)
+	cm.viper.SetDefault("security.account_lockout_minutes", 15)
+	cm.viper.SetDefault("security.session_timeout", "24h")
+	cm.viper.SetDefault("security.csrf_enabled", true)
+	cm.viper.SetDefault("security.cors_enabled", true)
+	cm.viper.SetDefault("security.allowed_origins", []string{"http://localhost:3000"})
+	cm.viper.SetDefault("security.require_https", false)
+
+	// Password settings
+	cm.viper.SetDefault("password.min_length", 8)
+	cm.viper.SetDefault("password.max_length", 128)
+	cm.viper.SetDefault("password.require_uppercase", true)
+	cm.viper.SetDefault("password.require_lowercase", true)
+	cm.viper.SetDefault("password.require_numbers", true)
+	cm.viper.SetDefault("password.require_special", true)
+	cm.viper.SetDefault("password.special_chars", "!@#$%^&*()_+-=[]{}|;:,.<>?/")
+
+	// Pagination settings
+	cm.viper.SetDefault("pagination.default_size", 10)
+	cm.viper.SetDefault("pagination.max_size", 100)
+	cm.viper.SetDefault("pagination.limit", 1000)
+
+	// JWT settings
+	cm.viper.SetDefault("jwt.secret_key", "kIOopC3C7wA8DQH6FOF2Jfn+UZP8Q02nGxr/EgFMOmo=")
+	cm.viper.SetDefault("jwt.expiration_hours", 24)
+	cm.viper.SetDefault("jwt.refresh_token_expiration_days", 30)
+	cm.viper.SetDefault("jwt.issuer", "english-ai")
+	cm.viper.SetDefault("jwt.algorithm", "HS256")
+	cm.viper.SetDefault("jwt.refresh_threshold", "2h")
+
+	// Email settings
+	cm.viper.SetDefault("email.verification_enabled", false) // Changed to false for development
+	cm.viper.SetDefault("email.verification_expiry_hours", 24)
+	cm.viper.SetDefault("email.require_verification", false)
+	cm.viper.SetDefault("email.smtp_host", "localhost")
+	cm.viper.SetDefault("email.smtp_port", 587)
+	cm.viper.SetDefault("email.smtp_user", "")
+	cm.viper.SetDefault("email.smtp_password", "")
+	cm.viper.SetDefault("email.from_address", "noreply@english-ai.dev") // Default valid email
+	cm.viper.SetDefault("email.from_name", "English AI")
+
+	// Rate limiting settings
+	cm.viper.SetDefault("rate_limit.enabled", true)
+	cm.viper.SetDefault("rate_limit.per_minute", 60)
+	cm.viper.SetDefault("rate_limit.per_hour", 3600)
+	cm.viper.SetDefault("rate_limit.burst_size", 10)
+	cm.viper.SetDefault("rate_limit.window_size", "1m")
+
+	// External API settings
+	cm.viper.SetDefault("external_apis.anthropic.api_key", "dummy_key_for_dev") // Default dummy key
+	cm.viper.SetDefault("external_apis.anthropic.api_url", "https://api.anthropic.com")
+	cm.viper.SetDefault("external_apis.anthropic.timeout", "30s")
+	cm.viper.SetDefault("external_apis.anthropic.max_retries", 3)
+	cm.viper.SetDefault("external_apis.quan_an.address", "localhost:8081") // Default address
+	cm.viper.SetDefault("external_apis.quan_an.timeout", "10s")
+	cm.viper.SetDefault("external_apis.quan_an.max_retries", 3)
+
+	// Logging settings
+	cm.viper.SetDefault("logging.level", "info")
+	cm.viper.SetDefault("logging.format", "json")
+	cm.viper.SetDefault("logging.output", "stdout")
+	cm.viper.SetDefault("logging.max_size", 100)
+	cm.viper.SetDefault("logging.max_backups", 3)
+	cm.viper.SetDefault("logging.max_age", 28)
+	cm.viper.SetDefault("logging.compress", true)
+
+	// Valid roles
+	cm.viper.SetDefault("valid_roles", []string{"admin", "user", "manager"})
+
+	// Domain configuration for multi-domain error handling
+	cm.viper.SetDefault("domains.enabled", []string{
+		"account",
+	
+		"auth",
+		"admin",
+		
+		"system",
+	})
+
+		// Domain-specific settings
+	cm.viper.SetDefault("domains.default", "system")
+	cm.viper.SetDefault("domains.error_tracking.enabled", true)
+	cm.viper.SetDefault("domains.error_tracking.log_level", "info")
+
+	// Valid roles (existing)
+cm.viper.SetDefault("valid_roles", []string{"admin", "user", "manager"})
+
+// Add valid account statuses
+cm.viper.SetDefault("valid_account_statuses", []string{"active", "inactive", "suspended", "pending"})
 }
-
-if config.IsDevelopment() {
-    // Development-specific logic
-}
-
-// Address helpers
-serverAddr := config.GetServerAddress()      // "localhost:8888"
-grpcAddr := config.GetGRPCAddress()         // "localhost:50051"
-dbURL := config.GetDatabaseURL()            // Full PostgreSQL URL
-
-// Validation helpers
-if config.IsValidRole("admin") {
-    // Role is valid
-}
-
-validRoles := config.GetValidRolesString()   // "admin, user, manager"
-
-// Feature flags
-if config.IsEmailVerificationRequired() {
-    // Email verification is enabled
-}
-
-if config.IsRateLimitEnabled() {
-    // Rate limiting is active
-}
-```
-
-## Validation
-
-The system includes comprehensive validation:
-
-### Struct Tag Validation
-
-```go
-type ServerConfig struct {
-    Port int `validate:"required,min=1,max=65535"`
-    Address string `validate:"required"`
-}
-```
-
-### Cross-Field Validation
-
-- Password max length must be greater than min length
-- Pagination default size cannot exceed max size
-- JWT secret must be at least 32 characters in production
-- HTTPS must be enabled in production
-
-### Custom Validation
-
-```go
-func validateConfig(config *Config) error {
-    if config.Environment == "production" {
-        if !config.Security.RequireHTTPS {
-            return fmt.Errorf("HTTPS required in production")
-        }
-    }
-    return nil
-}
-```
-
-## Backward Compatibility
-
-For existing code, the system provides a compatibility layer:
-
-```go
-// Old way (still supported)
-import "your-app/utils"
-
-func main() {
-    config, err := utils.LoadServer()
-    if err != nil {
-        panic(err)
-    }
-    
-    fmt.Println("Database URL:", config.DatabaseURL)
-    fmt.Println("Server Address:", config.ServerAddress)
-    fmt.Println("JWT Secret:", config.JwtSecret)
-}
-```
-
-## Best Practices
-
-### 1. Environment-Specific Configs
-
-Create separate config files for different environments:
-
-```
-config/
-├── config.yaml              # Base configuration
-├── config.development.yaml  # Development overrides
-├── config.production.yaml   # Production overrides
-└── config.testing.yaml      # Testing overrides
-```
-
-### 2. Secret Management
-
-Never commit secrets to version control:
-
-```yaml
-# In config file
-database:
-  password: ""  # Empty, will be set via environment
-
-jwt:
-  secret_key: ""  # Empty, will be set via environment
-```
-
-```bash
-# In environment/CI/CD
-export ENGLISH_AI_DATABASE_PASSWORD=actual-password
-export ENGLISH_AI_JWT_SECRET_KEY=actual-secret
-```
-
-### 3. Configuration Validation
-
-Always validate configuration on startup:
-
-```go
-func main() {
-    err := utils_config.InitializeConfig("./config.yaml")
-    if err != nil {
-        log.Fatal("Invalid configuration:", err)
-    }
-    
-    config := utils_config.GetConfig()
-    if err := validateBusinessLogic(config); err != nil {
-        log.Fatal("Business logic validation failed:", err)
-    }
-}
-```
-
-### 4. Configuration Changes
-
-Use callbacks to handle configuration changes gracefully:
-
-```go
-cm.RegisterCallback(func(oldConfig, newConfig *Config) error {
-    // Restart services that depend on configuration
-    if oldConfig.Database.Host != newConfig.Database.Host {
-        return restartDatabaseConnection(newConfig.Database)
-    }
-    return nil
-})
-```
-
-## Deployment Considerations
-
-### Docker Deployment
-
-Set environment to "docker":
-
-```bash
-export ENGLISH_AI_ENVIRONMENT=docker
-```
-
-The system will automatically:
-- Set server address to "0.0.0.0" 
-- Update service addresses for container networking
-
-### Kubernetes Deployment
-
-Use ConfigMaps and Secrets:
-
-```yaml
-# configmap.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: english-ai-config
-data:
-  config.yaml: |
-    environment: production
-    server:
-      port: 8080
-    # ... rest of config
-
----
-# secret.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: english-ai-secrets
-data:
-  jwt-secret: <base64-encoded-secret>
-  db-password: <base64-encoded-password>
-```
-
-### Health Checks
-
-Implement configuration health checks:
-
-```go
-func healthCheck() error {
-    config := utils_config.GetConfig()
-    
-    // Check if configuration is loaded
-    if config == nil {
-        return fmt.Errorf("configuration not loaded")
-    }
-    
-    // Validate configuration
-    cm := utils_config.GetConfigManager()
-    if err := cm.Validate(); err != nil {
-        return fmt.Errorf("configuration invalid: %w", err)
-    }
-    
-    return nil
-}
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Configuration Not Found**
-   ```
-   Error: config file not found
-   ```
-   - Ensure config.yaml exists in the correct path
-   - Check file permissions
-   - Verify working directory
-
-2. **Validation Errors**
-   ```
-   Error: validation failed: Field 'Port' failed on 'min' tag
-   ```
-   - Check configuration values against validation rules
-   - Ensure required fields are set
-   - Verify data types match expected formats
-
-3. **Environment Variable Override Not Working**
-   ```
-   Environment variable not being read
-   ```
-   - Use correct prefix: `ENGLISH_AI_`
-   - Use underscores for nested fields: `ENGLISH_AI_DATABASE_HOST`
-   - Check environment variable is exported
-
-### Debug Mode
-
-Enable debug logging to troubleshoot configuration issues:
-
-```yaml
-debug: true
-logging:
-  level: debug
-```
-
-This will output detailed information about configuration loading and validation.
-
-## Migration Guide
-
-### From Simple Configuration
-
-If you're using the old simple configuration:
-
-**Before:**
-```go
-config, err := utils.LoadServer()
-dbURL := config.DatabaseURL
-```
-
-**After:**
-```go
-utils_config.InitializeConfig("./config.yaml")
-config := utils_config.GetConfig()
-dbURL := config.GetDatabaseURL()
-```
-
-### Adding New Configuration
-
-To add new configuration options:
-
-1. Update the struct in `utils_config_type.go`:
-```go
-type Config struct {
-    // ... existing fields
-    NewFeature NewFeatureConfig `mapstructure:"new_feature" json:"new_feature"`
-}
-
-type NewFeatureConfig struct {
-    Enabled bool   `mapstructure:"enabled" json:"enabled"`
-    APIKey  string `mapstructure:"api_key" json:"-" validate:"required"`
-}
-```
-
-2. Add defaults in `utils_config_default.go`:
-```go
-cm.viper.SetDefault("new_feature.enabled", false)
-cm.viper.SetDefault("new_feature.api_key", "")
-```
-
-3. Update config.yaml:
-```yaml
-new_feature:
-  enabled: true
-  api_key: ""  # Set via environment
-```
-
-This comprehensive guide should help developers understand and effectively use the configuration management system.

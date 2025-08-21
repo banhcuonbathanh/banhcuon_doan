@@ -6,20 +6,7 @@ package account_dto
 
 import "time"
 
-// ===== CORE DATA MODELS =====
-// type UserProfile struct {
-// 	ID        int64     `json:"id"`
-// 	BranchID  int64     `json:"branch_id"`
-// 	Name      string    `json:"name"`
-// 	Email     string    `json:"email"`
-// 	Avatar    string    `json:"avatar"`
-// 	Title     string    `json:"title"`
-// 	Role      string    `json:"role"`
-// 	OwnerID   int64     `json:"owner_id"`
-// 	Status    string    `json:"status"`
-// 	CreatedAt time.Time `json:"created_at"`
-// 	UpdatedAt time.Time `json:"updated_at"`
-// }
+
 
 type UserSummary struct {
 	ID       int64  `json:"id"`

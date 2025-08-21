@@ -19,7 +19,7 @@ func RegisterRoutesAccountHandler(r *chi.Mux, accountHandler *AccountHandler) {
 	
 	r.Route("/accounts", func(r chi.Router) {
 		// Add domain-specific middleware
-		r.Use(error_custom.DomainMiddleware("account")) // or "account" 
+
 		r.Use(error_custom.RateLimitMiddleware("account"))
 		
 		// Authentication routes
