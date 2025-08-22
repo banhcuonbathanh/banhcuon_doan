@@ -58,6 +58,17 @@ type Config struct {
 	Domains       DomainConfig        `mapstructure:"domains" json:"domains"`
 	ErrorHandling ErrorHandlingConfig `mapstructure:"error_handling" json:"error_handling"`
 	ValidAccountStatuses []string `mapstructure:"valid_account_statuses" json:"valid_account_statuses" validate:"required,min=1,dive,required"`
+
+
+	
+
+	// new 
+    // Enhanced error handling configuration
+    ErrorHandling ErrorHandlingConfig `mapstructure:"error_handling" yaml:"error_handling"`
+    
+    // Domain-specific error policies
+    DomainErrorPolicies map[string]DomainErrorPolicy `mapstructure:"domain_error_policies" yaml:"domain_error_policies"`
+	// new 
 	
 }
 
