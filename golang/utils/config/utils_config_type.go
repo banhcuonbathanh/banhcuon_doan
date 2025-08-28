@@ -56,7 +56,7 @@ type Config struct {
 
 	// Domain configuration
 	Domains       DomainConfig        `mapstructure:"domains" json:"domains"`
-	ErrorHandling ErrorHandlingConfig `mapstructure:"error_handling" json:"error_handling"`
+
 	ValidAccountStatuses []string `mapstructure:"valid_account_statuses" json:"valid_account_statuses" validate:"required,min=1,dive,required"`
 
 
@@ -285,4 +285,13 @@ type WebSocketDomainConfig struct {
 // }
 
 // new 1212121221
+
+type DomainErrorPolicy struct {
+	MaxRetries      int           `mapstructure:"max_retries" yaml:"max_retries"`
+	RetryDelay      time.Duration `mapstructure:"retry_delay" yaml:"retry_delay"`
+	CircuitBreaker  bool          `mapstructure:"circuit_breaker" yaml:"circuit_breaker"`
+	LogLevel        string        `mapstructure:"log_level" yaml:"log_level" validate:"oneof=debug info warn error"`
+	AlertThreshold  int           `mapstructure:"alert_threshold" yaml:"alert_threshold"`
+	EnableFallback  bool          `mapstructure:"enable_fallback" yaml:"enable_fallback"`
+}
 
