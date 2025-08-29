@@ -1,273 +1,221 @@
-// logger/types.go - Core types, constants, and structures
+// logger/types.go - Additional types and interfaces (non-core)
 package logger
 
 import (
-	
-	"time"
+	"english-ai-full/logger/core"
+	"fmt"
+	"sync"
 )
 
-// Level represents log levels with proper ordering
-type Level int
-
-const (
-	DebugLevel Level = iota
-	InfoLevel
-	WarnLevel
-	ErrorLevel
-	FatalLevel
-)
-
-var levelNames = map[Level]string{
-	DebugLevel: "DEBUG",
-	InfoLevel:  "INFO", 
-	WarnLevel:  "WARN",
-	ErrorLevel: "ERROR",
-	FatalLevel: "FATAL",
-}
-
-func (l Level) String() string {
-	if name, exists := levelNames[l]; exists {
-		return name
-	}
-	return "UNKNOWN"
-}
-
-// Output formats
-const (
-	FormatJSON   = "json"
-	FormatText   = "text"
-	FormatPretty = "pretty"
-)
-
-// Layer constants for better organization
-const (
-	LayerHandler    = "handler"
-	LayerService    = "service" 
-	LayerRepository = "repository"
-	LayerMiddleware = "middleware"
-	LayerAuth       = "auth"
-	LayerValidation = "validation"
-	LayerCache      = "cache"
-	LayerDatabase   = "database"
-	LayerExternal   = "external"
-	LayerSecurity   = "security"
-)
-
-// LogEntry represents a structured log entry with enhanced metadata
-type LogEntry struct {
-	Timestamp   time.Time              `json:"timestamp"`
-	Level       Level                  `json:"level"`
-	Message     string                 `json:"message"`
-	Fields      map[string]interface{} `json:"fields,omitempty"`
-	Caller      string                 `json:"caller,omitempty"`
-	RequestID   string                 `json:"request_id,omitempty"`
-	UserID      string                 `json:"user_id,omitempty"`
-	SessionID   string                 `json:"session_id,omitempty"`
-	TraceID     string                 `json:"trace_id,omitempty"`
-	Component   string                 `json:"component,omitempty"`
-	Operation   string                 `json:"operation,omitempty"`
-	Duration    time.Duration          `json:"duration_ns,omitempty"`
-	ErrorCode   string                 `json:"error_code,omitempty"`
-	Environment string                 `json:"environment,omitempty"`
-	Cause       string                 `json:"cause,omitempty"`
-	Layer       string                 `json:"layer,omitempty"`
-}
-
-// // Logger represents the main logger with enhanced capabilities
-// type Logger struct {
-// 	level         Level
-// 	outputManager OutputManager
-// 	asyncEnabled  bool
-// 	buffer        LogBuffer
-// 	contextFields map[string]interface{}
-// 	component     string
-// 	layer         string
-// 	operation     string
-// 	environment   string
-// 	mu            sync.RWMutex
-// }
-
-// OutputManager interface for managing multiple outputs
-// type OutputManager interface {
-// 	WriteToAll(entry *LogEntry) error
-// 	WriteToOutput(name string, entry *LogEntry) error
-// 	AddOutput(name string, output Output) error
-// 	RemoveOutput(name string) error
-// 	Close() error
-// }
-
-// Output interface for different output destinations
-// type Output interface {
-// 	Write(entry *LogEntry) error
-// 	Close() error
-// }
-
-// LogBuffer interface for async processing
+// LogBuffer interface for async processing (additional implementation)
 type LogBuffer interface {
-	Add(entry *LogEntry) error
+	Add(entry *core.LogEntry) error
 	Flush() error
 	Close() error
 }
 
-// NewLogger creates a new enhanced logger instance
-// func NewLogger() *Logger {
-// 	return &Logger{
-// 		level:         InfoLevel,
-// 		contextFields: make(map[string]interface{}),
-// 		environment:   "development",
-// 	}
-// }
-
-// Configuration methods
-func (l *Logger) SetLevel(level Level) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.level = level
+// SimpleLogBuffer - basic in-memory buffer implementation
+type SimpleLogBuffer struct {
+	entries []*core.LogEntry
+	maxSize int
+	mu      sync.Mutex
 }
 
-func (l *Logger) SetComponent(component string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.component = component
-}
-
-func (l *Logger) SetLayer(layer string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.layer = layer
-}
-
-func (l *Logger) SetOperation(operation string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.operation = operation
-}
-
-func (l *Logger) SetEnvironment(env string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.environment = env
-}
-
-func (l *Logger) AddContextField(key string, value interface{}) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.contextFields[key] = value
-}
-
-func (l *Logger) RemoveContextField(key string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	delete(l.contextFields, key)
-}
-
-// Core logging methods
-func (l *Logger) Debug(message string, fields ...map[string]interface{}) {
-	l.log(DebugLevel, message, fields...)
-}
-
-func (l *Logger) Info(message string, fields ...map[string]interface{}) {
-	l.log(InfoLevel, message, fields...)
-}
-
-func (l *Logger) Warn(message string, fields ...map[string]interface{}) {
-	l.log(WarnLevel, message, fields...)
-}
-
-func (l *Logger) Error(message string, fields ...map[string]interface{}) {
-	l.log(ErrorLevel, message, fields...)
-}
-
-func (l *Logger) Fatal(message string, fields ...map[string]interface{}) {
-	l.log(FatalLevel, message, fields...)
-	// Note: In production, this might call os.Exit(1)
-}
-
-// Enhanced logging methods
-func (l *Logger) ErrorWithCause(message, cause, layer, operation string, fields ...map[string]interface{}) {
-	mergedFields := l.mergeFields(fields...)
-	mergedFields["cause"] = cause
-	mergedFields["layer"] = layer  
-	mergedFields["operation"] = operation
-	l.log(ErrorLevel, message, mergedFields)
-}
-
-func (l *Logger) WarnWithCause(message, cause, layer, operation string, fields ...map[string]interface{}) {
-	mergedFields := l.mergeFields(fields...)
-	mergedFields["cause"] = cause
-	mergedFields["layer"] = layer
-	mergedFields["operation"] = operation
-	l.log(WarnLevel, message, mergedFields)
-}
-
-func (l *Logger) InfoWithOperation(message, layer, operation string, fields ...map[string]interface{}) {
-	mergedFields := l.mergeFields(fields...)
-	mergedFields["layer"] = layer
-	mergedFields["operation"] = operation
-	l.log(InfoLevel, message, mergedFields)
-}
-
-// WriteToOutput writes directly to a specific output
-func (l *Logger) WriteToOutput(outputName string, entry *LogEntry) error {
-	if l.outputManager != nil {
-		return l.outputManager.WriteToOutput(outputName, entry)
+func NewSimpleLogBuffer(maxSize int) *SimpleLogBuffer {
+	return &SimpleLogBuffer{
+		entries: make([]*core.LogEntry, 0, maxSize),
+		maxSize: maxSize,
 	}
+}
+
+func (slb *SimpleLogBuffer) Add(entry *core.LogEntry) error {
+	slb.mu.Lock()
+	defer slb.mu.Unlock()
+	
+	if len(slb.entries) >= slb.maxSize {
+		// Remove oldest entry to make room
+		slb.entries = slb.entries[1:]
+	}
+	
+	slb.entries = append(slb.entries, entry)
 	return nil
 }
 
-// Core logging implementation
-func (l *Logger) log(level Level, message string, fields ...map[string]interface{}) {
-	l.mu.RLock()
-	if level < l.level {
-		l.mu.RUnlock()
-		return
+func (slb *SimpleLogBuffer) Flush() error {
+	slb.mu.Lock()
+	defer slb.mu.Unlock()
+	
+	// In a real implementation, you would flush entries to storage
+	// For now, just clear the buffer
+	slb.entries = slb.entries[:0]
+	return nil
+}
+
+func (slb *SimpleLogBuffer) Close() error {
+	return slb.Flush()
+}
+
+// ChannelLogBuffer - channel-based buffer for async processing
+type ChannelLogBuffer struct {
+	entries   chan *core.LogEntry
+	done      chan struct{}
+	processor func(*core.LogEntry) error
+}
+
+func NewChannelLogBuffer(bufferSize int, processor func(*core.LogEntry) error) *ChannelLogBuffer {
+	clb := &ChannelLogBuffer{
+		entries:   make(chan *core.LogEntry, bufferSize),
+		done:      make(chan struct{}),
+		processor: processor,
 	}
 	
-	// Create log entry
-	entry := &LogEntry{
-		Timestamp:   time.Now(),
-		Level:       level,
-		Message:     message,
-		Fields:      l.mergeFields(fields...),
-		Component:   l.component,
-		Layer:       l.layer,
-		Operation:   l.operation,
-		Environment: l.environment,
-	}
+	// Start processing goroutine
+	go clb.process()
 	
-	// Add caller information
-	if caller := getCaller(3); caller != "" {
-		entry.Caller = caller
-	}
-	l.mu.RUnlock()
-	
-	// Write to outputs
-	if l.outputManager != nil {
-		l.outputManager.WriteToAll(entry)
-	}
-	
-	// Add to async buffer if enabled
-	if l.asyncEnabled && l.buffer != nil {
-		l.buffer.Add(entry)
+	return clb
+}
+
+func (clb *ChannelLogBuffer) Add(entry *core.LogEntry) error {
+	select {
+	case clb.entries <- entry:
+		return nil
+	case <-clb.done:
+		return fmt.Errorf("buffer is closed")
+	default:
+		return fmt.Errorf("buffer is full")
 	}
 }
 
-// Helper methods
-func (l *Logger) mergeFields(fields ...map[string]interface{}) map[string]interface{} {
-	merged := make(map[string]interface{})
-	
-	// Add context fields first
-	for k, v := range l.contextFields {
-		merged[k] = v
-	}
-	
-	// Add provided fields (will override context fields if same key)
-	for _, fieldMap := range fields {
-		for k, v := range fieldMap {
-			merged[k] = v
+func (clb *ChannelLogBuffer) process() {
+	for {
+		select {
+		case entry := <-clb.entries:
+			if clb.processor != nil {
+				clb.processor(entry)
+			}
+		case <-clb.done:
+			// Process remaining entries
+			for {
+				select {
+				case entry := <-clb.entries:
+					if clb.processor != nil {
+						clb.processor(entry)
+					}
+				default:
+					return
+				}
+			}
 		}
 	}
-	
-	return merged
 }
 
+func (clb *ChannelLogBuffer) Flush() error {
+	// For channel-based buffer, flushing means waiting for processing
+	// In a real implementation, you might want to add a flush signal
+	return nil
+}
+
+func (clb *ChannelLogBuffer) Close() error {
+	close(clb.done)
+	close(clb.entries)
+	return nil
+}
+
+// Additional utility types for advanced logging scenarios
+
+// LogFilter interface for filtering log entries
+type LogFilter interface {
+	ShouldLog(entry *core.LogEntry) bool
+}
+
+// LevelFilter filters by log level
+type LevelFilter struct {
+	minLevel core.Level
+}
+
+func NewLevelFilter(minLevel core.Level) *LevelFilter {
+	return &LevelFilter{minLevel: minLevel}
+}
+
+func (lf *LevelFilter) ShouldLog(entry *core.LogEntry) bool {
+	return entry.Level >= lf.minLevel
+}
+
+// ComponentFilter filters by component
+type ComponentFilter struct {
+	allowedComponents map[string]bool
+}
+
+func NewComponentFilter(components ...string) *ComponentFilter {
+	allowed := make(map[string]bool)
+	for _, component := range components {
+		allowed[component] = true
+	}
+	return &ComponentFilter{allowedComponents: allowed}
+}
+
+func (cf *ComponentFilter) ShouldLog(entry *core.LogEntry) bool {
+	return cf.allowedComponents[entry.Component]
+}
+
+// LayerFilter filters by layer
+type LayerFilter struct {
+	allowedLayers map[string]bool
+}
+
+func NewLayerFilter(layers ...string) *LayerFilter {
+	allowed := make(map[string]bool)
+	for _, layer := range layers {
+		allowed[layer] = true
+	}
+	return &LayerFilter{allowedLayers: allowed}
+}
+
+func (lf *LayerFilter) ShouldLog(entry *core.LogEntry) bool {
+	return lf.allowedLayers[entry.Layer]
+}
+
+// CompositeFilter combines multiple filters
+type CompositeFilter struct {
+	filters []LogFilter
+	mode    FilterMode
+}
+
+type FilterMode int
+
+const (
+	FilterModeAND FilterMode = iota // All filters must pass
+	FilterModeOR                    // At least one filter must pass
+)
+
+func NewCompositeFilter(mode FilterMode, filters ...LogFilter) *CompositeFilter {
+	return &CompositeFilter{
+		filters: filters,
+		mode:    mode,
+	}
+}
+
+func (cf *CompositeFilter) ShouldLog(entry *core.LogEntry) bool {
+	if len(cf.filters) == 0 {
+		return true
+	}
+	
+	switch cf.mode {
+	case FilterModeAND:
+		for _, filter := range cf.filters {
+			if !filter.ShouldLog(entry) {
+				return false
+			}
+		}
+		return true
+	case FilterModeOR:
+		for _, filter := range cf.filters {
+			if filter.ShouldLog(entry) {
+				return true
+			}
+		}
+		return false
+	default:
+		return true
+	}
+}

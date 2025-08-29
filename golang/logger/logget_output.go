@@ -98,12 +98,12 @@ func (om *OutputManager) Close() error {
 
 // ConsoleOutput writes logs to console with optional colors
 type ConsoleOutput struct {
-	formatter formatters.Formatter
+	formatter Formatter
 	colors    bool
 	mu        sync.Mutex
 }
 
-func NewConsoleOutput(formatter formatters.Formatter, colors bool) *ConsoleOutput {
+func NewConsoleOutput(formatter Formatter, colors bool) *ConsoleOutput {
 	return &ConsoleOutput{
 		formatter: formatter,
 		colors:    colors,
@@ -166,12 +166,12 @@ func (co *ConsoleOutput) Close() error {
 
 // SimpleFileOutput writes logs to a file (basic implementation)
 type SimpleFileOutput struct {
-	formatter formatters.Formatter
+	formatter Formatter
 	file      *os.File
 	mu        sync.Mutex
 }
 
-func NewSimpleFileOutput(formatter formatters.Formatter, filename string) (*SimpleFileOutput, error) {
+func NewSimpleFileOutput(formatter Formatter, filename string) (*SimpleFileOutput, error) {
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open log file: %w", err)

@@ -1,20 +1,15 @@
-// internal/logger/factory.go - Factory constructors and global convenience functions
+// internal/logger/logger_factory.go - Factory constructors and global convenience functions
 package logger
 
-import (
-	"english-ai-full/logger/core"
 
-)
 
 // Global logger instances
-
 var GlobalSpecializedLogger *SpecializedLogger
 
 func init() {
-	GlobalLogger = NewDefaultLogger()
+	GlobalLogger := NewDefaultLogger()
 	GlobalSpecializedLogger = NewSpecializedLogger(GlobalLogger)
 }
-
 
 // Factory functions for specialized loggers
 func NewDefaultSpecializedLogger() *SpecializedLogger {
@@ -82,13 +77,6 @@ func NewSpecializedSecurityLogger() *SpecializedLogger {
 	return NewSpecializedLogger(coreLogger)
 }
 
-
-
-// Legacy compatibility - Logger type for backward compatibility
-type Logger struct {
-	*core.CoreLogger
-}
-
 // NewCompatibilityLogger creates a new logger instance (maintains compatibility with old API)
 func NewCompatibilityLogger() *Logger {
 	return &Logger{
@@ -96,54 +84,10 @@ func NewCompatibilityLogger() *Logger {
 	}
 }
 
-// Legacy compatibility methods - these delegate to the new enhanced methods
-func (l *Logger) Warning(message string, context ...map[string]interface{}) {
-	l.Warn(message, context...)
-}
-
-func (l *Logger) SetOutputFormat(format string) {
-	// This would be handled by output configuration in the new system
-	// For now, we'll maintain compatibility but log a deprecation notice
-	l.Debug("SetOutputFormat is deprecated, use output configuration instead", map[string]interface{}{
-		"format": format,
-		"notice": "deprecated_method",
-	})
-}
-
-func (l *Logger) SetDebugLogging(enable bool) {
-	if enable {
-		l.CoreLogger.SetLevel(core.DebugLevel)
-	} else {
-		l.CoreLogger.SetLevel(core.InfoLevel)
-	}
-}
-
-func (l *Logger) SetMinLevel(level int) {
-	// Convert old integer levels to new Level type
-	switch level {
-	case 0: // DebugLevel
-		l.CoreLogger.SetLevel(core.DebugLevel)
-	case 1: // InfoLevel
-		l.CoreLogger.SetLevel(core.InfoLevel)
-	case 2: // WarningLevel
-		l.CoreLogger.SetLevel(core.WarnLevel)
-	case 3: // ErrorLevel
-		l.CoreLogger.SetLevel(core.ErrorLevel)
-	case 4: // FatalLevel
-		l.CoreLogger.SetLevel(core.FatalLevel)
-	default:
-		l.CoreLogger.SetLevel(core.InfoLevel)
-	}
-}
-
 // Additional utility functions
 func WithContext(fields map[string]interface{}) *SpecializedLogger {
 	logger := NewDefaultSpecializedLogger()
-	if fields != nil {
-		for k, v := range fields {
-			logger.AddContextField(k, v)
-		}
-	}
+
 	return logger
 }
 

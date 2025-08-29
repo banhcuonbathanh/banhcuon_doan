@@ -1,4 +1,4 @@
-// internal/logger/core/types.go - Enhanced core types and structures
+// internal/logger/core/logger_core.go - Enhanced core types and structures
 package core
 
 import (
@@ -85,8 +85,6 @@ type CoreLogger struct {
 	operation     string
 	environment   string
 	mu            sync.RWMutex
-
-
 }
 
 // OutputManager interface for managing multiple outputs
@@ -209,6 +207,229 @@ func (l *CoreLogger) InfoWithOperation(message, layer, operation string, fields 
 	l.log(InfoLevel, message, mergedFields)
 }
 
+// Specialized logging methods - Add these missing methods
+func (l *CoreLogger) LogAuthAttempt(email string, success bool, reason string, additionalContext ...map[string]interface{}) {
+	fields := map[string]interface{}{
+		"operation":      "authentication",
+		"layer":          LayerAuth,
+		"email":          maskEmail(email),
+		"success":        success,
+		"reason":         reason,
+		"type":           "auth_attempt",
+		"security_event": !success,
+	}
+	
+	if !success {
+		fields["cause"] = reason
+	}
+	
+	if len(additionalContext) > 0 {
+		for k, v := range additionalContext[0] {
+			fields[k] = v
+		}
+	}
+	
+	message := "Authentication " + map[bool]string{true: "successful", false: "failed"}[success] + " for " + maskEmail(email)
+	
+	if success {
+		l.Info(message, fields)
+	} else {
+		l.Warn(message, fields)
+	}
+}
+
+func (l *CoreLogger) LogAPIRequest(method, path string, statusCode int, duration time.Duration, context map[string]interface{}) {
+	success := statusCode >= 200 && statusCode < 300
+	
+	fields := map[string]interface{}{
+		"operation":    "api_request",
+		"layer":        LayerHandler,
+		"method":       method,
+		"path":         path,
+		"status_code":  statusCode,
+		"duration_ms":  duration.Milliseconds(),
+		"success":      success,
+		"type":         "api_request",
+	}
+	
+	// Merge context fields
+	if context != nil {
+		for k, v := range context {
+			fields[k] = v
+		}
+	}
+	
+	message := "API " + method + " " + path + " returned " + string(rune(statusCode))
+	
+	if success {
+		l.Info(message, fields)
+	} else {
+		l.Warn(message, fields)
+	}
+}
+
+func (l *CoreLogger) LogServiceCall(service, method string, success bool, err error, context map[string]interface{}) {
+	fields := map[string]interface{}{
+		"operation": "service_call",
+		"layer":     LayerService,
+		"service":   service,
+		"method":    method,
+		"success":   success,
+		"type":      "service_call",
+	}
+	
+	if err != nil {
+		fields["error"] = err.Error()
+	}
+	
+	// Merge context fields
+	if context != nil {
+		for k, v := range context {
+			fields[k] = v
+		}
+	}
+	
+	message := "Service call " + service + "." + method
+	
+	if success {
+		l.Info(message, fields)
+	} else {
+		l.Error(message, fields)
+	}
+}
+
+func (l *CoreLogger) LogDBOperation(operation, table string, success bool, err error, context map[string]interface{}) {
+	fields := map[string]interface{}{
+		"operation": "db_operation",
+		"layer":     LayerDatabase,
+		"db_operation": operation,
+		"table":     table,
+		"success":   success,
+		"type":      "db_operation",
+	}
+	
+	if err != nil {
+		fields["error"] = err.Error()
+	}
+	
+	// Merge context fields
+	if context != nil {
+		for k, v := range context {
+			fields[k] = v
+		}
+	}
+	
+	message := "Database " + operation + " on " + table
+	
+	if success {
+		l.Info(message, fields)
+	} else {
+		l.Error(message, fields)
+	}
+}
+
+func (l *CoreLogger) LogValidationError(field, message string, value interface{}) {
+	fields := map[string]interface{}{
+		"operation": "validation",
+		"layer":     LayerValidation,
+		"field":     field,
+		"value":     value,
+		"type":      "validation_error",
+	}
+	
+	l.Warn("Validation failed for field "+field+": "+message, fields)
+}
+
+func (l *CoreLogger) LogUserActivity(userID, email, action, resource string, context map[string]interface{}) {
+	fields := map[string]interface{}{
+		"operation": "user_activity",
+		"layer":     LayerHandler,
+		"user_id":   userID,
+		"email":     maskEmail(email),
+		"action":    action,
+		"resource":  resource,
+		"type":      "user_activity",
+	}
+	
+
+	
+	message := "User " + userID + " performed " + action + " on " + resource
+	l.Info(message, fields)
+}
+
+func (l *CoreLogger) LogSecurityEvent(eventType, description, severity string, context map[string]interface{}) {
+	fields := map[string]interface{}{
+		"operation":      "security_event",
+		"layer":          LayerSecurity,
+		"event_type":     eventType,
+		"description":    description,
+		"severity":       severity,
+		"security_event": true,
+		"type":           "security",
+	}
+	
+	// Merge context fields
+	if context != nil {
+		for k, v := range context {
+			fields[k] = v
+		}
+	}
+	
+	message := "Security event: " + eventType + " - " + description
+	
+	switch severity {
+	case "low":
+		l.Info(message, fields)
+	case "medium":
+		l.Warn(message, fields)
+	case "high", "critical":
+		l.Error(message, fields)
+	default:
+		l.Warn(message, fields)
+	}
+}
+
+func (l *CoreLogger) LogMetric(metricName string, value interface{}, unit string, context map[string]interface{}) {
+	fields := map[string]interface{}{
+		"operation":    "metric_collection",
+		"layer":        "metrics",
+		"metric_name":  metricName,
+		"metric_value": value,
+		"metric_unit":  unit,
+		"type":         "metric",
+	}
+	
+	// Merge context fields
+	if context != nil {
+		for k, v := range context {
+			fields[k] = v
+		}
+	}
+	
+	message := "Metric: " + metricName
+	l.Debug(message, fields)
+}
+
+func (l *CoreLogger) LogPerformance(operation string, duration time.Duration, context map[string]interface{}) {
+	fields := map[string]interface{}{
+		"operation":       "performance_tracking",
+		"layer":           "performance",
+		"perf_operation":  operation,
+		"duration_ms":     duration.Milliseconds(),
+		"type":            "performance",
+	}
+	
+	// Merge context fields
+	if context != nil {
+		for k, v := range context {
+			fields[k] = v
+		}
+	}
+	
+	message := "Performance: " + operation + " completed"
+	l.Info(message, fields)
+}
+
 // WriteToOutput writes directly to a specific output
 func (l *CoreLogger) WriteToOutput(outputName string, entry *LogEntry) error {
 	if l.outputManager != nil {
@@ -271,6 +492,19 @@ func (l *CoreLogger) mergeFields(fields ...map[string]interface{}) map[string]in
 	}
 	
 	return merged
+}
+
+// Helper function to mask email for security
+func maskEmail(email string) string {
+	if email == "" {
+		return ""
+	}
+	
+	// Simple masking implementation
+	if len(email) > 3 {
+		return email[:2] + "***" + email[len(email)-1:]
+	}
+	return "***"
 }
 
 func getCaller(skip int) string {

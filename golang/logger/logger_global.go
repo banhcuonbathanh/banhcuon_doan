@@ -1,4 +1,4 @@
-// internal/logger/factory.go - Factory constructors and global convenience functions
+// internal/logger/logger_global.go - Factory constructors and global convenience functions
 package logger
 
 import (
@@ -16,7 +16,7 @@ func init() {
 }
 
 // Factory functions for creating specialized loggers
-func NewDefaultLogger()  *core.CoreLogger{
+func NewDefaultLogger() *core.CoreLogger {
 	logger := core.NewLogger()
 	
 	// Set environment-based defaults
@@ -31,82 +31,82 @@ func NewDefaultLogger()  *core.CoreLogger{
 	return logger
 }
 
-func NewComponentLogger(component string)  *core.CoreLogger {
+func NewComponentLogger(component string) *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent(component)
 	return logger
 }
 
-func NewLayerLogger(layer string)  *core.CoreLogger{
+func NewLayerLogger(layer string) *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetLayer(layer)
 	return logger
 }
 
-func NewHandlerLogger() *core.CoreLogger{
+func NewHandlerLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("handler")
 	logger.SetLayer(core.LayerHandler)
 	return logger
 }
 
-func NewServiceLogger()*core.CoreLogger{
+func NewServiceLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("service")
 	logger.SetLayer(core.LayerService)
 	return logger
 }
 
-func NewRepositoryLogger() *core.CoreLogger{
+func NewRepositoryLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("repository")
 	logger.SetLayer(core.LayerRepository)
 	return logger
 }
 
-func NewMiddlewareLogger() *core.CoreLogger{
+func NewMiddlewareLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("middleware")
 	logger.SetLayer(core.LayerMiddleware)
 	return logger
 }
 
-func NewAuthLogger()*core.CoreLogger{
+func NewAuthLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("auth")
 	logger.SetLayer(core.LayerAuth)
 	return logger
 }
 
-func NewValidationLogger()*core.CoreLogger{
+func NewValidationLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("validation")
 	logger.SetLayer(core.LayerValidation)
 	return logger
 }
 
-func NewCacheLogger() *core.CoreLogger{
+func NewCacheLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("cache")
 	logger.SetLayer(core.LayerCache)
 	return logger
 }
 
-func NewDatabaseLogger() *core.CoreLogger{
+func NewDatabaseLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("database")
 	logger.SetLayer(core.LayerDatabase)
 	return logger
 }
 
-func NewExternalLogger() *core.CoreLogger{
+func NewExternalLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("external")
 	logger.SetLayer(core.LayerExternal)
 	return logger
 }
 
-func NewSecurityLogger() *core.CoreLogger{
+func NewSecurityLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("security")
 	logger.SetLayer(core.LayerSecurity)
@@ -234,11 +234,15 @@ func getMinLogLevel(environment string) core.Level {
 	}
 }
 
+// Legacy compatibility wrapper
+type Logger struct {
+	*core.CoreLogger
+}
 
 // NewLogger creates a new logger instance (maintains compatibility)
-func NewLogger() *core.CoreLogger {
-	return &core.CoreLogger{
-		Logger: NewDefaultLogger(),
+func NewLogger() *Logger {
+	return &Logger{
+		CoreLogger: NewDefaultLogger(),
 	}
 }
 
