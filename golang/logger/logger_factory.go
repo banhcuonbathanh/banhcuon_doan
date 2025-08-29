@@ -2,85 +2,164 @@
 package logger
 
 import (
+	"english-ai-full/logger/core"
 
-	"time"
 )
 
-// Global logger instance - using the specialized logger wrapper
+// Global logger instances
+
+var GlobalSpecializedLogger *SpecializedLogger
+
+func init() {
+	GlobalLogger = NewDefaultLogger()
+	GlobalSpecializedLogger = NewSpecializedLogger(GlobalLogger)
+}
 
 
-
-// Factory functions for creating specialized loggers
-
-
-// NewDefaultSpecializedLogger creates a default specialized logger with all features
+// Factory functions for specialized loggers
 func NewDefaultSpecializedLogger() *SpecializedLogger {
 	coreLogger := NewDefaultLogger()
 	return NewSpecializedLogger(coreLogger)
 }
 
-
-
-// Specialized factory functions that return SpecializedLogger
 func NewSpecializedComponentLogger(component string) *SpecializedLogger {
-	logger := NewComponentLogger(component)
-	return NewSpecializedLogger(logger)
+	coreLogger := NewComponentLogger(component)
+	return NewSpecializedLogger(coreLogger)
+}
+
+func NewSpecializedLayerLogger(layer string) *SpecializedLogger {
+	coreLogger := NewLayerLogger(layer)
+	return NewSpecializedLogger(coreLogger)
 }
 
 func NewSpecializedHandlerLogger() *SpecializedLogger {
-	logger := NewHandlerLogger()
-	return NewSpecializedLogger(logger)
+	coreLogger := NewHandlerLogger()
+	return NewSpecializedLogger(coreLogger)
 }
 
 func NewSpecializedServiceLogger() *SpecializedLogger {
-	logger := NewServiceLogger()
-	return NewSpecializedLogger(logger)
+	coreLogger := NewServiceLogger()
+	return NewSpecializedLogger(coreLogger)
 }
 
 func NewSpecializedRepositoryLogger() *SpecializedLogger {
-	logger := NewRepositoryLogger()
-	return NewSpecializedLogger(logger)
+	coreLogger := NewRepositoryLogger()
+	return NewSpecializedLogger(coreLogger)
+}
+
+func NewSpecializedMiddlewareLogger() *SpecializedLogger {
+	coreLogger := NewMiddlewareLogger()
+	return NewSpecializedLogger(coreLogger)
 }
 
 func NewSpecializedAuthLogger() *SpecializedLogger {
-	logger := NewAuthLogger()
-	return NewSpecializedLogger(logger)
+	coreLogger := NewAuthLogger()
+	return NewSpecializedLogger(coreLogger)
+}
+
+func NewSpecializedValidationLogger() *SpecializedLogger {
+	coreLogger := NewValidationLogger()
+	return NewSpecializedLogger(coreLogger)
+}
+
+func NewSpecializedCacheLogger() *SpecializedLogger {
+	coreLogger := NewCacheLogger()
+	return NewSpecializedLogger(coreLogger)
 }
 
 func NewSpecializedDatabaseLogger() *SpecializedLogger {
-	logger := NewDatabaseLogger()
-	return NewSpecializedLogger(logger)
+	coreLogger := NewDatabaseLogger()
+	return NewSpecializedLogger(coreLogger)
+}
+
+func NewSpecializedExternalLogger() *SpecializedLogger {
+	coreLogger := NewExternalLogger()
+	return NewSpecializedLogger(coreLogger)
+}
+
+func NewSpecializedSecurityLogger() *SpecializedLogger {
+	coreLogger := NewSecurityLogger()
+	return NewSpecializedLogger(coreLogger)
 }
 
 
 
-
-
-
-
-
-
-func LogPasswordReset(email string, success bool, reason string) {
-	GlobalLogger.LogPasswordReset(email, success, reason)
+// Legacy compatibility - Logger type for backward compatibility
+type Logger struct {
+	*core.CoreLogger
 }
 
-func LogSessionAction(action string, sessionID string, userID string, success bool) {
-	GlobalLogger.LogSessionAction(action, sessionID, userID, success)
+// NewCompatibilityLogger creates a new logger instance (maintains compatibility with old API)
+func NewCompatibilityLogger() *Logger {
+	return &Logger{
+		CoreLogger: NewDefaultLogger(),
+	}
 }
 
-func LogDatabaseOperation(operation string, table string, duration time.Duration, success bool, rowsAffected int64) {
-	GlobalLogger.LogDatabaseOperation(operation, table, duration, success, rowsAffected)
+// Legacy compatibility methods - these delegate to the new enhanced methods
+func (l *Logger) Warning(message string, context ...map[string]interface{}) {
+	l.Warn(message, context...)
 }
 
-func LogAPICall(endpoint string, method string, statusCode int, duration time.Duration) {
-	GlobalLogger.LogAPICall(endpoint, method, statusCode, duration)
+func (l *Logger) SetOutputFormat(format string) {
+	// This would be handled by output configuration in the new system
+	// For now, we'll maintain compatibility but log a deprecation notice
+	l.Debug("SetOutputFormat is deprecated, use output configuration instead", map[string]interface{}{
+		"format": format,
+		"notice": "deprecated_method",
+	})
 }
 
-func LogCacheOperation(operation string, key string, hit bool, duration time.Duration) {
-	GlobalLogger.LogCacheOperation(operation, key, hit, duration)
+func (l *Logger) SetDebugLogging(enable bool) {
+	if enable {
+		l.CoreLogger.SetLevel(core.DebugLevel)
+	} else {
+		l.CoreLogger.SetLevel(core.InfoLevel)
+	}
 }
 
+func (l *Logger) SetMinLevel(level int) {
+	// Convert old integer levels to new Level type
+	switch level {
+	case 0: // DebugLevel
+		l.CoreLogger.SetLevel(core.DebugLevel)
+	case 1: // InfoLevel
+		l.CoreLogger.SetLevel(core.InfoLevel)
+	case 2: // WarningLevel
+		l.CoreLogger.SetLevel(core.WarnLevel)
+	case 3: // ErrorLevel
+		l.CoreLogger.SetLevel(core.ErrorLevel)
+	case 4: // FatalLevel
+		l.CoreLogger.SetLevel(core.FatalLevel)
+	default:
+		l.CoreLogger.SetLevel(core.InfoLevel)
+	}
+}
 
+// Additional utility functions
+func WithContext(fields map[string]interface{}) *SpecializedLogger {
+	logger := NewDefaultSpecializedLogger()
+	if fields != nil {
+		for k, v := range fields {
+			logger.AddContextField(k, v)
+		}
+	}
+	return logger
+}
 
-
-
+func WithConfig(component, layer, operation, environment string) *SpecializedLogger {
+	logger := NewDefaultSpecializedLogger()
+	if component != "" {
+		logger.SetComponent(component)
+	}
+	if layer != "" {
+		logger.SetLayer(layer)
+	}
+	if operation != "" {
+		logger.SetOperation(operation)
+	}
+	if environment != "" {
+		logger.SetEnvironment(environment)
+	}
+	return logger
+}

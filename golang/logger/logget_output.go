@@ -1,15 +1,11 @@
-
-
 // internal/logger/outputs/outputs.go - Output system implementation
 package logger
 
 import (
+	"english-ai-full/logger/core"
 	"fmt"
 	"os"
 	"sync"
-	
-	"github.com/yourusername/shopeasy-app/internal/logger/core"
-	"github.com/yourusername/shopeasy-app/internal/logger/formatters"
 )
 
 // Output interface for different output destinations
