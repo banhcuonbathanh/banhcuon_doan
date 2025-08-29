@@ -318,7 +318,7 @@ func (h *HandlerErrorManager) logError(apiErr *APIError, requestID string) {
 	case "ERROR":
 		logger.Error("Handler layer error occurred", logContext)
 	case "WARNING":
-		logger.Warning("Handler layer warning occurred", logContext)
+		logger.Warn("Handler layer warning occurred", logContext)
 	default:
 		logger.Info("Handler layer info occurred", logContext)
 	}

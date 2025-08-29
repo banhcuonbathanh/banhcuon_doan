@@ -437,7 +437,7 @@ func logError(apiErr *APIError, requestID string) {
 	case "ERROR":
 		logger.Error("Critical system error occurred", logContext)
 	case "WARNING":
-		logger.Warning("Service error occurred", logContext)
+		logger.Warn("Service error occurred", logContext)
 	default:
 		logger.Info("Request error occurred", logContext)
 	}

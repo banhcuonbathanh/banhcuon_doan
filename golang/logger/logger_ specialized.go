@@ -208,11 +208,7 @@ func (l *SpecializedLogger) LogUserActivity(userID string, action string, resour
 	}
 	
 	// Merge metadata
-	if metadata != nil {
-		for k, v := range metadata {
-			fields[k] = v
-		}
-	}
+
 	
 	message := fmt.Sprintf("User %s performed %s on %s", userID, action, resource)
 	l.Info(message, fields)
@@ -229,12 +225,7 @@ func (l *SpecializedLogger) LogMetric(name string, value float64, unit string, t
 		"type":         "metric",
 	}
 	
-	// Add tags as fields
-	if tags != nil {
-		for k, v := range tags {
-			fields["tag_"+k] = v
-		}
-	}
+
 	
 	message := fmt.Sprintf("Metric: %s = %f %s", name, value, unit)
 	l.Debug(message, fields)
@@ -251,12 +242,7 @@ func (l *SpecializedLogger) LogPerformance(operation string, duration time.Durat
 		"type":        "performance",
 	}
 	
-	// Merge metadata
-	if metadata != nil {
-		for k, v := range metadata {
-			fields[k] = v
-		}
-	}
+
 	
 	message := fmt.Sprintf("Performance: %s completed in %v", operation, duration)
 	if success {
@@ -322,12 +308,7 @@ func (l *SpecializedLogger) LogBusinessEvent(eventType string, entityID string, 
 		"type":        "business",
 	}
 	
-	// Merge metadata
-	if metadata != nil {
-		for k, v := range metadata {
-			fields[k] = v
-		}
-	}
+
 	
 	message := fmt.Sprintf("Business event: %s %s on %s %s", action, eventType, entityType, entityID)
 	l.Info(message, fields)
@@ -347,11 +328,7 @@ func (l *SpecializedLogger) LogSecurityEvent(eventType string, severity string, 
 	}
 	
 	// Merge details
-	if details != nil {
-		for k, v := range details {
-			fields[k] = v
-		}
-	}
+
 	
 	message := fmt.Sprintf("Security event: %s (severity: %s)", eventType, severity)
 	

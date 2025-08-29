@@ -49,7 +49,7 @@ func (s *ServiceErrorManager) logServiceError(apiErr * APIError, operation strin
 	if apiErr.HTTPStatus >= 500 {
 		logger.Error("Service layer error", logContext)
 	} else if apiErr.HTTPStatus >= 400 {
-		logger.Warning("Service layer warning", logContext)
+		logger.Warn("Service layer warning", logContext)
 	} else {
 		logger.Info("Service layer info", logContext)
 	}
@@ -103,7 +103,7 @@ func (s *ServiceErrorManager) HandleBusinessRuleViolation(domain, rule, descript
 	apiErr := businessErr.ToAPIError().
 		WithLayer("service")
 
-	logger.Warning("Business rule violation", map[string]interface{}{
+	logger.Warn("Business rule violation", map[string]interface{}{
 		"domain":      domain,
 		"rule":        rule,
 		"description": description,
@@ -171,7 +171,7 @@ func (s *ServiceErrorManager) HandleContextError(ctx context.Context, domain, op
 			WithOperation(operation).
 			WithRetryable(true)
 
-		logger.Warning("Service operation timeout", map[string]interface{}{
+		logger.Warn("Service operation timeout", map[string]interface{}{
 			"domain":    domain,
 			"operation": operation,
 			"layer":     "service",

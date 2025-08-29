@@ -217,7 +217,7 @@ func (r *RepositoryErrorManager) handleConstraintViolation(err error, domain, ta
 			WithDetail("table", table).
 			WithCause(err)
 
-		logger.Warning("Database constraint violation - duplicate", map[string]interface{}{
+		logger.Warn("Database constraint violation - duplicate", map[string]interface{}{
 			"domain":    domain,
 			"table":     table,
 			"operation": operation,
@@ -242,7 +242,7 @@ func (r *RepositoryErrorManager) handleConstraintViolation(err error, domain, ta
 			WithDetail("constraint_type", "foreign_key").
 			WithCause(err)
 
-		logger.Warning("Database constraint violation - foreign key", map[string]interface{}{
+		logger.Warn("Database constraint violation - foreign key", map[string]interface{}{
 			"domain":    domain,
 			"table":     table,
 			"operation": operation,
@@ -325,7 +325,7 @@ func (r *RepositoryErrorManager) handleDeadlockError(err error, domain, table, o
 		WithDetail("deadlock", true).
 		WithRetryable(true)
 
-	logger.Warning("Database deadlock detected", map[string]interface{}{
+	logger.Warn("Database deadlock detected", map[string]interface{}{
 		"domain":    domain,
 		"table":     table,
 		"operation": operation,
@@ -349,7 +349,7 @@ func (r *RepositoryErrorManager) handleTimeoutError(err error, domain, table, op
 		WithRetryable(true).
 		WithCause(err)
 
-	logger.Warning("Database operation timeout", map[string]interface{}{
+	logger.Warn("Database operation timeout", map[string]interface{}{
 		"domain":    domain,
 		"table":     table,
 		"operation": operation,
