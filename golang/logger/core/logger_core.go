@@ -1,8 +1,8 @@
-// logger/types.go - Core types, constants, and structures
-package logger
+// internal/logger/core/types.go - Enhanced core types and structures
+package core
 
 import (
-	
+	"sync"
 	"time"
 )
 
@@ -73,34 +73,36 @@ type LogEntry struct {
 	Layer       string                 `json:"layer,omitempty"`
 }
 
-// // Logger represents the main logger with enhanced capabilities
-// type Logger struct {
-// 	level         Level
-// 	outputManager OutputManager
-// 	asyncEnabled  bool
-// 	buffer        LogBuffer
-// 	contextFields map[string]interface{}
-// 	component     string
-// 	layer         string
-// 	operation     string
-// 	environment   string
-// 	mu            sync.RWMutex
-// }
+// Logger represents the main logger with enhanced capabilities
+type CoreLogger struct {
+	level         Level
+	outputManager OutputManager
+	asyncEnabled  bool
+	buffer        LogBuffer
+	contextFields map[string]interface{}
+	component     string
+	layer         string
+	operation     string
+	environment   string
+	mu            sync.RWMutex
+
+
+}
 
 // OutputManager interface for managing multiple outputs
-// type OutputManager interface {
-// 	WriteToAll(entry *LogEntry) error
-// 	WriteToOutput(name string, entry *LogEntry) error
-// 	AddOutput(name string, output Output) error
-// 	RemoveOutput(name string) error
-// 	Close() error
-// }
+type OutputManager interface {
+	WriteToAll(entry *LogEntry) error
+	WriteToOutput(name string, entry *LogEntry) error
+	AddOutput(name string, output Output) error
+	RemoveOutput(name string) error
+	Close() error
+}
 
 // Output interface for different output destinations
-// type Output interface {
-// 	Write(entry *LogEntry) error
-// 	Close() error
-// }
+type Output interface {
+	Write(entry *LogEntry) error
+	Close() error
+}
 
 // LogBuffer interface for async processing
 type LogBuffer interface {
@@ -110,81 +112,81 @@ type LogBuffer interface {
 }
 
 // NewLogger creates a new enhanced logger instance
-// func NewLogger() *Logger {
-// 	return &Logger{
-// 		level:         InfoLevel,
-// 		contextFields: make(map[string]interface{}),
-// 		environment:   "development",
-// 	}
-// }
+func NewLogger() *CoreLogger {
+	return &CoreLogger{
+		level:         InfoLevel,
+		contextFields: make(map[string]interface{}),
+		environment:   "development",
+	}
+}
 
 // Configuration methods
-func (l *Logger) SetLevel(level Level) {
+func (l *CoreLogger) SetLevel(level Level) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.level = level
 }
 
-func (l *Logger) SetComponent(component string) {
+func (l *CoreLogger) SetComponent(component string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.component = component
 }
 
-func (l *Logger) SetLayer(layer string) {
+func (l *CoreLogger) SetLayer(layer string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.layer = layer
 }
 
-func (l *Logger) SetOperation(operation string) {
+func (l *CoreLogger) SetOperation(operation string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.operation = operation
 }
 
-func (l *Logger) SetEnvironment(env string) {
+func (l *CoreLogger) SetEnvironment(env string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.environment = env
 }
 
-func (l *Logger) AddContextField(key string, value interface{}) {
+func (l *CoreLogger) AddContextField(key string, value interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.contextFields[key] = value
 }
 
-func (l *Logger) RemoveContextField(key string) {
+func (l *CoreLogger) RemoveContextField(key string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	delete(l.contextFields, key)
 }
 
 // Core logging methods
-func (l *Logger) Debug(message string, fields ...map[string]interface{}) {
+func (l *CoreLogger) Debug(message string, fields ...map[string]interface{}) {
 	l.log(DebugLevel, message, fields...)
 }
 
-func (l *Logger) Info(message string, fields ...map[string]interface{}) {
+func (l *CoreLogger) Info(message string, fields ...map[string]interface{}) {
 	l.log(InfoLevel, message, fields...)
 }
 
-func (l *Logger) Warn(message string, fields ...map[string]interface{}) {
+func (l *CoreLogger) Warn(message string, fields ...map[string]interface{}) {
 	l.log(WarnLevel, message, fields...)
 }
 
-func (l *Logger) Error(message string, fields ...map[string]interface{}) {
+func (l *CoreLogger) Error(message string, fields ...map[string]interface{}) {
 	l.log(ErrorLevel, message, fields...)
 }
 
-func (l *Logger) Fatal(message string, fields ...map[string]interface{}) {
+func (l *CoreLogger) Fatal(message string, fields ...map[string]interface{}) {
 	l.log(FatalLevel, message, fields...)
 	// Note: In production, this might call os.Exit(1)
 }
 
 // Enhanced logging methods
-func (l *Logger) ErrorWithCause(message, cause, layer, operation string, fields ...map[string]interface{}) {
+func (l *CoreLogger) ErrorWithCause(message, cause, layer, operation string, fields ...map[string]interface{}) {
 	mergedFields := l.mergeFields(fields...)
 	mergedFields["cause"] = cause
 	mergedFields["layer"] = layer  
@@ -192,7 +194,7 @@ func (l *Logger) ErrorWithCause(message, cause, layer, operation string, fields 
 	l.log(ErrorLevel, message, mergedFields)
 }
 
-func (l *Logger) WarnWithCause(message, cause, layer, operation string, fields ...map[string]interface{}) {
+func (l *CoreLogger) WarnWithCause(message, cause, layer, operation string, fields ...map[string]interface{}) {
 	mergedFields := l.mergeFields(fields...)
 	mergedFields["cause"] = cause
 	mergedFields["layer"] = layer
@@ -200,7 +202,7 @@ func (l *Logger) WarnWithCause(message, cause, layer, operation string, fields .
 	l.log(WarnLevel, message, mergedFields)
 }
 
-func (l *Logger) InfoWithOperation(message, layer, operation string, fields ...map[string]interface{}) {
+func (l *CoreLogger) InfoWithOperation(message, layer, operation string, fields ...map[string]interface{}) {
 	mergedFields := l.mergeFields(fields...)
 	mergedFields["layer"] = layer
 	mergedFields["operation"] = operation
@@ -208,7 +210,7 @@ func (l *Logger) InfoWithOperation(message, layer, operation string, fields ...m
 }
 
 // WriteToOutput writes directly to a specific output
-func (l *Logger) WriteToOutput(outputName string, entry *LogEntry) error {
+func (l *CoreLogger) WriteToOutput(outputName string, entry *LogEntry) error {
 	if l.outputManager != nil {
 		return l.outputManager.WriteToOutput(outputName, entry)
 	}
@@ -216,7 +218,7 @@ func (l *Logger) WriteToOutput(outputName string, entry *LogEntry) error {
 }
 
 // Core logging implementation
-func (l *Logger) log(level Level, message string, fields ...map[string]interface{}) {
+func (l *CoreLogger) log(level Level, message string, fields ...map[string]interface{}) {
 	l.mu.RLock()
 	if level < l.level {
 		l.mu.RUnlock()
@@ -253,7 +255,7 @@ func (l *Logger) log(level Level, message string, fields ...map[string]interface
 }
 
 // Helper methods
-func (l *Logger) mergeFields(fields ...map[string]interface{}) map[string]interface{} {
+func (l *CoreLogger) mergeFields(fields ...map[string]interface{}) map[string]interface{} {
 	merged := make(map[string]interface{})
 	
 	// Add context fields first
@@ -271,3 +273,8 @@ func (l *Logger) mergeFields(fields ...map[string]interface{}) map[string]interf
 	return merged
 }
 
+func getCaller(skip int) string {
+	// Implementation would use runtime.Caller to get file:line info
+	// Simplified for this example
+	return ""
+}

@@ -1,85 +1,86 @@
-// logger/factory.go - Factory constructors for different component loggers
+// internal/logger/factory.go - Factory constructors and global convenience functions
 package logger
 
-// Enhanced component loggers with layer support
-func NewComponentLogger(component string) *Logger {
-	logger := NewLogger()
-	logger.SetComponent(component)
-	return logger
+import (
+
+	"time"
+)
+
+// Global logger instance - using the specialized logger wrapper
+
+
+
+// Factory functions for creating specialized loggers
+
+
+// NewDefaultSpecializedLogger creates a default specialized logger with all features
+func NewDefaultSpecializedLogger() *SpecializedLogger {
+	coreLogger := NewDefaultLogger()
+	return NewSpecializedLogger(coreLogger)
 }
 
-func NewLayerLogger(layer string) *Logger {
-	logger := NewLogger()
-	logger.SetLayer(layer)
-	return logger
+
+
+// Specialized factory functions that return SpecializedLogger
+func NewSpecializedComponentLogger(component string) *SpecializedLogger {
+	logger := NewComponentLogger(component)
+	return NewSpecializedLogger(logger)
 }
 
-func NewHandlerLogger() *Logger {
-	logger := NewLogger()
-	logger.SetComponent("handler")
-	logger.SetLayer(LayerHandler)
-	return logger
+func NewSpecializedHandlerLogger() *SpecializedLogger {
+	logger := NewHandlerLogger()
+	return NewSpecializedLogger(logger)
 }
 
-func NewServiceLogger() *Logger {
-	logger := NewLogger()
-	logger.SetComponent("service")
-	logger.SetLayer(LayerService)
-	return logger
+func NewSpecializedServiceLogger() *SpecializedLogger {
+	logger := NewServiceLogger()
+	return NewSpecializedLogger(logger)
 }
 
-func NewRepositoryLogger() *Logger {
-	logger := NewLogger()
-	logger.SetComponent("repository")
-	logger.SetLayer(LayerRepository)
-	return logger
+func NewSpecializedRepositoryLogger() *SpecializedLogger {
+	logger := NewRepositoryLogger()
+	return NewSpecializedLogger(logger)
 }
 
-func NewMiddlewareLogger() *Logger {
-	logger := NewLogger()
-	logger.SetComponent("middleware")
-	logger.SetLayer(LayerMiddleware)
-	return logger
+func NewSpecializedAuthLogger() *SpecializedLogger {
+	logger := NewAuthLogger()
+	return NewSpecializedLogger(logger)
 }
 
-func NewAuthLogger() *Logger {
-	logger := NewLogger()
-	logger.SetComponent("auth")
-	logger.SetLayer(LayerAuth)
-	return logger
+func NewSpecializedDatabaseLogger() *SpecializedLogger {
+	logger := NewDatabaseLogger()
+	return NewSpecializedLogger(logger)
 }
 
-func NewValidationLogger() *Logger {
-	logger := NewLogger()
-	logger.SetComponent("validation")
-	logger.SetLayer(LayerValidation)
-	return logger
+
+
+
+
+
+
+
+
+func LogPasswordReset(email string, success bool, reason string) {
+	GlobalLogger.LogPasswordReset(email, success, reason)
 }
 
-func NewCacheLogger() *Logger {
-	logger := NewLogger()
-	logger.SetComponent("cache")
-	logger.SetLayer(LayerCache)
-	return logger
+func LogSessionAction(action string, sessionID string, userID string, success bool) {
+	GlobalLogger.LogSessionAction(action, sessionID, userID, success)
 }
 
-func NewDatabaseLogger() *Logger {
-	logger := NewLogger()
-	logger.SetComponent("database")
-	logger.SetLayer(LayerDatabase)
-	return logger
+func LogDatabaseOperation(operation string, table string, duration time.Duration, success bool, rowsAffected int64) {
+	GlobalLogger.LogDatabaseOperation(operation, table, duration, success, rowsAffected)
 }
 
-func NewExternalLogger() *Logger {
-	logger := NewLogger()
-	logger.SetComponent("external")
-	logger.SetLayer(LayerExternal)
-	return logger
+func LogAPICall(endpoint string, method string, statusCode int, duration time.Duration) {
+	GlobalLogger.LogAPICall(endpoint, method, statusCode, duration)
 }
 
-func NewSecurityLogger() *Logger {
-	logger := NewLogger()
-	logger.SetComponent("security")
-	logger.SetLayer(LayerSecurity)
-	return logger
+func LogCacheOperation(operation string, key string, hit bool, duration time.Duration) {
+	GlobalLogger.LogCacheOperation(operation, key, hit, duration)
 }
+
+
+
+
+
