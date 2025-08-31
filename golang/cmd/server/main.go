@@ -4,23 +4,30 @@ package main
 
 import (
 	"context"
-	_ "english-ai-full/docs"                           // Add this line at the top of imports
-	"english-ai-full/internal/account/account_handler" // Add this import
 	"fmt"
-
-	"english-ai-full/internal/branch"
-	error_custom "english-ai-full/internal/error_custom"
-	branchpb "english-ai-full/internal/proto_qr/branch"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
+	_ "english-ai-full/docs"
+	"english-ai-full/internal/account/account_handler"
+	"english-ai-full/internal/branch"
 	delivery "english-ai-full/internal/delivery"
+	error_custom "english-ai-full/internal/error_custom"
 	order "english-ai-full/internal/order"
 	pb "english-ai-full/internal/proto_qr/account"
+	branchpb "english-ai-full/internal/proto_qr/branch"
 	ws2 "english-ai-full/internal/ws2"
+	"english-ai-full/logger"
 	"english-ai-full/token"
-	utils_config "english-ai-full/utils/config"
+
+		"english-ai-full/utils/config"
+
+	// Import the integration package
+	"english-ai-full/integration"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/cors"
@@ -31,156 +38,117 @@ import (
 )
 
 func main() {
-	// Initialize configuration using the new system
+	// Step 1: Initialize all utilities using the integration package
 	configPath := getEnvWithDefault("CONFIG_PATH", "utils/config/config.yaml")
-
-	err := utils_config.InitializeConfig(configPath)
-	if err != nil {
-		log.Printf("Warning: Failed to load config file: %v", err)
-		log.Println("Continuing with environment variables and defaults...")
-		
-		// Initialize with empty path to use defaults and environment variables
-		err = utils_config.InitializeConfig("")
-		if err != nil {
-			log.Fatalf("Failed to initialize config: %v", err)
-		}
+	
+	if err := integration.InitializeUtilities(configPath); err != nil {
+		log.Fatalf("Failed to initialize utilities: %v", err)
 	}
 
-	// Get the configuration
-	cfg := utils_config.GetConfig()
-	if cfg == nil {
-		log.Fatalf("Configuration is nil")
-	}
+	// Step 2: Get utility manager and components
+	utils := integration.GetUtilityManager()
+	cfg := utils.Config
+	logger := utils.Logger
+	errorHandler := utils.ErrorHandler
+
+	// Log application startup
+	logger.LogBusinessEvent("system", "startup", "main", "starting", map[string]interface{}{
+		"config_path": configPath,
+		"environment": cfg.Environment,
+		"version":     cfg.Version,
+	})
+
+	// Step 3: Setup graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle graceful shutdown
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		logger.LogBusinessEvent("system", "shutdown", "main", "signal_received", nil)
+		cancel()
+	}()
 
 	envflag.Parse()
+
+	// Step 4: Setup router with integrated middleware
+	r := chi.NewRouter()
+	setupCORSWithIntegration(r, cfg, logger)
+	setupGlobalMiddlewareWithIntegration(r, cfg, errorHandler)
+
+	// Step 5: Setup gRPC connections with error handling
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
 
-	r := chi.NewRouter()
-	setupCORS(r, cfg)
-
-	// Use environment variable with a default value
-	if cfg.Environment == "development" {
-		r.Use(debugMiddleware)
-	}
-
-	setupGlobalMiddleware(r, cfg)
-
-
-	/**
-	python server
-	*/
+	// Python server connection
 	pythonConn, err := grpc.NewClient(":50052", opts...)
 	if err != nil {
+		logger.LogSecurityEvent("grpc_connection_failed", "critical", "python", "", map[string]interface{}{
+			"error":   err.Error(),
+			"address": ":50052",
+		})
 		log.Fatalf("failed to connect to Python gRPC server: %v", err)
 	}
 	defer pythonConn.Close()
 
-	// Construct gRPC address properly
+	// Main gRPC server connection
 	grpcAddress := fmt.Sprintf("%s:%d", cfg.Server.GRPCAddress, cfg.Server.GRPCPort)
-	
-	conn, err := grpc.DialContext(
-		context.Background(),
-		grpcAddress,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	conn, err := grpc.DialContext(ctx, grpcAddress, opts...)
 	if err != nil {
+		logger.LogSecurityEvent("grpc_connection_failed", "critical", "main", "", map[string]interface{}{
+			"error":   err.Error(),
+			"address": grpcAddress,
+		})
 		log.Fatalf("failed to connect to server: %v", err)
 	}
 	defer conn.Close()
-	log.Println("Connection State to GRPC Server: ", conn.GetState())
-	log.Println("Calling to GRPC Server: ", grpcAddress)
 
-	// account start
-	// In your main.go or wherever you're setting up routes
-	// userClient := pb.NewAccountServiceClient(conn)
-	// accountHandler := account_handler.NewAccountHandler(userClient, )
-	// account_handler.RegisterRoutesAccountHandler(r, accountHandler)
+	logger.LogBusinessEvent("system", "grpc", "connection", "established", map[string]interface{}{
+		"state":   conn.GetState().String(),
+		"address": grpcAddress,
+	})
 
-	// account end
-	branchClient := branchpb.NewBranchServiceClient(conn)
-	b := branch.NewBranchHandler(branchClient)
-	branch.RegisterRoutes(r, b)
+	// Step 6: Setup domain handlers using integration utilities
+	setupDomainHandlersWithIntegration(r, conn, cfg, utils)
 
-	// websocket
-	//set_client := pb_set.NewSetServiceClient(conn)
-	//set_hdl := set.NewSetHandler(set_client, cfg.JWT.SecretKey)
-	//set.RegisterSetRoutes(r, set_hdl)
+	// Step 7: Setup WebSocket if needed
+	// if cfg.IsDomainEnabled("websocket") {
+	// 	orderClient := pb.NewOrderServiceClient(conn) // This should be the correct import
+	// 	orderHandler := order.NewOrderHandler(orderClient, cfg.JWT.SecretKey)
+		
+	// 	deliveryClient := pb.NewDeliveryServiceClient(conn) // This should be the correct import  
+	// 	deliveryHandler := delivery.NewDeliveryHandler(deliveryClient, cfg.JWT.SecretKey)
+		
+	// 	SetupWs2WithIntegration(r, orderHandler, deliveryHandler, cfg, logger)
+	// }
 
-	// dish
-	//dish_client := pb_dish.NewDishServiceClient(conn)
-	//dish_hdl := dish.NewDishHandler(dish_client, cfg.JWT.SecretKey)
-	//dish.RegisterDishRoutes(r, dish_hdl)
-
-	// table
-	//table_client := pb_tables.NewTableServiceClient(conn)
-	//table_hdl := tables.NewTableHandler(table_client)
-	//tables.RegisterTablesRoutes(r, table_hdl)
-
-	// guest
-	//guests_client := pb_guests.NewGuestServiceClient(conn)
-	//guests_hdl := guests.NewGuestHandler(guests_client, cfg.JWT.SecretKey)
-	//guests.RegisterGuestRoutes(r, guests_hdl)
-
-	// order
-	//order_client := pb_order.NewOrderServiceClient(conn)
-	//order_hdl := order.NewOrderHandler(order_client, cfg.JWT.SecretKey)
-	//order.RegisterOrderRoutes(r, order_hdl)
-
-	// delivery
-	//delivery_client := pb_delivery.NewDeliveryServiceClient(conn)
-	//delivery_hdl := delivery.NewDeliveryHandler(delivery_client, cfg.JWT.SecretKey)
-	//delivery.RegisterDeliveryRoutes(r, delivery_hdl)
-
-	//SetupWs2(r, order_hdl, delivery_hdl, cfg)
-	//
-	//r.Get("/image", func(w http.ResponseWriter, r *http.Request) {
-	//
-	//	file, err := os.Open("upload/quananqr/public/pexels-ella-olsson-572949-1640777.jpg")
-	//	if err != nil {
-	//		http.Error(w, "Image not found.", http.StatusNotFound)
-	//		return
-	//	}
-	//	defer file.Close()
-	//
-	//	img, _, err := image.Decode(file)
-	//	if err != nil {
-	//		http.Error(w, "Error decoding image.", http.StatusInternalServerError)
-	//		return
-	//	}
-	//
-	//	w.Header().Set("Content-Type", "image/jpeg")
-	//	jpeg.Encode(w, img, nil)
-	//})
-	//
-	//hdl_image := image_upload.NewImageHandler(cfg.JWT.SecretKey)
-	//
-	//image_upload.RegisterImageRoutes(r, hdl_image)
-
-	// Construct server address properly
-	serverAddress := fmt.Sprintf(":%d", cfg.Server.Port)
-	Start(serverAddress, r)
+	// Step 8: Start server with graceful shutdown
+	startServerWithIntegration(ctx, r, cfg, logger, utils)
 }
 
-// setupCORS configures CORS middleware for the router
-func setupCORS(r *chi.Mux, cfg *utils_config.Config) {
+// setupCORSWithIntegration configures CORS middleware using integrated logging
+// setupCORSWithIntegration configures CORS middleware using integrated logging
+func setupCORSWithIntegration(r *chi.Mux, cfg *utils_config.Config, logger *logger.SpecializedLogger) {
+	logger.LogBusinessEvent("system", "middleware", "cors", "configuring", map[string]interface{}{
+		"allowed_origins": cfg.ExternalAPIs.QuanAn.Address,
+		"environment":     cfg.Environment,
+	})
+
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins: []string{
-			cfg.ExternalAPIs.QuanAn.Address, 
+			cfg.ExternalAPIs.QuanAn.Address,
 			"http://localhost:*",
 			"http://localhost:8888",
 			"http://localhost:8080",
-			"*", // Allow all origins for development (remove in production)
+			"*", // Remove in production
 		},
 		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"},
 		AllowedHeaders: []string{
-			"Accept",
-			"Authorization",
-			"Content-Type",
-			"X-CSRF-Token",
-			"X-Table-Token",
-			"X-Requested-With",
+			"Accept", "Authorization", "Content-Type", "X-CSRF-Token",
+			"X-Table-Token", "X-Requested-With",
 		},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
@@ -188,24 +156,73 @@ func setupCORS(r *chi.Mux, cfg *utils_config.Config) {
 	}))
 }
 
-func debugMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// log.Printf("Incoming request: %s %s", r.Method, r.URL.Path)
-		// log.Printf("Headers: %v", r.Header)
-		next.ServeHTTP(w, r)
-	})
-}
+// setupGlobalMiddlewareWithIntegration sets up middleware using the integration package
+func setupGlobalMiddlewareWithIntegration(r *chi.Mux, cfg *utils_config.Config, errorHandler *error_custom.UnifiedErrorHandler) {
+	// Core error handling middleware from integration
+	r.Use(error_custom.RequestIDMiddleware)
+	r.Use(error_custom.LogHTTPMiddleware)
+	r.Use(error_custom.RecoveryMiddleware)
 
-func getEnvWithDefault(key, defaultValue string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		return defaultValue
+	// Environment-specific middleware
+	if cfg.Environment == "development" {
+		// r.Use(error_custom.DebugMiddleware)
+		r.Use(debugMiddlewareWithIntegration)
 	}
-	return value
+
+	// JWT validation middleware for protected routes
+	if cfg.JWT.SecretKey != "" {
+		r.Use(error_custom.JWTValidationMiddleware(cfg.JWT.SecretKey))
+	}
+
+	// Domain context middleware
+	r.Use(error_custom.DomainContextMiddleware)
 }
 
-func SetupWs2(r chi.Router, orderHandler *order.OrderHandlerController, deliveryHandler *delivery.DeliveryHandlerController, cfg *utils_config.Config) {
-	log.Println("golang/cmd/server/main.go")
+// setupDomainHandlersWithIntegration sets up domain handlers using integration utilities
+func setupDomainHandlersWithIntegration(r *chi.Mux, conn *grpc.ClientConn, cfg *utils_config.Config, utils *integration.UtilityManager) {
+	// Account domain
+	if cfg.IsDomainEnabled("account") {
+		accountUtils := integration.NewDomainUtilities("account")
+		if err := accountUtils.ValidateConfig(); err != nil {
+			accountUtils.Logger.LogSecurityEvent("domain_config_invalid", "error", "account", "", map[string]interface{}{
+				"error": err.Error(),
+			})
+		} else {
+			userClient := pb.NewAccountServiceClient(conn)
+			accountHandler := account_handler.NewAccountHandler(userClient, cfg)
+			account_handler.RegisterRoutesAccountHandler(r, accountHandler)
+			
+			accountUtils.LogOperation("handler_registration", "success", true, nil, map[string]interface{}{
+				"routes_registered": true,
+			})
+		}
+	}
+
+	// Branch domain
+	if cfg.IsDomainEnabled("branch") {
+		branchUtils := integration.NewDomainUtilities("branch")
+		if err := branchUtils.ValidateConfig(); err != nil {
+			branchUtils.Logger.LogSecurityEvent("domain_config_invalid", "error", "branch", "", map[string]interface{}{
+				"error": err.Error(),
+			})
+		} else {
+			branchClient := branchpb.NewBranchServiceClient(conn)
+			branchHandler := branch.NewBranchHandler(branchClient)
+			branch.RegisterRoutes(r, branchHandler)
+			
+			branchUtils.LogOperation("handler_registration", "success", true, nil, map[string]interface{}{
+				"routes_registered": true,
+			})
+		}
+	}
+
+	// Add other domain handlers as needed...
+}
+
+// SetupWs2WithIntegration sets up WebSocket with integration logging
+func SetupWs2WithIntegration(r chi.Router, orderHandler *order.OrderHandlerController, deliveryHandler *delivery.DeliveryHandlerController, cfg *utils_config.Config,logger *logger.SpecializedLogger) {
+	wsUtils := integration.NewDomainUtilities("websocket")
+	wsUtils.Logger.LogBusinessEvent("websocket", "setup", "initialization", "starting", nil)
 
 	// Initialize the JWT token maker
 	tokenMaker := token.NewJWTMaker(cfg.JWT.SecretKey)
@@ -226,81 +243,121 @@ func SetupWs2(r chi.Router, orderHandler *order.OrderHandlerController, delivery
 	deliveryMsgHandler.SetBroadcaster(broadcaster)
 
 	// Setup router with token maker
-	// wsRouter := ws2.NewWebSocketRouter(hub)
-
 	wsRouter := ws2.NewWebSocketRouter(hub, tokenMaker)
 	wsRouter.RegisterRoutes(r)
 
 	go hub.Run()
+
+	wsUtils.LogOperation("websocket_setup", "completed", true, nil, map[string]interface{}{
+		"hub_started":        true,
+		"routes_registered": true,
+	})
 }
 
-func Start(addr string, r *chi.Mux) error {
-	log.Printf("Starting HTTP server on %s", addr)
-	log.Printf("Swagger UI available at: http://localhost%s/swagger/index.html", addr)
-	return http.ListenAndServe(addr, r)
+// startServerWithIntegration starts the server with integrated error handling and graceful shutdown
+func startServerWithIntegration(ctx context.Context, r *chi.Mux, cfg *utils_config.Config, logger *logger.SpecializedLogger, utils *integration.UtilityManager) {
+	serverAddress := fmt.Sprintf(":%d", cfg.Server.Port)
+	
+	server := &http.Server{
+		Addr:         serverAddress,
+		Handler:      r,
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
+		IdleTimeout:  cfg.Server.IdleTimeout,
+	}
+
+	logger.LogBusinessEvent("system", "server", "startup", "starting", map[string]interface{}{
+		"address":       serverAddress,
+		"environment":   cfg.Environment,
+		"swagger_url":   fmt.Sprintf("http://localhost%s/swagger/index.html", serverAddress),
+		"read_timeout":  cfg.Server.ReadTimeout,
+		"write_timeout": cfg.Server.WriteTimeout,
+		"idle_timeout":  cfg.Server.IdleTimeout,
+	})
+
+	// Start server in goroutine for graceful shutdown
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.LogSecurityEvent("server_startup_failed", "critical", "main", "", map[string]interface{}{
+				"address": serverAddress,
+				"error":   err.Error(),
+			})
+			log.Fatalf("Server failed to start: %v", err)
+		}
+	}()
+
+	log.Printf("Starting HTTP server on %s", serverAddress)
+	log.Printf("Swagger UI available at: http://localhost%s/swagger/index.html", serverAddress)
+
+	// Wait for shutdown signal
+	<-ctx.Done()
+
+	// Graceful shutdown
+	logger.LogBusinessEvent("system", "server", "shutdown", "starting", nil)
+	
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.LogSecurityEvent("server_shutdown_failed", "error", "main", "", map[string]interface{}{
+			"error": err.Error(),
+		})
+	} else {
+		logger.LogBusinessEvent("system", "server", "shutdown", "completed", nil)
+	}
+
+	// Shutdown utility manager
+	if err := utils.Shutdown(shutdownCtx); err != nil {
+		logger.LogSecurityEvent("utility_shutdown_failed", "error", "main", "", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
 }
 
-// new 12121212
-func setupGlobalMiddleware(r *chi.Mux, cfg *utils_config.Config) {
-    // Core error handling middleware
-    r.Use(error_custom.RequestIDMiddleware)
-    r.Use(error_custom.LogHTTPMiddleware)
-    r.Use(error_custom.RecoveryMiddleware)
-
-    // Environment-specific middleware
-    if cfg.Environment == "development" {
-        r.Use(error_custom.DebugMiddleware)
-    }
-
-    // JWT validation middleware for protected routes
-    if cfg.JWT.SecretKey != "" {
-        r.Use(error_custom.JWTValidationMiddleware(cfg.JWT.SecretKey))
-    }
-
-    // Domain context middleware
-    r.Use(error_custom.DomainContextMiddleware)
+// debugMiddlewareWithIntegration provides debug middleware with integration logging
+func debugMiddlewareWithIntegration(next http.Handler) http.Handler {
+	debugUtils := integration.NewHandlerUtilities("debug")
+	
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		debugUtils.HandlerLogger.LogBusinessEvent("debug", "request", "incoming", "received", map[string]interface{}{
+			"method": r.Method,
+			"path":   r.URL.Path,
+			"query":  r.URL.RawQuery,
+		})
+		next.ServeHTTP(w, r)
+	})
 }
 
-func setupDomainHandlers(r *chi.Mux, conn *grpc.ClientConn, cfg *utils_config.Config) {
-    // Account domain with error handling
-    if cfg.IsDomainEnabled("account") {
-        userClient := pb.NewAccountServiceClient(conn)
-        accountHandler := account_handler.NewAccountHandler(userClient, cfg)
-     account_handler.RegisterRoutesAccountHandler(r, accountHandler)
-    }
-
-    // Branch domain with error handling
-    // if cfg.IsDomainEnabled("branch") {
-    //     branchClient := branchpb.NewBranchServiceClient(conn)
-    //     branchHandler := branch.NewBranchHandlerWithErrorHandling(branchClient, cfg)
-    //     setupBranchRoutes(r, branchHandler)
-    // }
-
-    // Additional domain handlers...
+// getEnvWithDefault returns environment variable or default value
+func getEnvWithDefault(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
 }
 
+// Health check endpoint setup (optional)
+func setupHealthCheck(r *chi.Mux, utils *integration.UtilityManager) {
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		health := utils.HealthCheck(r.Context())
+		
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		
+		// You'll need to marshal this to JSON
+		// json.NewEncoder(w).Encode(health)
+		fmt.Fprintf(w, "%+v", health)
+	})
 
-
-func StartWithErrorHandling(addr string, r *chi.Mux, cfg *utils_config.Config) {
-    log.Printf("Starting HTTP server on %s", addr)
-    log.Printf("Environment: %s", cfg.Environment)
-  
-    
-    server := &http.Server{
-        Addr:         addr,
-        Handler:      r,
-        ReadTimeout:  cfg.Server.ReadTimeout,
-        WriteTimeout: cfg.Server.WriteTimeout,
-        IdleTimeout:  cfg.Server.IdleTimeout,
-    }
-    
-    if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-        // Enhanced error logging with context
-        error_custom.LogCriticalError("server_startup_failed", map[string]interface{}{
-            "address": addr,
-            "error":   err.Error(),
-        })
-        log.Fatalf("Server failed to start: %v", err)
-    }
+	r.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		metrics := utils.GetMetrics()
+		
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		
+		// You'll need to marshal this to JSON
+		// json.NewEncoder(w).Encode(metrics)
+		fmt.Fprintf(w, "%+v", metrics)
+	})
 }
-// new 12121212
