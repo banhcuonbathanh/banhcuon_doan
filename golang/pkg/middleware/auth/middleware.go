@@ -3,13 +3,13 @@ package auth
 import (
 	"context"
 	httpserve "english-ai-full/pkg/pkg/http"
-	"english-ai-full/utils"
+
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
 
-	"english-ai-full/token"
+	account_token "english-ai-full/token"
 )
 
 type AuthKey struct{}
@@ -34,7 +34,7 @@ func isRoleAllowed(userRole Role, allowedRoles []Role) bool {
 	return false
 }
 
-func verifyClaimsFromAuthHeader(r *http.Request, tokenMaker *token.JWTMaker) (*token.UserClaims, error) {
+func verifyClaimsFromAuthHeader(r *http.Request, tokenMaker *account_token.JWTMaker) (*account_token.UserClaims, error) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		return nil, fmt.Errorf("authorization header is missing")
@@ -72,7 +72,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		token := bearToken[1]
-		claims, err := utils.ParseToken(token)
+		claims, err := account_token.ParseToken(token)
 		if err != nil {
 			httpserve.ErrorHandler(w, http.StatusUnauthorized, ErrInvalidToken, "Invalid token")
 			return

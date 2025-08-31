@@ -4,7 +4,7 @@ package account
 import (
 	"context"
 	account_dto "english-ai-full/internal/account/account_dto"
-	"english-ai-full/internal/model"
+
 
 	"english-ai-full/internal/proto_qr/account"
 	pb "english-ai-full/internal/proto_qr/account"
@@ -17,19 +17,19 @@ import (
 // Domain layer defines what repository should do
 type AccountRepositoryInterface interface {
 	// User management
-	CreateUser(ctx context.Context, user model.Account) (model.Account, error)
-	Register(ctx context.Context, user model.Account) (model.Account, error)
-	FindByEmail(ctx context.Context, email string) (model.Account, error)
-	FindByID(ctx context.Context, id int64) (model.Account, error)
-	FindAllUsers(ctx context.Context) ([]model.Account, error)
-	UpdateUser(ctx context.Context, user model.Account) (model.Account, error)
+	CreateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
+	Register(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
+	FindByEmail(ctx context.Context, email string) (account_dto.Account, error)
+	FindByID(ctx context.Context, id int64) (account_dto.Account, error)
+	FindAllUsers(ctx context.Context) ([]account_dto.Account, error)
+	UpdateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
 	DeleteUser(ctx context.Context, id int64) error
 	
 	// Enhanced search and filtering
-	FindByBranchID(ctx context.Context, branchID int64) ([]model.Account, error)
-	FindByBranchWithPagination(ctx context.Context, branchID int64, offset, limit int) ([]model.Account, int64, error)
-	FindByRole(ctx context.Context, role string) ([]model.Account, error)
-	FindByOwnerID(ctx context.Context, ownerID int64) ([]model.Account, error)
+	FindByBranchID(ctx context.Context, branchID int64) ([]account_dto.Account, error)
+	FindByBranchWithPagination(ctx context.Context, branchID int64, offset, limit int) ([]account_dto.Account, int64, error)
+	FindByRole(ctx context.Context, role string) ([]account_dto.Account, error)
+	FindByOwnerID(ctx context.Context, ownerID int64) ([]account_dto.Account, error)
 
 	SearchUsers(ctx context.Context, query, role string, branchId int64, statusFilter []string, page, pageSize int32, sortBy, sortOrder string) (users []account.Account, totalCount int64, err error)
 	// Account verification and status
@@ -80,7 +80,7 @@ SearchUsers(ctx context.Context, req *account.SearchUsersReq) (*account.SearchUs
 	ValidateToken(ctx context.Context, req *pb.ValidateTokenReq) (*pb.ValidateTokenRes, error)
 	
 	// Additional business logic methods
-	ValidateUserCredentials(ctx context.Context, email, password string) (model.Account, error)
+	ValidateUserCredentials(ctx context.Context, email, password string) (account_dto.Account, error)
 	DeactivateUser(ctx context.Context, userID int64) error
 
 GetUsersByBranch(ctx context.Context, req *account.FindByBranchReq) (*account.AccountList, error)
@@ -179,10 +179,10 @@ type PasswordHasherInterface interface {
 
 // JWT token interface
 type TokenMakerInterface interface {
-	CreateToken(user model.Account) (string, error)
-	VerifyToken(token string) (*model.Account, error)
-	CreateRefreshToken(user model.Account) (string, error)
-	ValidateRefreshToken(token string) (*model.Account, error)
+	CreateToken(user account_dto.Account) (string, error)
+	VerifyToken(token string) (*account_dto.Account, error)
+	CreateRefreshToken(user account_dto.Account) (string, error)
+	ValidateRefreshToken(token string) (*account_dto.Account, error)
 	CreateResetToken(email string) (string, error)
 	ValidateResetToken(token string) (string, error) // Returns email if valid
 	CreateVerificationToken(email string) (string, error)
@@ -198,8 +198,8 @@ type LoggerInterface interface {
 }
 
 // ===== NOTE =====
-// Request models are defined in: requests.go
-// Response models are defined in: responses.go
+// Request account_dtos are defined in: requests.go
+// Response account_dtos are defined in: responses.go
 
 // ===== VALIDATION INTERFACE =====
 type ValidatorInterface interface {

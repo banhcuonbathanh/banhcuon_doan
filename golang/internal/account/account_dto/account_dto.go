@@ -6,17 +6,20 @@ import "time"
 
 // Account represents a user account
 type Account struct {
-	ID        int64     `json:"id" example:"123"`
-	BranchID  int64     `json:"branch_id" example:"1"`
-	Name      string    `json:"name" example:"John Doe"`
-	Email     string    `json:"email" example:"john.doe@example.com"`
-	Avatar    string    `json:"avatar" example:"https://example.com/avatar.jpg"`
-	Title     string    `json:"title" example:"Manager"`
-	Role      Role      `json:"role" example:"admin"`
-	OwnerID   int64     `json:"owner_id" example:"1"`
-	Status    string    `json:"status" example:"active"`
-	CreatedAt time.Time `json:"created_at" example:"2023-01-01T00:00:00Z"`
-	UpdatedAt time.Time `json:"updated_at" example:"2023-01-01T00:00:00Z"`
+    ID        int64     `json:"id" example:"123"`
+    BranchID  int64     `json:"branch_id" example:"1"`
+    Name      string    `json:"name" example:"John Doe"`
+    Email     string    `json:"email" example:"john.doe@example.com"`
+    Avatar    string    `json:"avatar" example:"https://example.com/avatar.jpg"`
+    Title     string    `json:"title" example:"Manager"`
+    Role      Role      `json:"role" example:"admin"`
+    OwnerID   int64     `json:"owner_id" example:"1"`
+    Status    string    `json:"status" example:"active"`
+    CreatedAt time.Time `json:"created_at" example:"2023-01-01T00:00:00Z"`
+    UpdatedAt time.Time `json:"updated_at" example:"2023-01-01T00:00:00Z"`
+
+    // Add password if needed (use with care)
+    Password string `json:"password,omitempty" example:"securePass123"`
 }
 
 // Role represents user roles

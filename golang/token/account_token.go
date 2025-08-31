@@ -1,7 +1,8 @@
-package utils
+package token
 
 import (
-	"english-ai-full/internal/model"
+	"english-ai-full/internal/account/account_dto"
+
 	utils_config "english-ai-full/utils/config"
 	"errors"
 	"fmt"
@@ -33,7 +34,7 @@ func hashPassword(password string) (string, error) {
 	return string(hashedBytes), nil
 }
 
-func generateJWTToken(user model.Account) (string, error) {
+func generateJWTToken(user account_dto.Account) (string, error) {
 	config := utils_config.GetConfig()
 	if config == nil {
 		return "", errors.New("configuration not initialized")
@@ -43,7 +44,7 @@ func generateJWTToken(user model.Account) (string, error) {
 	return tokenMaker.CreateToken(user)
 }
 
-func generateRefreshToken(user model.Account) (string, error) {
+func generateRefreshToken(user account_dto.Account) (string, error) {
 	config := utils_config.GetConfig()
 	if config == nil {
 		return "", errors.New("configuration not initialized")
@@ -88,7 +89,7 @@ type JWTTokenMaker struct {
 type JWTClaims struct {
 	UserID   int64       `json:"user_id"`
 	Email    string      `json:"email"`
-	Role     model.Role  `json:"role"`
+	Role     account_dto.Role  `json:"role"`
 	BranchID int64       `json:"branch_id"`
 	jwt.RegisteredClaims
 }
@@ -103,7 +104,7 @@ func NewJWTTokenMaker(secretKey string) *JWTTokenMaker {
 	}
 }
 
-func (maker *JWTTokenMaker) CreateToken(user model.Account) (string, error) {
+func (maker *JWTTokenMaker) CreateToken(user account_dto.Account) (string, error) {
 	claims := &JWTClaims{
 		UserID:   user.ID,
 		Email:    user.Email,
@@ -121,7 +122,7 @@ func (maker *JWTTokenMaker) CreateToken(user model.Account) (string, error) {
 	return token.SignedString([]byte(maker.secretKey))
 }
 
-func (maker *JWTTokenMaker) VerifyToken(tokenString string) (*model.Account, error) {
+func (maker *JWTTokenMaker) VerifyToken(tokenString string) (*account_dto.Account, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -138,7 +139,7 @@ func (maker *JWTTokenMaker) VerifyToken(tokenString string) (*model.Account, err
 		return nil, errors.New("invalid token")
 	}
 
-	return &model.Account{
+	return &account_dto.Account{
 		ID:       claims.UserID,
 		Email:    claims.Email,
 		Role:     claims.Role,
@@ -146,7 +147,7 @@ func (maker *JWTTokenMaker) VerifyToken(tokenString string) (*model.Account, err
 	}, nil
 }
 
-func (maker *JWTTokenMaker) CreateRefreshToken(user model.Account) (string, error) {
+func (maker *JWTTokenMaker) CreateRefreshToken(user account_dto.Account) (string, error) {
 	claims := &JWTClaims{
 		UserID:   user.ID,
 		Email:    user.Email,
@@ -164,7 +165,7 @@ func (maker *JWTTokenMaker) CreateRefreshToken(user model.Account) (string, erro
 	return token.SignedString([]byte(maker.secretKey))
 }
 
-func (maker *JWTTokenMaker) ValidateRefreshToken(tokenString string) (*model.Account, error) {
+func (maker *JWTTokenMaker) ValidateRefreshToken(tokenString string) (*account_dto.Account, error) {
 	return maker.VerifyToken(tokenString) // Same validation logic
 }
 
