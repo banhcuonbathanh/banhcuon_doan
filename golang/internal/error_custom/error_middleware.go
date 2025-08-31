@@ -196,3 +196,39 @@ type responseWriter struct {
 	statusCode int
 }
 
+func DebugMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestID := GetRequestIDFromContext(r.Context())
+		domain := GetDomainFromContext(r.Context())
+		
+		logger.Debug("Debug middleware - incoming request", map[string]interface{}{
+			"method":     r.Method,
+			"path":       r.URL.Path,
+			"query":      r.URL.RawQuery,
+			"headers":    r.Header,
+			"ip":         GetClientIP(r),
+			"request_id": requestID,
+			"domain":     domain,
+		})
+		
+		next.ServeHTTP(w, r)
+	})
+}
+
+
+func LogCriticalError(errorType string, context map[string]interface{}) {
+	logContext := make(map[string]interface{})
+	
+	// Add error type
+	logContext["error_type"] = errorType
+	logContext["severity"] = "CRITICAL"
+	logContext["timestamp"] = time.Now().UTC().Format(time.RFC3339)
+	
+	// Add provided context
+	for k, v := range context {
+		logContext[k] = v
+	}
+	
+	// Log the critical error
+	logger.Error("Critical system error occurred", logContext)
+}
