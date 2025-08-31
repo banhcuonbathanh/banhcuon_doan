@@ -1,4 +1,4 @@
-// Package utils provides integrated management for configuration, logging, and error handling
+// Package integration provides integrated management for configuration, logging, and error handling
 package integration
 
 import (
@@ -7,15 +7,10 @@ import (
 	"sync"
 
 	config "english-ai-full/utils/config"
-
-		logger "english-ai-full/logger"
-
-			coreLogger "english-ai-full/logger/core"
-
-			error_custom "english-ai-full/internal/error_custom/error_custom"
-
+	logger "english-ai-full/logger"
+	coreLogger "english-ai-full/logger/core"
+	error_custom "english-ai-full/internal/error_custom"
 )
-
 
 type UtilityManager struct {
 	Config       *config.Config
@@ -104,32 +99,32 @@ func (um *UtilityManager) initializeConfig(configPath string) error {
 // initializeLogger sets up the logging system based on configuration
 func (um *UtilityManager) initializeLogger() error {
 	// Create environment-appropriate logger
-	var coreLogger *coreLogger.CoreLogger
+	var coreLoggerInstance *coreLogger.CoreLogger
 	
 	switch {
 	case um.Config.IsProduction():
-		coreLogger = logger.NewComponentLogger("production")
-		coreLogger.SetLevel(logger.LevelInfo)
+		coreLoggerInstance = logger.NewComponentLogger("production")
+		coreLoggerInstance.SetLevel(coreLogger.InfoLevel) // Use core.InfoLevel
 	case um.Config.IsDevelopment():
-		coreLogger = logger.NewComponentLogger("development")
-		coreLogger.SetLevel(logger.LevelDebug)
+		coreLoggerInstance = logger.NewComponentLogger("development")
+		coreLoggerInstance.SetLevel(coreLogger.DebugLevel) // Use core.DebugLevel
 	case um.Config.IsStaging():
-		coreLogger = logger.NewComponentLogger("staging")
-		coreLogger.SetLevel(logger.LevelInfo)
+		coreLoggerInstance = logger.NewComponentLogger("staging")
+		coreLoggerInstance.SetLevel(coreLogger.InfoLevel) // Use core.InfoLevel
 	default:
-		coreLogger = logger.NewDefaultLogger()
+		coreLoggerInstance = logger.NewDefaultLogger()
 	}
 
 	// Configure logger with app context
-	coreLogger.SetComponent(um.Config.AppName)
-	coreLogger.SetEnvironment(um.Config.Environment)
-	coreLogger.AddContextField("version", um.Config.Version)
+	coreLoggerInstance.SetComponent(um.Config.AppName)
+	coreLoggerInstance.SetEnvironment(um.Config.Environment)
+	coreLoggerInstance.AddContextField("version", um.Config.Version)
 
 	// Create specialized logger
-	um.Logger = logger.NewSpecializedLogger(coreLogger)
+	um.Logger = logger.NewSpecializedLogger(coreLoggerInstance)
 
-	// Set global logger for convenience functions
-	logger.SetGlobalLogger(coreLogger)
+	// Set global logger for convenience functions - assign to GlobalLogger variable
+	logger.GlobalLogger = coreLoggerInstance
 
 	return nil
 }
@@ -190,9 +185,9 @@ func (um *UtilityManager) reconfigureOnConfigChange(oldConfig, newConfig *config
 func (um *UtilityManager) reconfigureLogger() error {
 	// Update logger level based on new config
 	if um.Config.Debug {
-		um.Logger.SetLevel(logger.LevelDebug)
+		um.Logger.SetLevel(coreLogger.DebugLevel) // Use core.DebugLevel
 	} else if um.Config.IsProduction() {
-		um.Logger.SetLevel(logger.LevelInfo)
+		um.Logger.SetLevel(coreLogger.InfoLevel) // Use core.InfoLevel
 	}
 
 	um.Logger.LogBusinessEvent("system", "configuration", "logger", "reconfigured", map[string]interface{}{
@@ -287,7 +282,7 @@ type DomainUtilities struct {
 	Domain       string
 	Config       *config.Config
 	Logger       *logger.SpecializedLogger
-	ErrorHandler *error.UnifiedErrorHandler
+	ErrorHandler *error_custom.UnifiedErrorHandler // Fixed the type reference
 }
 
 // LogOperation logs a domain operation with consistent formatting
@@ -437,7 +432,3 @@ func (um *UtilityManager) GetMetrics() map[string]interface{} {
 		"version":          um.Config.Version,
 	}
 }
-
-
-
-
