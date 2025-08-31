@@ -11,7 +11,7 @@ import (
 
 	"english-ai-full/internal/account/account_handler" // Add this import
 	"english-ai-full/internal/branch"
-	errorcustom "english-ai-full/internal/error_custom" // Fix import name
+	errorcustom "english-ai-full/error_custom" // Fix import name
 	branchpb "english-ai-full/internal/proto_qr/branch"
 	delivery "english-ai-full/internal/delivery"
 	order "english-ai-full/internal/order"

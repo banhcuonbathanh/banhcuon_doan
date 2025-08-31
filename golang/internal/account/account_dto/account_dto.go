@@ -3,25 +3,6 @@ package account_dto
 
 import "time"
 
-// // LoginRequest represents the login request payload
-// // swagger:model LoginRequest
-// type LoginUserRes struct {
-// 	AccessToken  string                `json:"access_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
-// 	RefreshToken string                `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
-// 	User         AccountLoginResponse  `json:"user"`
-// }
-
-// // AccountLoginResponse represents the user data in login response
-// type AccountLoginResponse struct {
-// 	ID       int64  `json:"id" example:"123"`
-// 	BranchID int64  `json:"branch_id" example:"1"`
-// 	Name     string `json:"name" example:"John Doe"`
-// 	Email    string `json:"email" example:"john.doe@example.com"`
-// 	Avatar   string `json:"avatar" example:"https://example.com/avatar.jpg"`
-// 	Title    string `json:"title" example:"Manager"`
-// 	Role     string `json:"role" example:"admin"`
-// 	OwnerID  int64  `json:"owner_id" example:"1"`
-// }
 
 // Account represents a user account
 type Account struct {
