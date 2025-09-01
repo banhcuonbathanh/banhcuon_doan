@@ -1,11 +1,12 @@
 package utils
-// File: golang/internal/email/smtp_email_service.go
 
+// File: golang/internal/email/smtp_email_service.go
 
 import (
 	"context"
 	"fmt"
 	"net/smtp"
+	"regexp"
 	"strings"
 )
 
@@ -170,4 +171,11 @@ func (m *MockEmailService) SendVerificationEmail(ctx context.Context, email, ver
 func (m *MockEmailService) SendPasswordChangedNotification(ctx context.Context, email, name string) error {
 	fmt.Printf("Mock: Sending password changed notification to %s (%s)\n", name, email)
 	return nil
+}
+
+// isValidEmail validates email format using regex
+func IsValidEmail(email string) bool {
+   // Basic email regex pattern
+   emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+   return emailRegex.MatchString(email)
 }
