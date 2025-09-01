@@ -1,6 +1,7 @@
 package account_service
 
 import (
+	"context"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/proto_qr/account"
 	"strings"
@@ -89,4 +90,46 @@ func (s *AccountService) mapProtoEnumToStatus(status account.AccountStatus) stri
 	default:
 		return "unknown"
 	}
+}
+
+// CreateUserProto creates a new user account using Proto request/response
+func (s *AccountService) CreateUserProto(ctx context.Context, req *account_dto.CreateUserRequest) (*account_dto.CreateUserResponse, error) {
+   const operation = "create_user_proto"
+   startTime := time.Now()
+   
+   operationCtx := s.buildOperationContext(operation, map[string]interface{}{
+   	"email": req.Email,
+   	"role":  req.Role,
+   })
+
+   // Convert proto to DTO
+   userDTO := account_dto.Account{
+   	BranchID: req.BranchID,
+   	Name:     req.Name,
+   	Email:    req.Email,
+   	Password: req.Password,
+   	Avatar:   req.Avatar,
+   	Title:    req.Title,
+   	Role:     account_dto.Role(req.Role),
+   	OwnerID:  req.OwnerID,
+   }
+
+   // Create user using DTO method
+   createdUser, err := s.CreateUser(ctx, userDTO)
+   if err != nil {
+   	return nil, s.handleServiceError(err, operation, operationCtx, &startTime)
+   }
+
+   // Log success and convert to proto response
+   s.handleServiceSuccess(operation, operationCtx, startTime)
+   
+   return &account_dto.CreateUserResponse{
+   	BranchID: createdUser.BranchID,
+   	Name:     createdUser.Name,
+   	Email:    createdUser.Email,
+   	Avatar:   createdUser.Avatar,
+   	Title:    createdUser.Title,
+   	Role:     string(createdUser.Role),
+   	OwnerID:  createdUser.OwnerID,
+   }, nil
 }
