@@ -1,10 +1,13 @@
 package account_repository
 
 import (
+	"context"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/proto_qr/account"
 	"english-ai-full/orm"
-"github.com/aarondl/null/v8"
+	"time"
+	error_custom "english-ai-full/error_custom"
+	"github.com/aarondl/null/v8"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -137,3 +140,118 @@ func (r *Repository) toNullStringAlways(value string) null.String {
 		Valid:  true,
 	}
 }
+
+
+func (r *Repository) buildOperationContext(user account_dto.Account) map[string]interface{} {
+	ctx := map[string]interface{}{
+		"email": user.Email,
+		"name":  user.Name,
+		"role":  string(user.Role),
+	}
+	
+	// Add optional fields only if they have meaningful values
+	if user.BranchID != 0 {
+		ctx["branch_id"] = user.BranchID
+	}
+	if user.OwnerID != 0 {
+		ctx["owner_id"] = user.OwnerID
+	}
+	if user.Avatar != "" {
+		ctx["has_avatar"] = true
+	}
+	if user.Title != "" {
+		ctx["has_title"] = true
+	}
+	
+	return ctx
+}
+
+func (r *Repository) buildORMAccount(user account_dto.Account) (*orm.Account, error) {
+	// ✅ Add validation for required fields
+	if user.Email == "" {
+		return nil, error_custom.NewValidationError("account", "email", "Email is required", user.Email)
+	}
+	if user.Name == "" {
+		return nil, error_custom.NewValidationError("account", "name", "Name is required", user.Name)
+	}
+	if user.Password == "" {
+		return nil, error_custom.NewValidationError("account", "password", "Password is required", "[REDACTED]")
+	}
+
+	now := time.Now()
+	return &orm.Account{
+		BranchID:  r.toNullInt64(user.BranchID),
+		Name:      user.Name,
+		Email:     user.Email,
+		Password:  user.Password, // Should already be hashed
+		Avatar:    r.toNullString(user.Avatar),
+		Title:     r.toNullString(user.Title),
+		Role:      string(user.Role),
+		OwnerID:   r.toNullInt64(user.OwnerID),
+		Status:    r.toNullString(string(user.Status)),
+		CreatedAt: null.TimeFrom(now),
+		UpdatedAt: null.TimeFrom(now),
+	}, nil
+}
+
+func (r *Repository) handleContextError(ctx context.Context, operation, table string, operationCtx map[string]interface{}) error {
+	err := ctx.Err()
+	operationCtx["context_error"] = err.Error()
+	
+	r.logger.LogDBOperation(operation, table, false, err, operationCtx)
+	
+	return r.errorHandler.HandleDatabaseError(err, "account", table, operation, operationCtx)
+}
+
+func (r *Repository) handleValidationError(err error, operation, table string, operationCtx map[string]interface{}) error {
+	operationCtx["error_type"] = "validation"
+	
+	r.logger.LogDBOperation(operation, table, false, err, operationCtx)
+	
+	// Return the validation error directly since it's already properly typed
+	return err
+}
+
+func (r *Repository) handleInsertError(err error, operation, table string, operationCtx map[string]interface{}, startTime time.Time) error {
+	duration := time.Since(startTime)
+	operationCtx["duration_ms"] = duration.Milliseconds()
+	operationCtx["error_type"] = "database_insert"
+	
+	r.logger.LogDBOperation(operation, table, false, err, operationCtx)
+	
+	return r.errorHandler.HandleDatabaseError(err, "account", table, operation, operationCtx)
+}
+
+func (r *Repository) handleInsertSuccess(ormAccount *orm.Account, operation, table string, operationCtx map[string]interface{}, startTime time.Time) account_dto.Account {
+	duration := time.Since(startTime)
+	operationCtx["duration_ms"] = duration.Milliseconds()
+	operationCtx["user_id"] = ormAccount.ID
+	operationCtx["success"] = true
+	
+	r.logger.LogDBOperation(operation, table, true, nil, operationCtx)
+	
+	return r.mapORMToDTO(ormAccount)
+}
+
+func (r *Repository) wrapError(err error, operation, table string, context map[string]interface{}, startTime *time.Time) error {
+	if err == nil {
+		return nil
+	}
+
+	// Add timing information if provided
+	if startTime != nil {
+		context["duration_ms"] = time.Since(*startTime).Milliseconds()
+	}
+
+	// Add operation context
+	context["operation"] = operation
+	context["table"] = table
+	context["layer"] = "repository"
+
+	// Log the error
+	r.logger.LogDBOperation(operation, table, false, err, context)
+
+	// Delegate to error handler with full context
+	return r.errorHandler.HandleDatabaseError(err, "account", table, operation, context)
+}
+

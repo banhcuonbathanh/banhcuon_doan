@@ -3,34 +3,28 @@ package account_repository
 import (
 	"context"
 	"database/sql"
-	// "fmt"
-	// "strings"
 	"time"
 
 	error_custom "english-ai-full/error_custom"
 	"english-ai-full/internal/account"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/logger"
-	"english-ai-full/orm"
+
 	utils_config "english-ai-full/utils/config"
 
-	"github.com/aarondl/null/v8"                 // Changed from volatiletech
-	"github.com/aarondl/sqlboiler/v4/boil"       // Changed from volatiletech
-	// "github.com/aarondl/sqlboiler/v4/queries/qm" // Changed from volatiletech
+
+	"github.com/aarondl/sqlboiler/v4/boil"
 )
 
-// Ensure Repository implements the interface
 var _ account.AccountRepositoryInterface = (*Repository)(nil)
 
-// Repository handles account data persistence
 type Repository struct {
-	db                *sql.DB
-	logger           *logger.SpecializedLogger
-	errorHandler     *error_custom.RepositoryErrorManager
-	config           *utils_config.Config
+	db           *sql.DB
+	logger       *logger.SpecializedLogger
+	errorHandler *error_custom.RepositoryErrorManager
+	config       *utils_config.Config
 }
 
-// NewAccountRepository creates a new account repository instance
 func NewAccountRepository(db *sql.DB) *Repository {
 	return &Repository{
 		db:           db,
@@ -40,61 +34,44 @@ func NewAccountRepository(db *sql.DB) *Repository {
 	}
 }
 
-// new 1121212121212
-func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error) {
-	// ✅ Prepare operation context
-	operationCtx := map[string]interface{}{
-		"email":    user.Email,
-		"name":     user.Name,
-		"role":     string(user.Role),
-		"branch_id": user.BranchID,
-	}
+// ============================================================================
+// IMPROVED IMPLEMENTATION
+// ============================================================================
 
-	// ✅ Start operation logging - CORRECTED parameter order
-	r.logger.LogDBOperation("create_user", "accounts", true, nil, operationCtx)
+func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error) {
+	const operation = "create_user"
+	const table = "accounts"
+	
+	operationCtx := r.buildOperationContext(user)
+	r.logger.LogDBOperation(operation, table, true, nil, operationCtx)
 	startTime := time.Now()
 
-	// Create ORM model
-	ormAccount := &orm.Account{
-		BranchID:  r.toNullInt64(user.BranchID),
-		Name:      user.Name,
-		Email:     user.Email,
-		Password:  user.Password,
-		Avatar:    r.toNullString(user.Avatar),
-		Title:     r.toNullString(user.Title),
-		Role:      string(user.Role),
-		OwnerID:   r.toNullInt64(user.OwnerID),
-		Status:    r.toNullString(string(user.Status)),
-		CreatedAt: null.TimeFrom(time.Now()),
-		UpdatedAt: null.TimeFrom(time.Now()),
+	if err := ctx.Err(); err != nil {
+		r.logger.LogDBOperation(operation, table, false, err, operationCtx)
+		return account_dto.Account{}, r.handleContextError(ctx, operation, table, operationCtx)
 	}
 
-	// Execute database operation
-	err := ormAccount.Insert(ctx, r.db, boil.Infer())
-	
-	// Add timing information
-	duration := time.Since(startTime)
-	operationCtx["duration_ms"] = duration.Milliseconds()
-
+	ormAccount, err := r.buildORMAccount(user)
 	if err != nil {
-		// ✅ Error logging - CORRECTED parameter order
-		r.logger.LogDBOperation("create_user", "accounts", false, err, operationCtx)
-		
-		return account_dto.Account{}, r.errorHandler.HandleDatabaseError(
-			err,
-			"account",
-			"accounts", 
-			"create_user",
-			operationCtx,
-		)
+		// Log build failure
+		r.logger.LogDBOperation(operation, table, false, err, operationCtx)
+		return account_dto.Account{}, r.wrapError(err, operation, table, operationCtx, &startTime)
 	}
 
-	// ✅ Success logging - CORRECTED parameter order
-	operationCtx["user_id"] = ormAccount.ID
-	r.logger.LogDBOperation("create_user", "accounts", true, nil, operationCtx)
-
-	return r.mapORMToDTO(ormAccount), nil
+	if err := ormAccount.Insert(ctx, r.db, boil.Infer()); err != nil {
+		// Add context and log insert failure
+		operationCtx["attempted_email"] = user.Email
+		operationCtx["attempted_role"] = string(user.Role)
+		r.logger.LogDBOperation(operation, table, false, err, operationCtx)
+		return account_dto.Account{}, r.wrapError(err, operation, table, operationCtx, &startTime)
+	}
+	
+	return r.handleInsertSuccess(ormAccount, operation, table, operationCtx, startTime), nil
 }
+
+// ============================================================================
+// IMPROVED HELPER METHODS
+// ============================================================================
 
 // // new 12121212121
 // func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error) {
