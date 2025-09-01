@@ -3,7 +3,7 @@ package account_service
 
 import (
 	"context"
-	"fmt"
+
 	"strings"
 	"time"
 
@@ -219,116 +219,122 @@ func (s *AccountService) CreateUser(ctx context.Context, user account_dto.Accoun
 	s.handleServiceSuccess(operation, operationCtx, startTime)
 
 	// Send welcome email if email service is available
-	if s.emailService != nil {
-		go func() {
-			emailCtx := context.Background()
-			if err := s.emailService.SendWelcomeEmail(emailCtx, createdUser.Email, createdUser.Name); err != nil {
-				s.logger.LogServiceCall("send_welcome_email", false, err, map[string]interface{}{
-					"user_id":    createdUser.ID,
-					"user_email": createdUser.Email,
-				})
-			}
-		}()
-	}
+if s.emailService != nil {
+   go func() {
+   	emailCtx := context.Background()
+   	if err := s.emailService.SendWelcomeEmail(emailCtx, createdUser.Email, createdUser.Name); err != nil {
+   		s.logger.LogServiceCall("account", "send_welcome_email", false, err, map[string]interface{}{
+   			"user_id":    createdUser.ID,
+   			"user_email": createdUser.Email,
+   		})
+   	}
+   }()
+}
 
 	return createdUser, nil
 }
 
 // CreateUserProto creates a new user account using Proto request/response
-func (s *AccountService) CreateUserProto(ctx context.Context, req *account.CreateUserRequest) (*account.CreateUserResponse, error) {
-	const operation = "create_user_proto"
-	startTime := time.Now()
-	
-	operationCtx := s.buildOperationContext(operation, map[string]interface{}{
-		"email": req.Email,
-		"role":  req.Role,
-	})
+func (s *AccountService) CreateUserProto(ctx context.Context, req *account_dto.CreateUserRequest) (*account_dto.CreateUserResponse, error) {
+   const operation = "create_user_proto"
+   startTime := time.Now()
+   
+   operationCtx := s.buildOperationContext(operation, map[string]interface{}{
+   	"email": req.Email,
+   	"role":  req.Role,
+   })
 
-	// Convert proto to DTO
-	userDTO := account_dto.Account{
-		BranchID: req.BranchId,
-		Name:     req.Name,
-		Email:    req.Email,
-		Password: req.Password,
-		Avatar:   req.Avatar,
-		Title:    req.Title,
-		Role:     account_dto.Role(req.Role),
-		OwnerID:  req.OwnerId,
-	}
+   // Convert proto to DTO
+   userDTO := account_dto.Account{
+   	BranchID: req.BranchID,
+   	Name:     req.Name,
+   	Email:    req.Email,
+   	Password: req.Password,
+   	Avatar:   req.Avatar,
+   	Title:    req.Title,
+   	Role:     account_dto.Role(req.Role),
+   	OwnerID:  req.OwnerID,
+   }
 
-	// Create user using DTO method
-	createdUser, err := s.CreateUser(ctx, userDTO)
-	if err != nil {
-		return nil, s.handleServiceError(err, operation, operationCtx, &startTime)
-	}
+   // Create user using DTO method
+   createdUser, err := s.CreateUser(ctx, userDTO)
+   if err != nil {
+   	return nil, s.handleServiceError(err, operation, operationCtx, &startTime)
+   }
 
-	// Log success and convert to proto response
-	s.handleServiceSuccess(operation, operationCtx, startTime)
-	
-	return &account.CreateUserResponse{
-		User: s.mapDTOToProto(createdUser),
-	}, nil
+   // Log success and convert to proto response
+   s.handleServiceSuccess(operation, operationCtx, startTime)
+   
+   return &account_dto.CreateUserResponse{
+   	BranchID: createdUser.BranchID,
+   	Name:     createdUser.Name,
+   	Email:    createdUser.Email,
+   	Avatar:   createdUser.Avatar,
+   	Title:    createdUser.Title,
+   	Role:     string(createdUser.Role),
+   	OwnerID:  createdUser.OwnerID,
+   }, nil
 }
 
 // AuthenticateUser authenticates a user with email and password
-func (s *AccountService) AuthenticateUser(ctx context.Context, email, password string) (account_dto.Account, string, error) {
-	const operation = "authenticate_user"
-	startTime := time.Now()
+// func (s *AccountService) AuthenticateUser(ctx context.Context, email, password string) (account_dto.Account, string, error) {
+// 	const operation = "authenticate_user"
+// 	startTime := time.Now()
 	
-	operationCtx := s.buildOperationContext(operation, map[string]interface{}{
-		"email": email,
-	})
+// 	operationCtx := s.buildOperationContext(operation, map[string]interface{}{
+// 		"email": email,
+// 	})
 
-	// Context cancellation check
-	if err := ctx.Err(); err != nil {
-		return account_dto.Account{}, "", s.handleServiceError(err, operation, operationCtx, &startTime)
-	}
+// 	// Context cancellation check
+// 	if err := ctx.Err(); err != nil {
+// 		return account_dto.Account{}, "", s.handleServiceError(err, operation, operationCtx, &startTime)
+// 	}
 
-	// Input validation
-	if email == "" || password == "" {
-		err := error_custom.NewValidationError("account", "credentials", "email and password are required", email)
-		return account_dto.Account{}, "", s.handleServiceError(err, operation, operationCtx, &startTime)
-	}
+// 	// Input validation
+// 	if email == "" || password == "" {
+// 		err := error_custom.NewValidationError("account", "credentials", "email and password are required", email)
+// 		return account_dto.Account{}, "", s.handleServiceError(err, operation, operationCtx, &startTime)
+// 	}
 
-	// Get user by email (assuming this method exists in repository)
-	user, err := s.userRepo.GetUserByEmail(ctx, email)
-	if err != nil {
-		operationCtx["repository_error"] = "user not found or database error"
-		return account_dto.Account{}, "", s.handleServiceError(err, operation, operationCtx, &startTime)
-	}
+// 	// Get user by email (assuming this method exists in repository)
+// 	user, err := s.userRepo.GetUserByEmail(ctx, email)
+// 	if err != nil {
+// 		operationCtx["repository_error"] = "user not found or database error"
+// 		return account_dto.Account{}, "", s.handleServiceError(err, operation, operationCtx, &startTime)
+// 	}
 
-	// Verify password if password hasher is available
-	if s.passwordHash != nil {
-		if err := s.passwordHash.CheckPassword(password, user.Password); err != nil {
-			operationCtx["auth_error"] = "invalid password"
-			authErr := error_custom.NewAuthenticationError("invalid credentials", email)
-			return account_dto.Account{}, "", s.handleServiceError(authErr, operation, operationCtx, &startTime)
-		}
-	}
+// 	// Verify password if password hasher is available
+// 	if s.passwordHash != nil {
+// 		if err := s.passwordHash.CheckPassword(password, user.Password); err != nil {
+// 			operationCtx["auth_error"] = "invalid password"
+// 			authErr := error_custom.NewAuthenticationError("invalid credentials", email)
+// 			return account_dto.Account{}, "", s.handleServiceError(authErr, operation, operationCtx, &startTime)
+// 		}
+// 	}
 
-	// Check if user is active
-	if user.Status != "active" {
-		operationCtx["status_error"] = fmt.Sprintf("user status is %s", user.Status)
-		statusErr := error_custom.NewAuthenticationError("account is not active", email)
-		return account_dto.Account{}, "", s.handleServiceError(statusErr, operation, operationCtx, &startTime)
-	}
+// 	// Check if user is active
+// 	if user.Status != "active" {
+// 		operationCtx["status_error"] = fmt.Sprintf("user status is %s", user.Status)
+// 		statusErr := error_custom.NewAuthenticationError("account is not active", email)
+// 		return account_dto.Account{}, "", s.handleServiceError(statusErr, operation, operationCtx, &startTime)
+// 	}
 
-	// Generate token if token maker is available
-	var token string
-	if s.tokenMaker != nil {
-		token, err = s.tokenMaker.CreateToken(user.Email, user.Role, time.Hour*24) // 24 hours token
-		if err != nil {
-			operationCtx["token_error"] = "failed to generate token"
-			return account_dto.Account{}, "", s.handleServiceError(
-				errors.Wrap(err, "failed to generate token"), 
-				operation, operationCtx, &startTime,
-			)
-		}
-	}
+// 	// Generate token if token maker is available
+// 	var token string
+// 	if s.tokenMaker != nil {
+// 		token, err = s.tokenMaker.CreateToken(user.Email, user.Role, time.Hour*24) // 24 hours token
+// 		if err != nil {
+// 			operationCtx["token_error"] = "failed to generate token"
+// 			return account_dto.Account{}, "", s.handleServiceError(
+// 				errors.Wrap(err, "failed to generate token"), 
+// 				operation, operationCtx, &startTime,
+// 			)
+// 		}
+// 	}
 
-	// Log success
-	operationCtx["user_id"] = user.ID
-	s.handleServiceSuccess(operation, operationCtx, startTime)
+// 	// Log success
+// 	operationCtx["user_id"] = user.ID
+// 	s.handleServiceSuccess(operation, operationCtx, startTime)
 
-	return user, token, nil
-}
+// 	return user, token, nil
+// }
