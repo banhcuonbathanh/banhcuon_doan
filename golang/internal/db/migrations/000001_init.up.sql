@@ -8,8 +8,10 @@ CREATE TABLE accounts (
     title VARCHAR(255),
     role VARCHAR(50) NOT NULL,
     owner_id BIGINT REFERENCES accounts(id) ON DELETE SET NULL,
+    status VARCHAR(50) DEFAULT 'active',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
 
 CREATE TABLE branches (
@@ -19,9 +21,9 @@ CREATE TABLE branches (
     phone VARCHAR(50),
     manager_id BIGINT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
-
 
 CREATE TABLE dishes (
     id BIGSERIAL PRIMARY KEY,
@@ -31,8 +33,11 @@ CREATE TABLE dishes (
     description TEXT,
     image VARCHAR(255),
     status VARCHAR(50) DEFAULT 'Available',
+    count_order INTEGER DEFAULT 0,
+    total_sold INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
 
 CREATE TABLE sets (
@@ -46,7 +51,8 @@ CREATE TABLE sets (
     image VARCHAR(255),
     price INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
 
 CREATE TABLE set_dishes (
@@ -65,7 +71,8 @@ CREATE TABLE tables (
     status table_status DEFAULT 'AVAILABLE',
     token VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
 
 CREATE TABLE guests (
@@ -76,7 +83,8 @@ CREATE TABLE guests (
     refresh_token VARCHAR(255),
     refresh_token_expires_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
 
 CREATE TABLE orders (
@@ -96,7 +104,8 @@ CREATE TABLE orders (
     table_token VARCHAR(255),
     order_name VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
 
 CREATE TABLE order_dishes (
@@ -139,7 +148,8 @@ CREATE TABLE deliveries (
     estimated_delivery_time TIMESTAMP WITH TIME ZONE,
     actual_delivery_time TIMESTAMP WITH TIME ZONE,  
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
 
 CREATE TABLE delivery_dishes (
@@ -155,7 +165,8 @@ CREATE TABLE regulations (
      title VARCHAR(255) NOT NULL,
      content TEXT NOT NULL,
      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+     deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
 
 CREATE TABLE dish_price_history (
@@ -166,13 +177,28 @@ CREATE TABLE dish_price_history (
     start_time TIMESTAMP WITH TIME ZONE NOT NULL,
     end_time TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
 
+-- Add foreign key constraint for accounts table
 ALTER TABLE accounts
     ADD CONSTRAINT fk_accounts_branch
     FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE;
 
-ALTER TABLE dishes
-    ADD COLUMN count_order INTEGER DEFAULT 0,
-    ADD COLUMN total_sold INTEGER DEFAULT 0;
+-- Add foreign key constraint for branches table
+ALTER TABLE branches
+    ADD CONSTRAINT fk_branches_manager
+    FOREIGN KEY (manager_id) REFERENCES accounts(id) ON DELETE SET NULL;
+
+-- Create indexes for deleted_at columns (for soft delete performance)
+CREATE INDEX idx_accounts_deleted_at ON accounts(deleted_at);
+CREATE INDEX idx_branches_deleted_at ON branches(deleted_at);
+CREATE INDEX idx_dishes_deleted_at ON dishes(deleted_at);
+CREATE INDEX idx_sets_deleted_at ON sets(deleted_at);
+CREATE INDEX idx_tables_deleted_at ON tables(deleted_at);
+CREATE INDEX idx_guests_deleted_at ON guests(deleted_at);
+CREATE INDEX idx_orders_deleted_at ON orders(deleted_at);
+CREATE INDEX idx_deliveries_deleted_at ON deliveries(deleted_at);
+CREATE INDEX idx_regulations_deleted_at ON regulations(deleted_at);
+CREATE INDEX idx_dish_price_history_deleted_at ON dish_price_history(deleted_at);

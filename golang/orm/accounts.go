@@ -33,6 +33,7 @@ type Account struct {
 	Title     null.String `boil:"title" json:"title,omitempty" toml:"title" yaml:"title,omitempty"`
 	Role      string      `boil:"role" json:"role" toml:"role" yaml:"role"`
 	OwnerID   null.Int64  `boil:"owner_id" json:"owner_id,omitempty" toml:"owner_id" yaml:"owner_id,omitempty"`
+	Status    null.String `boil:"status" json:"status,omitempty" toml:"status" yaml:"status,omitempty"`
 	CreatedAt null.Time   `boil:"created_at" json:"created_at,omitempty" toml:"created_at" yaml:"created_at,omitempty"`
 	UpdatedAt null.Time   `boil:"updated_at" json:"updated_at,omitempty" toml:"updated_at" yaml:"updated_at,omitempty"`
 	DeletedAt null.Time   `boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
@@ -51,6 +52,7 @@ var AccountColumns = struct {
 	Title     string
 	Role      string
 	OwnerID   string
+	Status    string
 	CreatedAt string
 	UpdatedAt string
 	DeletedAt string
@@ -64,6 +66,7 @@ var AccountColumns = struct {
 	Title:     "title",
 	Role:      "role",
 	OwnerID:   "owner_id",
+	Status:    "status",
 	CreatedAt: "created_at",
 	UpdatedAt: "updated_at",
 	DeletedAt: "deleted_at",
@@ -79,6 +82,7 @@ var AccountTableColumns = struct {
 	Title     string
 	Role      string
 	OwnerID   string
+	Status    string
 	CreatedAt string
 	UpdatedAt string
 	DeletedAt string
@@ -92,6 +96,7 @@ var AccountTableColumns = struct {
 	Title:     "accounts.title",
 	Role:      "accounts.role",
 	OwnerID:   "accounts.owner_id",
+	Status:    "accounts.status",
 	CreatedAt: "accounts.created_at",
 	UpdatedAt: "accounts.updated_at",
 	DeletedAt: "accounts.deleted_at",
@@ -281,6 +286,7 @@ var AccountWhere = struct {
 	Title     whereHelpernull_String
 	Role      whereHelperstring
 	OwnerID   whereHelpernull_Int64
+	Status    whereHelpernull_String
 	CreatedAt whereHelpernull_Time
 	UpdatedAt whereHelpernull_Time
 	DeletedAt whereHelpernull_Time
@@ -294,6 +300,7 @@ var AccountWhere = struct {
 	Title:     whereHelpernull_String{field: "\"accounts\".\"title\""},
 	Role:      whereHelperstring{field: "\"accounts\".\"role\""},
 	OwnerID:   whereHelpernull_Int64{field: "\"accounts\".\"owner_id\""},
+	Status:    whereHelpernull_String{field: "\"accounts\".\"status\""},
 	CreatedAt: whereHelpernull_Time{field: "\"accounts\".\"created_at\""},
 	UpdatedAt: whereHelpernull_Time{field: "\"accounts\".\"updated_at\""},
 	DeletedAt: whereHelpernull_Time{field: "\"accounts\".\"deleted_at\""},
@@ -304,6 +311,7 @@ var AccountRels = struct {
 	Owner                  string
 	Branch                 string
 	OwnerAccounts          string
+	ManagerBranches        string
 	OrderHandlerDeliveries string
 	UserDeliveries         string
 	OrderHandlerOrders     string
@@ -312,6 +320,7 @@ var AccountRels = struct {
 	Owner:                  "Owner",
 	Branch:                 "Branch",
 	OwnerAccounts:          "OwnerAccounts",
+	ManagerBranches:        "ManagerBranches",
 	OrderHandlerDeliveries: "OrderHandlerDeliveries",
 	UserDeliveries:         "UserDeliveries",
 	OrderHandlerOrders:     "OrderHandlerOrders",
@@ -323,6 +332,7 @@ type accountR struct {
 	Owner                  *Account      `boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 	Branch                 *Branch       `boil:"Branch" json:"Branch" toml:"Branch" yaml:"Branch"`
 	OwnerAccounts          AccountSlice  `boil:"OwnerAccounts" json:"OwnerAccounts" toml:"OwnerAccounts" yaml:"OwnerAccounts"`
+	ManagerBranches        BranchSlice   `boil:"ManagerBranches" json:"ManagerBranches" toml:"ManagerBranches" yaml:"ManagerBranches"`
 	OrderHandlerDeliveries DeliverySlice `boil:"OrderHandlerDeliveries" json:"OrderHandlerDeliveries" toml:"OrderHandlerDeliveries" yaml:"OrderHandlerDeliveries"`
 	UserDeliveries         DeliverySlice `boil:"UserDeliveries" json:"UserDeliveries" toml:"UserDeliveries" yaml:"UserDeliveries"`
 	OrderHandlerOrders     OrderSlice    `boil:"OrderHandlerOrders" json:"OrderHandlerOrders" toml:"OrderHandlerOrders" yaml:"OrderHandlerOrders"`
@@ -380,6 +390,22 @@ func (r *accountR) GetOwnerAccounts() AccountSlice {
 	}
 
 	return r.OwnerAccounts
+}
+
+func (o *Account) GetManagerBranches() BranchSlice {
+	if o == nil {
+		return nil
+	}
+
+	return o.R.GetManagerBranches()
+}
+
+func (r *accountR) GetManagerBranches() BranchSlice {
+	if r == nil {
+		return nil
+	}
+
+	return r.ManagerBranches
 }
 
 func (o *Account) GetOrderHandlerDeliveries() DeliverySlice {
@@ -450,9 +476,9 @@ func (r *accountR) GetUserOrders() OrderSlice {
 type accountL struct{}
 
 var (
-	accountAllColumns            = []string{"id", "branch_id", "name", "email", "password", "avatar", "title", "role", "owner_id", "created_at", "updated_at", "deleted_at"}
+	accountAllColumns            = []string{"id", "branch_id", "name", "email", "password", "avatar", "title", "role", "owner_id", "status", "created_at", "updated_at", "deleted_at"}
 	accountColumnsWithoutDefault = []string{"name", "email", "password", "role"}
-	accountColumnsWithDefault    = []string{"id", "branch_id", "avatar", "title", "owner_id", "created_at", "updated_at", "deleted_at"}
+	accountColumnsWithDefault    = []string{"id", "branch_id", "avatar", "title", "owner_id", "status", "created_at", "updated_at", "deleted_at"}
 	accountPrimaryKeyColumns     = []string{"id"}
 	accountGeneratedColumns      = []string{}
 )
@@ -796,6 +822,20 @@ func (o *Account) OwnerAccounts(mods ...qm.QueryMod) accountQuery {
 	)
 
 	return Accounts(queryMods...)
+}
+
+// ManagerBranches retrieves all the branch's Branches with an executor via manager_id column.
+func (o *Account) ManagerBranches(mods ...qm.QueryMod) branchQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"branches\".\"manager_id\"=?", o.ID),
+	)
+
+	return Branches(queryMods...)
 }
 
 // OrderHandlerDeliveries retrieves all the delivery's Deliveries with an executor via order_handler_id column.
@@ -1207,6 +1247,119 @@ func (accountL) LoadOwnerAccounts(ctx context.Context, e boil.ContextExecutor, s
 					foreign.R = &accountR{}
 				}
 				foreign.R.Owner = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadManagerBranches allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (accountL) LoadManagerBranches(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAccount interface{}, mods queries.Applicator) error {
+	var slice []*Account
+	var object *Account
+
+	if singular {
+		var ok bool
+		object, ok = maybeAccount.(*Account)
+		if !ok {
+			object = new(Account)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeAccount)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeAccount))
+			}
+		}
+	} else {
+		s, ok := maybeAccount.(*[]*Account)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeAccount)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeAccount))
+			}
+		}
+	}
+
+	args := make(map[interface{}]struct{})
+	if singular {
+		if object.R == nil {
+			object.R = &accountR{}
+		}
+		args[object.ID] = struct{}{}
+	} else {
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &accountR{}
+			}
+			args[obj.ID] = struct{}{}
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	argsSlice := make([]interface{}, len(args))
+	i := 0
+	for arg := range args {
+		argsSlice[i] = arg
+		i++
+	}
+
+	query := NewQuery(
+		qm.From(`branches`),
+		qm.WhereIn(`branches.manager_id in ?`, argsSlice...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load branches")
+	}
+
+	var resultSlice []*Branch
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice branches")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on branches")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for branches")
+	}
+
+	if len(branchAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ManagerBranches = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &branchR{}
+			}
+			foreign.R.Manager = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.ManagerID) {
+				local.R.ManagerBranches = append(local.R.ManagerBranches, foreign)
+				if foreign.R == nil {
+					foreign.R = &branchR{}
+				}
+				foreign.R.Manager = local
 				break
 			}
 		}
@@ -1947,6 +2100,133 @@ func (o *Account) RemoveOwnerAccounts(ctx context.Context, exec boil.ContextExec
 				o.R.OwnerAccounts[i] = o.R.OwnerAccounts[ln-1]
 			}
 			o.R.OwnerAccounts = o.R.OwnerAccounts[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddManagerBranches adds the given related objects to the existing relationships
+// of the account, optionally inserting them as new records.
+// Appends related to o.R.ManagerBranches.
+// Sets related.R.Manager appropriately.
+func (o *Account) AddManagerBranches(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Branch) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.ManagerID, o.ID)
+			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"branches\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"manager_id"}),
+				strmangle.WhereClause("\"", "\"", 2, branchPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.IsDebug(ctx) {
+				writer := boil.DebugWriterFrom(ctx)
+				fmt.Fprintln(writer, updateQuery)
+				fmt.Fprintln(writer, values)
+			}
+			if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.ManagerID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &accountR{
+			ManagerBranches: related,
+		}
+	} else {
+		o.R.ManagerBranches = append(o.R.ManagerBranches, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &branchR{
+				Manager: o,
+			}
+		} else {
+			rel.R.Manager = o
+		}
+	}
+	return nil
+}
+
+// SetManagerBranches removes all previously related items of the
+// account replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Manager's ManagerBranches accordingly.
+// Replaces o.R.ManagerBranches with related.
+// Sets related.R.Manager's ManagerBranches accordingly.
+func (o *Account) SetManagerBranches(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Branch) error {
+	query := "update \"branches\" set \"manager_id\" = null where \"manager_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, query)
+		fmt.Fprintln(writer, values)
+	}
+	_, err := exec.ExecContext(ctx, query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.ManagerBranches {
+			queries.SetScanner(&rel.ManagerID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Manager = nil
+		}
+		o.R.ManagerBranches = nil
+	}
+
+	return o.AddManagerBranches(ctx, exec, insert, related...)
+}
+
+// RemoveManagerBranches relationships from objects passed in.
+// Removes related items from R.ManagerBranches (uses pointer comparison, removal does not keep order)
+// Sets related.R.Manager.
+func (o *Account) RemoveManagerBranches(ctx context.Context, exec boil.ContextExecutor, related ...*Branch) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.ManagerID, nil)
+		if rel.R != nil {
+			rel.R.Manager = nil
+		}
+		if _, err = rel.Update(ctx, exec, boil.Whitelist("manager_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.ManagerBranches {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.ManagerBranches)
+			if ln > 1 && i < ln-1 {
+				o.R.ManagerBranches[i] = o.R.ManagerBranches[ln-1]
+			}
+			o.R.ManagerBranches = o.R.ManagerBranches[:ln-1]
 			break
 		}
 	}

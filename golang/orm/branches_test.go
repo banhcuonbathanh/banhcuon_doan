@@ -3118,6 +3118,176 @@ func testBranchToManyRemoveOpTables(t *testing.T) {
 	}
 }
 
+func testBranchToOneAccountUsingManager(t *testing.T) {
+	ctx := context.Background()
+	tx := MustTx(boil.BeginTx(ctx, nil))
+	defer func() { _ = tx.Rollback() }()
+
+	var local Branch
+	var foreign Account
+
+	seed := randomize.NewSeed()
+	if err := randomize.Struct(seed, &local, branchDBTypes, true, branchColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Branch struct: %s", err)
+	}
+	if err := randomize.Struct(seed, &foreign, accountDBTypes, false, accountColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Account struct: %s", err)
+	}
+
+	if err := foreign.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	queries.Assign(&local.ManagerID, foreign.ID)
+	if err := local.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	check, err := local.Manager().One(ctx, tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !queries.Equal(check.ID, foreign.ID) {
+		t.Errorf("want: %v, got %v", foreign.ID, check.ID)
+	}
+
+	ranAfterSelectHook := false
+	AddAccountHook(boil.AfterSelectHook, func(ctx context.Context, e boil.ContextExecutor, o *Account) error {
+		ranAfterSelectHook = true
+		return nil
+	})
+
+	slice := BranchSlice{&local}
+	if err = local.L.LoadManager(ctx, tx, false, (*[]*Branch)(&slice), nil); err != nil {
+		t.Fatal(err)
+	}
+	if local.R.Manager == nil {
+		t.Error("struct should have been eager loaded")
+	}
+
+	local.R.Manager = nil
+	if err = local.L.LoadManager(ctx, tx, true, &local, nil); err != nil {
+		t.Fatal(err)
+	}
+	if local.R.Manager == nil {
+		t.Error("struct should have been eager loaded")
+	}
+
+	if !ranAfterSelectHook {
+		t.Error("failed to run AfterSelect hook for relationship")
+	}
+}
+
+func testBranchToOneSetOpAccountUsingManager(t *testing.T) {
+	var err error
+
+	ctx := context.Background()
+	tx := MustTx(boil.BeginTx(ctx, nil))
+	defer func() { _ = tx.Rollback() }()
+
+	var a Branch
+	var b, c Account
+
+	seed := randomize.NewSeed()
+	if err = randomize.Struct(seed, &a, branchDBTypes, false, strmangle.SetComplement(branchPrimaryKeyColumns, branchColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+	if err = randomize.Struct(seed, &b, accountDBTypes, false, strmangle.SetComplement(accountPrimaryKeyColumns, accountColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+	if err = randomize.Struct(seed, &c, accountDBTypes, false, strmangle.SetComplement(accountPrimaryKeyColumns, accountColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := a.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	for i, x := range []*Account{&b, &c} {
+		err = a.SetManager(ctx, tx, i != 0, x)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if a.R.Manager != x {
+			t.Error("relationship struct not set to correct value")
+		}
+
+		if x.R.ManagerBranches[0] != &a {
+			t.Error("failed to append to foreign relationship struct")
+		}
+		if !queries.Equal(a.ManagerID, x.ID) {
+			t.Error("foreign key was wrong value", a.ManagerID)
+		}
+
+		zero := reflect.Zero(reflect.TypeOf(a.ManagerID))
+		reflect.Indirect(reflect.ValueOf(&a.ManagerID)).Set(zero)
+
+		if err = a.Reload(ctx, tx); err != nil {
+			t.Fatal("failed to reload", err)
+		}
+
+		if !queries.Equal(a.ManagerID, x.ID) {
+			t.Error("foreign key was wrong value", a.ManagerID, x.ID)
+		}
+	}
+}
+
+func testBranchToOneRemoveOpAccountUsingManager(t *testing.T) {
+	var err error
+
+	ctx := context.Background()
+	tx := MustTx(boil.BeginTx(ctx, nil))
+	defer func() { _ = tx.Rollback() }()
+
+	var a Branch
+	var b Account
+
+	seed := randomize.NewSeed()
+	if err = randomize.Struct(seed, &a, branchDBTypes, false, strmangle.SetComplement(branchPrimaryKeyColumns, branchColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+	if err = randomize.Struct(seed, &b, accountDBTypes, false, strmangle.SetComplement(accountPrimaryKeyColumns, accountColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = a.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = a.SetManager(ctx, tx, true, &b); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = a.RemoveManager(ctx, tx, &b); err != nil {
+		t.Error("failed to remove relationship")
+	}
+
+	count, err := a.Manager().Count(ctx, tx)
+	if err != nil {
+		t.Error(err)
+	}
+	if count != 0 {
+		t.Error("want no relationships remaining")
+	}
+
+	if a.R.Manager != nil {
+		t.Error("R struct entry should be nil")
+	}
+
+	if !queries.IsValuerNil(a.ManagerID) {
+		t.Error("foreign key value should be nil")
+	}
+
+	if len(b.R.ManagerBranches) != 0 {
+		t.Error("failed to remove a from b's relationships")
+	}
+}
+
 func testBranchesReload(t *testing.T) {
 	t.Parallel()
 

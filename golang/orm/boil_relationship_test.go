@@ -10,6 +10,7 @@ import "testing"
 func TestToOne(t *testing.T) {
 	t.Run("AccountToAccountUsingOwner", testAccountToOneAccountUsingOwner)
 	t.Run("AccountToBranchUsingBranch", testAccountToOneBranchUsingBranch)
+	t.Run("BranchToAccountUsingManager", testBranchToOneAccountUsingManager)
 	t.Run("DeliveryToBranchUsingBranch", testDeliveryToOneBranchUsingBranch)
 	t.Run("DeliveryToGuestUsingGuest", testDeliveryToOneGuestUsingGuest)
 	t.Run("DeliveryToAccountUsingOrderHandler", testDeliveryToOneAccountUsingOrderHandler)
@@ -46,6 +47,7 @@ func TestOneToOne(t *testing.T) {}
 // or deadlocks can occur.
 func TestToMany(t *testing.T) {
 	t.Run("AccountToOwnerAccounts", testAccountToManyOwnerAccounts)
+	t.Run("AccountToManagerBranches", testAccountToManyManagerBranches)
 	t.Run("AccountToOrderHandlerDeliveries", testAccountToManyOrderHandlerDeliveries)
 	t.Run("AccountToUserDeliveries", testAccountToManyUserDeliveries)
 	t.Run("AccountToOrderHandlerOrders", testAccountToManyOrderHandlerOrders)
@@ -80,6 +82,7 @@ func TestToMany(t *testing.T) {
 func TestToOneSet(t *testing.T) {
 	t.Run("AccountToAccountUsingOwnerAccounts", testAccountToOneSetOpAccountUsingOwner)
 	t.Run("AccountToBranchUsingAccounts", testAccountToOneSetOpBranchUsingBranch)
+	t.Run("BranchToAccountUsingManagerBranches", testBranchToOneSetOpAccountUsingManager)
 	t.Run("DeliveryToBranchUsingDeliveries", testDeliveryToOneSetOpBranchUsingBranch)
 	t.Run("DeliveryToGuestUsingDeliveries", testDeliveryToOneSetOpGuestUsingGuest)
 	t.Run("DeliveryToAccountUsingOrderHandlerDeliveries", testDeliveryToOneSetOpAccountUsingOrderHandler)
@@ -113,6 +116,7 @@ func TestToOneSet(t *testing.T) {
 func TestToOneRemove(t *testing.T) {
 	t.Run("AccountToAccountUsingOwnerAccounts", testAccountToOneRemoveOpAccountUsingOwner)
 	t.Run("AccountToBranchUsingAccounts", testAccountToOneRemoveOpBranchUsingBranch)
+	t.Run("BranchToAccountUsingManagerBranches", testBranchToOneRemoveOpAccountUsingManager)
 	t.Run("DeliveryToBranchUsingDeliveries", testDeliveryToOneRemoveOpBranchUsingBranch)
 	t.Run("DeliveryToGuestUsingDeliveries", testDeliveryToOneRemoveOpGuestUsingGuest)
 	t.Run("DeliveryToAccountUsingOrderHandlerDeliveries", testDeliveryToOneRemoveOpAccountUsingOrderHandler)
@@ -145,6 +149,7 @@ func TestOneToOneRemove(t *testing.T) {}
 // or deadlocks can occur.
 func TestToManyAdd(t *testing.T) {
 	t.Run("AccountToOwnerAccounts", testAccountToManyAddOpOwnerAccounts)
+	t.Run("AccountToManagerBranches", testAccountToManyAddOpManagerBranches)
 	t.Run("AccountToOrderHandlerDeliveries", testAccountToManyAddOpOrderHandlerDeliveries)
 	t.Run("AccountToUserDeliveries", testAccountToManyAddOpUserDeliveries)
 	t.Run("AccountToOrderHandlerOrders", testAccountToManyAddOpOrderHandlerOrders)
@@ -178,6 +183,7 @@ func TestToManyAdd(t *testing.T) {
 // or deadlocks can occur.
 func TestToManySet(t *testing.T) {
 	t.Run("AccountToOwnerAccounts", testAccountToManySetOpOwnerAccounts)
+	t.Run("AccountToManagerBranches", testAccountToManySetOpManagerBranches)
 	t.Run("AccountToOrderHandlerDeliveries", testAccountToManySetOpOrderHandlerDeliveries)
 	t.Run("AccountToUserDeliveries", testAccountToManySetOpUserDeliveries)
 	t.Run("AccountToOrderHandlerOrders", testAccountToManySetOpOrderHandlerOrders)
@@ -203,6 +209,7 @@ func TestToManySet(t *testing.T) {
 // or deadlocks can occur.
 func TestToManyRemove(t *testing.T) {
 	t.Run("AccountToOwnerAccounts", testAccountToManyRemoveOpOwnerAccounts)
+	t.Run("AccountToManagerBranches", testAccountToManyRemoveOpManagerBranches)
 	t.Run("AccountToOrderHandlerDeliveries", testAccountToManyRemoveOpOrderHandlerDeliveries)
 	t.Run("AccountToUserDeliveries", testAccountToManyRemoveOpUserDeliveries)
 	t.Run("AccountToOrderHandlerOrders", testAccountToManyRemoveOpOrderHandlerOrders)

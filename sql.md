@@ -714,4 +714,7 @@ func main() {
 	
 	// Step 1: Test database connection
 
-    
+    sqlboiler --version
+
+
+	sqlboiler psql

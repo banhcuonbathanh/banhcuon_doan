@@ -1525,7 +1525,7 @@ func testDishesSelect(t *testing.T) {
 }
 
 var (
-	dishDBTypes = map[string]string{`ID`: `bigint`, `BranchID`: `bigint`, `Name`: `character varying`, `Price`: `integer`, `Description`: `text`, `Image`: `character varying`, `Status`: `character varying`, `CreatedAt`: `timestamp with time zone`, `UpdatedAt`: `timestamp with time zone`, `CountOrder`: `integer`, `TotalSold`: `integer`, `DeletedAt`: `timestamp with time zone`}
+	dishDBTypes = map[string]string{`ID`: `bigint`, `BranchID`: `bigint`, `Name`: `character varying`, `Price`: `integer`, `Description`: `text`, `Image`: `character varying`, `Status`: `character varying`, `CountOrder`: `integer`, `TotalSold`: `integer`, `CreatedAt`: `timestamp with time zone`, `UpdatedAt`: `timestamp with time zone`, `DeletedAt`: `timestamp with time zone`}
 	_           = bytes.MinRead
 )
 

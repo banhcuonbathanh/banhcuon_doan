@@ -571,6 +571,83 @@ func testAccountToManyOwnerAccounts(t *testing.T) {
 	}
 }
 
+func testAccountToManyManagerBranches(t *testing.T) {
+	var err error
+	ctx := context.Background()
+	tx := MustTx(boil.BeginTx(ctx, nil))
+	defer func() { _ = tx.Rollback() }()
+
+	var a Account
+	var b, c Branch
+
+	seed := randomize.NewSeed()
+	if err = randomize.Struct(seed, &a, accountDBTypes, true, accountColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Account struct: %s", err)
+	}
+
+	if err := a.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = randomize.Struct(seed, &b, branchDBTypes, false, branchColumnsWithDefault...); err != nil {
+		t.Fatal(err)
+	}
+	if err = randomize.Struct(seed, &c, branchDBTypes, false, branchColumnsWithDefault...); err != nil {
+		t.Fatal(err)
+	}
+
+	queries.Assign(&b.ManagerID, a.ID)
+	queries.Assign(&c.ManagerID, a.ID)
+	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+	if err = c.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	check, err := a.ManagerBranches().All(ctx, tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bFound, cFound := false, false
+	for _, v := range check {
+		if queries.Equal(v.ManagerID, b.ManagerID) {
+			bFound = true
+		}
+		if queries.Equal(v.ManagerID, c.ManagerID) {
+			cFound = true
+		}
+	}
+
+	if !bFound {
+		t.Error("expected to find b")
+	}
+	if !cFound {
+		t.Error("expected to find c")
+	}
+
+	slice := AccountSlice{&a}
+	if err = a.L.LoadManagerBranches(ctx, tx, false, (*[]*Account)(&slice), nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(a.R.ManagerBranches); got != 2 {
+		t.Error("number of eager loaded records wrong, got:", got)
+	}
+
+	a.R.ManagerBranches = nil
+	if err = a.L.LoadManagerBranches(ctx, tx, true, &a, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(a.R.ManagerBranches); got != 2 {
+		t.Error("number of eager loaded records wrong, got:", got)
+	}
+
+	if t.Failed() {
+		t.Logf("%#v", check)
+	}
+}
+
 func testAccountToManyOrderHandlerDeliveries(t *testing.T) {
 	var err error
 	ctx := context.Background()
@@ -1126,6 +1203,257 @@ func testAccountToManyRemoveOpOwnerAccounts(t *testing.T) {
 		t.Error("relationship to d should have been preserved")
 	}
 	if a.R.OwnerAccounts[0] != &e {
+		t.Error("relationship to e should have been preserved")
+	}
+}
+
+func testAccountToManyAddOpManagerBranches(t *testing.T) {
+	var err error
+
+	ctx := context.Background()
+	tx := MustTx(boil.BeginTx(ctx, nil))
+	defer func() { _ = tx.Rollback() }()
+
+	var a Account
+	var b, c, d, e Branch
+
+	seed := randomize.NewSeed()
+	if err = randomize.Struct(seed, &a, accountDBTypes, false, strmangle.SetComplement(accountPrimaryKeyColumns, accountColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+	foreigners := []*Branch{&b, &c, &d, &e}
+	for _, x := range foreigners {
+		if err = randomize.Struct(seed, x, branchDBTypes, false, strmangle.SetComplement(branchPrimaryKeyColumns, branchColumnsWithoutDefault)...); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := a.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+	if err = c.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	foreignersSplitByInsertion := [][]*Branch{
+		{&b, &c},
+		{&d, &e},
+	}
+
+	for i, x := range foreignersSplitByInsertion {
+		err = a.AddManagerBranches(ctx, tx, i != 0, x...)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		first := x[0]
+		second := x[1]
+
+		if !queries.Equal(a.ID, first.ManagerID) {
+			t.Error("foreign key was wrong value", a.ID, first.ManagerID)
+		}
+		if !queries.Equal(a.ID, second.ManagerID) {
+			t.Error("foreign key was wrong value", a.ID, second.ManagerID)
+		}
+
+		if first.R.Manager != &a {
+			t.Error("relationship was not added properly to the foreign slice")
+		}
+		if second.R.Manager != &a {
+			t.Error("relationship was not added properly to the foreign slice")
+		}
+
+		if a.R.ManagerBranches[i*2] != first {
+			t.Error("relationship struct slice not set to correct value")
+		}
+		if a.R.ManagerBranches[i*2+1] != second {
+			t.Error("relationship struct slice not set to correct value")
+		}
+
+		count, err := a.ManagerBranches().Count(ctx, tx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := int64((i + 1) * 2); count != want {
+			t.Error("want", want, "got", count)
+		}
+	}
+}
+
+func testAccountToManySetOpManagerBranches(t *testing.T) {
+	var err error
+
+	ctx := context.Background()
+	tx := MustTx(boil.BeginTx(ctx, nil))
+	defer func() { _ = tx.Rollback() }()
+
+	var a Account
+	var b, c, d, e Branch
+
+	seed := randomize.NewSeed()
+	if err = randomize.Struct(seed, &a, accountDBTypes, false, strmangle.SetComplement(accountPrimaryKeyColumns, accountColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+	foreigners := []*Branch{&b, &c, &d, &e}
+	for _, x := range foreigners {
+		if err = randomize.Struct(seed, x, branchDBTypes, false, strmangle.SetComplement(branchPrimaryKeyColumns, branchColumnsWithoutDefault)...); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err = a.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+	if err = c.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	err = a.SetManagerBranches(ctx, tx, false, &b, &c)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	count, err := a.ManagerBranches().Count(ctx, tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 2 {
+		t.Error("count was wrong:", count)
+	}
+
+	err = a.SetManagerBranches(ctx, tx, true, &d, &e)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	count, err = a.ManagerBranches().Count(ctx, tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 2 {
+		t.Error("count was wrong:", count)
+	}
+
+	if !queries.IsValuerNil(b.ManagerID) {
+		t.Error("want b's foreign key value to be nil")
+	}
+	if !queries.IsValuerNil(c.ManagerID) {
+		t.Error("want c's foreign key value to be nil")
+	}
+	if !queries.Equal(a.ID, d.ManagerID) {
+		t.Error("foreign key was wrong value", a.ID, d.ManagerID)
+	}
+	if !queries.Equal(a.ID, e.ManagerID) {
+		t.Error("foreign key was wrong value", a.ID, e.ManagerID)
+	}
+
+	if b.R.Manager != nil {
+		t.Error("relationship was not removed properly from the foreign struct")
+	}
+	if c.R.Manager != nil {
+		t.Error("relationship was not removed properly from the foreign struct")
+	}
+	if d.R.Manager != &a {
+		t.Error("relationship was not added properly to the foreign struct")
+	}
+	if e.R.Manager != &a {
+		t.Error("relationship was not added properly to the foreign struct")
+	}
+
+	if a.R.ManagerBranches[0] != &d {
+		t.Error("relationship struct slice not set to correct value")
+	}
+	if a.R.ManagerBranches[1] != &e {
+		t.Error("relationship struct slice not set to correct value")
+	}
+}
+
+func testAccountToManyRemoveOpManagerBranches(t *testing.T) {
+	var err error
+
+	ctx := context.Background()
+	tx := MustTx(boil.BeginTx(ctx, nil))
+	defer func() { _ = tx.Rollback() }()
+
+	var a Account
+	var b, c, d, e Branch
+
+	seed := randomize.NewSeed()
+	if err = randomize.Struct(seed, &a, accountDBTypes, false, strmangle.SetComplement(accountPrimaryKeyColumns, accountColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+	foreigners := []*Branch{&b, &c, &d, &e}
+	for _, x := range foreigners {
+		if err = randomize.Struct(seed, x, branchDBTypes, false, strmangle.SetComplement(branchPrimaryKeyColumns, branchColumnsWithoutDefault)...); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := a.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	err = a.AddManagerBranches(ctx, tx, true, foreigners...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	count, err := a.ManagerBranches().Count(ctx, tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 4 {
+		t.Error("count was wrong:", count)
+	}
+
+	err = a.RemoveManagerBranches(ctx, tx, foreigners[:2]...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	count, err = a.ManagerBranches().Count(ctx, tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 2 {
+		t.Error("count was wrong:", count)
+	}
+
+	if !queries.IsValuerNil(b.ManagerID) {
+		t.Error("want b's foreign key value to be nil")
+	}
+	if !queries.IsValuerNil(c.ManagerID) {
+		t.Error("want c's foreign key value to be nil")
+	}
+
+	if b.R.Manager != nil {
+		t.Error("relationship was not removed properly from the foreign struct")
+	}
+	if c.R.Manager != nil {
+		t.Error("relationship was not removed properly from the foreign struct")
+	}
+	if d.R.Manager != &a {
+		t.Error("relationship to a should have been preserved")
+	}
+	if e.R.Manager != &a {
+		t.Error("relationship to a should have been preserved")
+	}
+
+	if len(a.R.ManagerBranches) != 2 {
+		t.Error("should have preserved two relationships")
+	}
+
+	// Removal doesn't do a stable deletion for performance so we have to flip the order
+	if a.R.ManagerBranches[1] != &d {
+		t.Error("relationship to d should have been preserved")
+	}
+	if a.R.ManagerBranches[0] != &e {
 		t.Error("relationship to e should have been preserved")
 	}
 }
@@ -2548,7 +2876,7 @@ func testAccountsSelect(t *testing.T) {
 }
 
 var (
-	accountDBTypes = map[string]string{`ID`: `bigint`, `BranchID`: `bigint`, `Name`: `character varying`, `Email`: `character varying`, `Password`: `character varying`, `Avatar`: `character varying`, `Title`: `character varying`, `Role`: `character varying`, `OwnerID`: `bigint`, `CreatedAt`: `timestamp with time zone`, `UpdatedAt`: `timestamp with time zone`, `DeletedAt`: `timestamp with time zone`}
+	accountDBTypes = map[string]string{`ID`: `bigint`, `BranchID`: `bigint`, `Name`: `character varying`, `Email`: `character varying`, `Password`: `character varying`, `Avatar`: `character varying`, `Title`: `character varying`, `Role`: `character varying`, `OwnerID`: `bigint`, `Status`: `character varying`, `CreatedAt`: `timestamp with time zone`, `UpdatedAt`: `timestamp with time zone`, `DeletedAt`: `timestamp with time zone`}
 	_              = bytes.MinRead
 )
 

@@ -31,10 +31,10 @@ type Dish struct {
 	Description null.String `boil:"description" json:"description,omitempty" toml:"description" yaml:"description,omitempty"`
 	Image       null.String `boil:"image" json:"image,omitempty" toml:"image" yaml:"image,omitempty"`
 	Status      null.String `boil:"status" json:"status,omitempty" toml:"status" yaml:"status,omitempty"`
-	CreatedAt   null.Time   `boil:"created_at" json:"created_at,omitempty" toml:"created_at" yaml:"created_at,omitempty"`
-	UpdatedAt   null.Time   `boil:"updated_at" json:"updated_at,omitempty" toml:"updated_at" yaml:"updated_at,omitempty"`
 	CountOrder  null.Int    `boil:"count_order" json:"count_order,omitempty" toml:"count_order" yaml:"count_order,omitempty"`
 	TotalSold   null.Int    `boil:"total_sold" json:"total_sold,omitempty" toml:"total_sold" yaml:"total_sold,omitempty"`
+	CreatedAt   null.Time   `boil:"created_at" json:"created_at,omitempty" toml:"created_at" yaml:"created_at,omitempty"`
+	UpdatedAt   null.Time   `boil:"updated_at" json:"updated_at,omitempty" toml:"updated_at" yaml:"updated_at,omitempty"`
 	DeletedAt   null.Time   `boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *dishR `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -49,10 +49,10 @@ var DishColumns = struct {
 	Description string
 	Image       string
 	Status      string
-	CreatedAt   string
-	UpdatedAt   string
 	CountOrder  string
 	TotalSold   string
+	CreatedAt   string
+	UpdatedAt   string
 	DeletedAt   string
 }{
 	ID:          "id",
@@ -62,10 +62,10 @@ var DishColumns = struct {
 	Description: "description",
 	Image:       "image",
 	Status:      "status",
-	CreatedAt:   "created_at",
-	UpdatedAt:   "updated_at",
 	CountOrder:  "count_order",
 	TotalSold:   "total_sold",
+	CreatedAt:   "created_at",
+	UpdatedAt:   "updated_at",
 	DeletedAt:   "deleted_at",
 }
 
@@ -77,10 +77,10 @@ var DishTableColumns = struct {
 	Description string
 	Image       string
 	Status      string
-	CreatedAt   string
-	UpdatedAt   string
 	CountOrder  string
 	TotalSold   string
+	CreatedAt   string
+	UpdatedAt   string
 	DeletedAt   string
 }{
 	ID:          "dishes.id",
@@ -90,10 +90,10 @@ var DishTableColumns = struct {
 	Description: "dishes.description",
 	Image:       "dishes.image",
 	Status:      "dishes.status",
-	CreatedAt:   "dishes.created_at",
-	UpdatedAt:   "dishes.updated_at",
 	CountOrder:  "dishes.count_order",
 	TotalSold:   "dishes.total_sold",
+	CreatedAt:   "dishes.created_at",
+	UpdatedAt:   "dishes.updated_at",
 	DeletedAt:   "dishes.deleted_at",
 }
 
@@ -107,10 +107,10 @@ var DishWhere = struct {
 	Description whereHelpernull_String
 	Image       whereHelpernull_String
 	Status      whereHelpernull_String
-	CreatedAt   whereHelpernull_Time
-	UpdatedAt   whereHelpernull_Time
 	CountOrder  whereHelpernull_Int
 	TotalSold   whereHelpernull_Int
+	CreatedAt   whereHelpernull_Time
+	UpdatedAt   whereHelpernull_Time
 	DeletedAt   whereHelpernull_Time
 }{
 	ID:          whereHelperint64{field: "\"dishes\".\"id\""},
@@ -120,10 +120,10 @@ var DishWhere = struct {
 	Description: whereHelpernull_String{field: "\"dishes\".\"description\""},
 	Image:       whereHelpernull_String{field: "\"dishes\".\"image\""},
 	Status:      whereHelpernull_String{field: "\"dishes\".\"status\""},
-	CreatedAt:   whereHelpernull_Time{field: "\"dishes\".\"created_at\""},
-	UpdatedAt:   whereHelpernull_Time{field: "\"dishes\".\"updated_at\""},
 	CountOrder:  whereHelpernull_Int{field: "\"dishes\".\"count_order\""},
 	TotalSold:   whereHelpernull_Int{field: "\"dishes\".\"total_sold\""},
+	CreatedAt:   whereHelpernull_Time{field: "\"dishes\".\"created_at\""},
+	UpdatedAt:   whereHelpernull_Time{field: "\"dishes\".\"updated_at\""},
 	DeletedAt:   whereHelpernull_Time{field: "\"dishes\".\"deleted_at\""},
 }
 
@@ -240,9 +240,9 @@ func (r *dishR) GetSetDishes() SetDishSlice {
 type dishL struct{}
 
 var (
-	dishAllColumns            = []string{"id", "branch_id", "name", "price", "description", "image", "status", "created_at", "updated_at", "count_order", "total_sold", "deleted_at"}
+	dishAllColumns            = []string{"id", "branch_id", "name", "price", "description", "image", "status", "count_order", "total_sold", "created_at", "updated_at", "deleted_at"}
 	dishColumnsWithoutDefault = []string{"name", "price"}
-	dishColumnsWithDefault    = []string{"id", "branch_id", "description", "image", "status", "created_at", "updated_at", "count_order", "total_sold", "deleted_at"}
+	dishColumnsWithDefault    = []string{"id", "branch_id", "description", "image", "status", "count_order", "total_sold", "created_at", "updated_at", "deleted_at"}
 	dishPrimaryKeyColumns     = []string{"id"}
 	dishGeneratedColumns      = []string{}
 )

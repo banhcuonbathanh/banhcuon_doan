@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
+	error_custom "english-ai-full/error_custom"
 	"english-ai-full/internal/account"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/logger"
-	error_custom	"english-ai-full/error_custom"
-		utils_config	"english-ai-full/utils/config"
 	"english-ai-full/orm"
+	utils_config "english-ai-full/utils/config"
 
 	"github.com/aarondl/null/v8"                 // Changed from volatiletech
 	"github.com/aarondl/sqlboiler/v4/boil"       // Changed from volatiletech
@@ -40,31 +40,27 @@ func NewAccountRepository(db *sql.DB) *Repository {
 	}
 }
 
-// ===== USER MANAGEMENT =====
 
-// CreateUser creates a new user account
-
-// CreateUser creates a new user account
 func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error) {
-	r.logger.LogDBOperation("create_user", "accounts", 0, true, 1)
+r.logger.LogDBOperation("create_user", "accounts", true, nil, nil)
 	
-	m := &orm.Account{
-		BranchID:  null.Int64{Int64: user.BranchID, Valid: user.BranchID > 0},
-		Name:      user.Name,
-		Email:     user.Email,
-		Password:  user.Password,
-		Avatar:    null.String{String: user.Avatar, Valid: user.Avatar != ""},
-		Title:     null.String{String: user.Title, Valid: user.Title != ""},
-		Role:      string(user.Role),
-		OwnerID:   null.Int64{Int64: user.OwnerID, Valid: user.OwnerID > 0},
-		Status:    string(user.Status),
-		CreatedAt: null.Time{Time: time.Now(), Valid: true},
-		UpdatedAt: null.Time{Time: time.Now(), Valid: true},
-	}
+m := &orm.Account{
+    BranchID:  null.Int64{Int64: user.BranchID, Valid: user.BranchID > 0},
+    Name:      user.Name,
+    Email:     user.Email,
+    Password:  user.Password,
+    Avatar:    null.String{String: user.Avatar, Valid: user.Avatar != ""},
+    Title:     null.String{String: user.Title, Valid: user.Title != ""},
+    Role:      string(user.Role),
+    OwnerID:   null.Int64{Int64: user.OwnerID, Valid: user.OwnerID > 0},
+    Status:    null.String{String: string(user.Status), Valid: string(user.Status) != ""}, // Fixed this line
+    CreatedAt: null.Time{Time: time.Now(), Valid: true},
+    UpdatedAt: null.Time{Time: time.Now(), Valid: true},
+}
 
 	err := m.Insert(ctx, r.db, boil.Infer())
 	if err != nil {
-		r.logger.LogDBOperation("create_user", "accounts", 0, false, 0)
+		r.logger.LogDBOperation("create_user", "accounts", false, nil, nil)
 		return account_dto.Account{}, r.errorHandler.HandleDatabaseError(
 			err, "account", "accounts", "create_user", map[string]interface{}{
 				"email": user.Email,
