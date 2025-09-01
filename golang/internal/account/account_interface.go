@@ -18,31 +18,31 @@ import (
 type AccountRepositoryInterface interface {
 	// User management
 	CreateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
-	Register(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
-	FindByEmail(ctx context.Context, email string) (account_dto.Account, error)
-	FindByID(ctx context.Context, id int64) (account_dto.Account, error)
-	FindAllUsers(ctx context.Context) ([]account_dto.Account, error)
-	UpdateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
-	DeleteUser(ctx context.Context, id int64) error
+	// Register(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
+	// FindByEmail(ctx context.Context, email string) (account_dto.Account, error)
+	// FindByID(ctx context.Context, id int64) (account_dto.Account, error)
+	// FindAllUsers(ctx context.Context) ([]account_dto.Account, error)
+	// UpdateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
+	// DeleteUser(ctx context.Context, id int64) error
 	
-	// Enhanced search and filtering
-	FindByBranchID(ctx context.Context, branchID int64) ([]account_dto.Account, error)
-	FindByBranchWithPagination(ctx context.Context, branchID int64, offset, limit int) ([]account_dto.Account, int64, error)
-	FindByRole(ctx context.Context, role string) ([]account_dto.Account, error)
-	FindByOwnerID(ctx context.Context, ownerID int64) ([]account_dto.Account, error)
+	// // Enhanced search and filtering
+	// FindByBranchID(ctx context.Context, branchID int64) ([]account_dto.Account, error)
+	// FindByBranchWithPagination(ctx context.Context, branchID int64, offset, limit int) ([]account_dto.Account, int64, error)
+	// FindByRole(ctx context.Context, role string) ([]account_dto.Account, error)
+	// FindByOwnerID(ctx context.Context, ownerID int64) ([]account_dto.Account, error)
 
-	SearchUsers(ctx context.Context, query, role string, branchId int64, statusFilter []string, page, pageSize int32, sortBy, sortOrder string) (users []account.Account, totalCount int64, err error)
-	// Account verification and status
-	ExistsByEmail(ctx context.Context, email string) (bool, error)
-	UpdateAccountStatus(ctx context.Context, userID int64, status string) error
+	// SearchUsers(ctx context.Context, query, role string, branchId int64, statusFilter []string, page, pageSize int32, sortBy, sortOrder string) (users []account.Account, totalCount int64, err error)
+	// // Account verification and status
+	// ExistsByEmail(ctx context.Context, email string) (bool, error)
+	// UpdateAccountStatus(ctx context.Context, userID int64, status string) error
 	
-	// Password and token management
-	UpdatePassword(ctx context.Context, userID int64, hashedPassword string) error
-	StoreResetToken(ctx context.Context, email, token string) error
-	ValidateResetToken(ctx context.Context, token string) (string, error) // Returns email if valid
-	StoreVerificationToken(ctx context.Context, email, token string) error
-	ValidateVerificationToken(ctx context.Context, token string) (string, error) // Returns email if valid
-	MarkEmailAsVerified(ctx context.Context, email string) error
+	// // Password and token management
+	// UpdatePassword(ctx context.Context, userID int64, hashedPassword string) error
+	// StoreResetToken(ctx context.Context, email, token string) error
+	// ValidateResetToken(ctx context.Context, token string) (string, error) // Returns email if valid
+	// StoreVerificationToken(ctx context.Context, email, token string) error
+	// ValidateVerificationToken(ctx context.Context, token string) (string, error) // Returns email if valid
+	// MarkEmailAsVerified(ctx context.Context, email string) error
 }
 
 // ===== SERVICE LAYER INTERFACE =====
@@ -50,40 +50,40 @@ type AccountRepositoryInterface interface {
 type AccountServiceInterface interface {
 	// Basic gRPC service methods
 	CreateUser(ctx context.Context, req *pb.AccountReq) (*pb.Account, error)
-	UpdateUser(ctx context.Context, req *pb.UpdateUserReq) (*pb.AccountRes, error)
-	DeleteUser(ctx context.Context, req *pb.DeleteAccountReq) (*pb.DeleteAccountRes, error)
-	FindAllUsers(ctx context.Context, req *emptypb.Empty) (*pb.AccountList, error)
-	FindByEmail(ctx context.Context, req *pb.FindByEmailReq) (*pb.AccountRes, error)
-	Login(ctx context.Context, req *pb.LoginReq) (*pb.AccountRes, error)
-	Logout(ctx context.Context, req *pb.LogoutReq) (*pb.LogoutRes, error)
-	Register(ctx context.Context, req *pb.RegisterReq) (*pb.RegisterRes, error)
-	FindByID(ctx context.Context, req *pb.FindByIDReq) (*pb.FindByIDRes, error)
+// 	UpdateUser(ctx context.Context, req *pb.UpdateUserReq) (*pb.AccountRes, error)
+// 	DeleteUser(ctx context.Context, req *pb.DeleteAccountReq) (*pb.DeleteAccountRes, error)
+// 	FindAllUsers(ctx context.Context, req *emptypb.Empty) (*pb.AccountList, error)
+// 	FindByEmail(ctx context.Context, req *pb.FindByEmailReq) (*pb.AccountRes, error)
+// 	Login(ctx context.Context, req *pb.LoginReq) (*pb.AccountRes, error)
+// 	Logout(ctx context.Context, req *pb.LogoutReq) (*pb.LogoutRes, error)
+// 	Register(ctx context.Context, req *pb.RegisterReq) (*pb.RegisterRes, error)
+// 	FindByID(ctx context.Context, req *pb.FindByIDReq) (*pb.FindByIDRes, error)
 	
-	// Password management
-	ChangePassword(ctx context.Context, req *pb.ChangePasswordReq) (*pb.ChangePasswordRes, error)
-	ResetPassword(ctx context.Context, req *pb.ResetPasswordReq) (*pb.ResetPasswordRes, error)
-	ForgotPassword(ctx context.Context, req *pb.ForgotPasswordReq) (*pb.ForgotPasswordRes, error)
+// 	// Password management
+// 	ChangePassword(ctx context.Context, req *pb.ChangePasswordReq) (*pb.ChangePasswordRes, error)
+// 	ResetPassword(ctx context.Context, req *pb.ResetPasswordReq) (*pb.ResetPasswordRes, error)
+// 	ForgotPassword(ctx context.Context, req *pb.ForgotPasswordReq) (*pb.ForgotPasswordRes, error)
 	
-	// Account verification and status
-	VerifyEmail(ctx context.Context, req *pb.VerifyEmailReq) (*pb.VerifyEmailRes, error)
-	ResendVerification(ctx context.Context, req *pb.ResendVerificationReq) (*pb.ResendVerificationRes, error)
-	UpdateAccountStatus(ctx context.Context, req *pb.UpdateAccountStatusReq) (*pb.UpdateAccountStatusRes, error)
+// 	// Account verification and status
+// 	VerifyEmail(ctx context.Context, req *pb.VerifyEmailReq) (*pb.VerifyEmailRes, error)
+// 	ResendVerification(ctx context.Context, req *pb.ResendVerificationReq) (*pb.ResendVerificationRes, error)
+// 	UpdateAccountStatus(ctx context.Context, req *pb.UpdateAccountStatusReq) (*pb.UpdateAccountStatusRes, error)
 	
-	// Enhanced search and filtering
-	FindByRole(ctx context.Context, req *pb.FindByRoleReq) (*pb.AccountList, error)
-	FindByBranch(ctx context.Context, req *pb.FindByBranchReq) (*pb.AccountList, error)
-// In your interface definition file
-SearchUsers(ctx context.Context, req *account.SearchUsersReq) (*account.SearchUsersRes, error)
+// 	// Enhanced search and filtering
+// 	FindByRole(ctx context.Context, req *pb.FindByRoleReq) (*pb.AccountList, error)
+// 	FindByBranch(ctx context.Context, req *pb.FindByBranchReq) (*pb.AccountList, error)
+// // In your interface definition file
+// SearchUsers(ctx context.Context, req *account.SearchUsersReq) (*account.SearchUsersRes, error)
 	
-	// Token/Session management
-	RefreshToken(ctx context.Context, req *pb.RefreshTokenReq) (*pb.RefreshTokenRes, error)
-	ValidateToken(ctx context.Context, req *pb.ValidateTokenReq) (*pb.ValidateTokenRes, error)
+// 	// Token/Session management
+// 	RefreshToken(ctx context.Context, req *pb.RefreshTokenReq) (*pb.RefreshTokenRes, error)
+// 	ValidateToken(ctx context.Context, req *pb.ValidateTokenReq) (*pb.ValidateTokenRes, error)
 	
-	// Additional business logic methods
-	ValidateUserCredentials(ctx context.Context, email, password string) (account_dto.Account, error)
-	DeactivateUser(ctx context.Context, userID int64) error
+// 	// Additional business logic methods
+// 	ValidateUserCredentials(ctx context.Context, email, password string) (account_dto.Account, error)
+// 	DeactivateUser(ctx context.Context, userID int64) error
 
-GetUsersByBranch(ctx context.Context, req *account.FindByBranchReq) (*account.AccountList, error)
+// GetUsersByBranch(ctx context.Context, req *account.FindByBranchReq) (*account.AccountList, error)
 
 
 }
@@ -93,37 +93,37 @@ GetUsersByBranch(ctx context.Context, req *account.FindByBranchReq) (*account.Ac
 type AccountHandlerInterface interface {
 	// Authentication endpoints
 	Register(w http.ResponseWriter, r *http.Request)
-	Login(w http.ResponseWriter, r *http.Request)
-	Logout(w http.ResponseWriter, r *http.Request)
-	RefreshToken(w http.ResponseWriter, r *http.Request)
-	ValidateToken(w http.ResponseWriter, r *http.Request)
+	// Login(w http.ResponseWriter, r *http.Request)
+	// Logout(w http.ResponseWriter, r *http.Request)
+	// RefreshToken(w http.ResponseWriter, r *http.Request)
+	// ValidateToken(w http.ResponseWriter, r *http.Request)
 	
-	// User management endpoints
-	CreateAccount(w http.ResponseWriter, r *http.Request)
-	FindAccountByID(w http.ResponseWriter, r *http.Request)
-	FindByEmail(w http.ResponseWriter, r *http.Request)
-	FindAllUsers(w http.ResponseWriter, r *http.Request)
-	UpdateUserByID(w http.ResponseWriter, r *http.Request)
-	DeleteUser(w http.ResponseWriter, r *http.Request)
+	// // User management endpoints
+	// CreateAccount(w http.ResponseWriter, r *http.Request)
+	// FindAccountByID(w http.ResponseWriter, r *http.Request)
+	// FindByEmail(w http.ResponseWriter, r *http.Request)
+	// FindAllUsers(w http.ResponseWriter, r *http.Request)
+	// UpdateUserByID(w http.ResponseWriter, r *http.Request)
+	// DeleteUser(w http.ResponseWriter, r *http.Request)
 	
-	// Password management endpoints
-	ChangePassword(w http.ResponseWriter, r *http.Request)
-	ForgotPassword(w http.ResponseWriter, r *http.Request)
-	ResetPassword(w http.ResponseWriter, r *http.Request)
+	// // Password management endpoints
+	// ChangePassword(w http.ResponseWriter, r *http.Request)
+	// ForgotPassword(w http.ResponseWriter, r *http.Request)
+	// ResetPassword(w http.ResponseWriter, r *http.Request)
 	
-	// Account verification endpoints
-	VerifyEmail(w http.ResponseWriter, r *http.Request)
-	ResendVerification(w http.ResponseWriter, r *http.Request)
-	UpdateAccountStatus(w http.ResponseWriter, r *http.Request)
+	// // Account verification endpoints
+	// VerifyEmail(w http.ResponseWriter, r *http.Request)
+	// ResendVerification(w http.ResponseWriter, r *http.Request)
+	// UpdateAccountStatus(w http.ResponseWriter, r *http.Request)
 	
-	// Enhanced search and filtering endpoints
-	FindByRole(w http.ResponseWriter, r *http.Request)
-	FindByBranch(w http.ResponseWriter, r *http.Request)
-	SearchUsers(w http.ResponseWriter, r *http.Request)
+	// // Enhanced search and filtering endpoints
+	// FindByRole(w http.ResponseWriter, r *http.Request)
+	// FindByBranch(w http.ResponseWriter, r *http.Request)
+	// SearchUsers(w http.ResponseWriter, r *http.Request)
 	
-	// Additional endpoints
-	GetUserProfile(w http.ResponseWriter, r *http.Request)
-	GetUsersByBranch(w http.ResponseWriter, r *http.Request)
+	// // Additional endpoints
+	// GetUserProfile(w http.ResponseWriter, r *http.Request)
+	// GetUsersByBranch(w http.ResponseWriter, r *http.Request)
 }
 
 // ===== USE CASE INTERFACE (Optional - for complex business logic) =====
