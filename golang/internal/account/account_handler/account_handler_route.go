@@ -4,7 +4,7 @@ package account_handler
 
 import (
 	"net/http"
-	error_custom "english-ai-full/internal/error_custom"
+	// error_custom "english-ai-full/internal/error_custom"
 	// pb "english-ai-full/internal/proto_qr/account"
 	"english-ai-full/pkg/middleware/auth"
 
@@ -20,33 +20,33 @@ func RegisterRoutesAccountHandler(r *chi.Mux, accountHandler *AccountHandler) {
 	r.Route("/accounts", func(r chi.Router) {
 		// Add domain-specific middleware
 
-		r.Use(error_custom.RateLimitMiddleware("account"))
+		// r.Use(error_custom.RateLimitMiddleware("account"))
 		
 		// Authentication routes
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", accountHandler.Register)
-			r.Post("/login", accountHandler.Login)
-			r.Post("/logout", accountHandler.Logout)
-			r.Post("/refresh-token", accountHandler.RefreshToken)
-			r.Post("/validate-token", accountHandler.ValidateToken)
+			// r.Post("/login", accountHandler.Login)
+			// r.Post("/logout", accountHandler.Logout)
+			// r.Post("/refresh-token", accountHandler.RefreshToken)
+			// r.Post("/validate-token", accountHandler.ValidateToken)
 		})
 		
 		// Password management routes
 		r.Route("/password", func(r chi.Router) {
-			r.Post("/forgot", accountHandler.ForgotPassword)
-			r.Post("/reset", accountHandler.ResetPassword)
+			// r.Post("/forgot", accountHandler.ForgotPassword)
+			// r.Post("/reset", accountHandler.ResetPassword)
 			
 			// Protected password change
 			r.Group(func(r chi.Router) {
 				r.Use(auth.AuthMiddleware)
-				r.Put("/change", accountHandler.ChangePassword)
+				// r.Put("/change", accountHandler.ChangePassword)
 			})
 		})
 		
 		// Email verification routes
 		r.Route("/email", func(r chi.Router) {
-			r.Get("/verify/{token}", accountHandler.VerifyEmail)
-			r.Post("/resend-verification", accountHandler.ResendVerification)
+			// r.Get("/verify/{token}", accountHandler.VerifyEmail)
+			// r.Post("/resend-verification", accountHandler.ResendVerification)
 		})
 
 		// Protected user management routes
@@ -54,34 +54,34 @@ func RegisterRoutesAccountHandler(r *chi.Mux, accountHandler *AccountHandler) {
 			r.Use(auth.AuthMiddleware)
 			
 			// CRUD operations
-			r.Post("/", accountHandler.CreateAccount)
-			r.Get("/", accountHandler.FindAllUsers)
-			r.Get("/{id}", accountHandler.FindAccountByID)
-			r.Put("/{id}", accountHandler.UpdateUserByID)
-			r.Delete("/{id}", accountHandler.DeleteUser)
+			// r.Post("/", accountHandler.CreateAccount)
+			// r.Get("/", accountHandler.FindAllUsers)
+			// r.Get("/{id}", accountHandler.FindAccountByID)
+			// r.Put("/{id}", accountHandler.UpdateUserByID)
+			// r.Delete("/{id}", accountHandler.DeleteUser)
 			
 			// Profile management
 			r.Route("/profile", func(r chi.Router) {
-				r.Get("/", accountHandler.GetUserProfile)      // Current user
-				r.Get("/{id}", accountHandler.GetUserProfile)  // Specific user
+				// r.Get("/", accountHandler.GetUserProfile)      // Current user
+				// r.Get("/{id}", accountHandler.GetUserProfile)  // Specific user
 			})
 			
 			// Search and filtering
 			r.Route("/search", func(r chi.Router) {
-				r.Get("/", accountHandler.SearchUsers)              // Advanced search
-				r.Get("/email/{email}", accountHandler.FindByEmail) // Find by email
-				r.Get("/role/{role}", accountHandler.FindByRole)    // Find by role
+				// r.Get("/", accountHandler.SearchUsers)              // Advanced search
+				// r.Get("/email/{email}", accountHandler.FindByEmail) // Find by email
+				// r.Get("/role/{role}", accountHandler.FindByRole)    // Find by role
 			})
 			
 			// Branch-related endpoints
 			r.Route("/branch", func(r chi.Router) {
-				r.Get("/{branch_id}", accountHandler.FindByBranch)
-				r.Get("/{branch_id}/users", accountHandler.GetUsersByBranch)
+				// r.Get("/{branch_id}", accountHandler.FindByBranch)
+				// r.Get("/{branch_id}/users", accountHandler.GetUsersByBranch)
 			})
 			
 			// Account management
 			r.Route("/manage", func(r chi.Router) {
-				r.Put("/{id}/status", accountHandler.UpdateAccountStatus)
+				// r.Put("/{id}/status", accountHandler.UpdateAccountStatus)
 			})
 		})
 	})
