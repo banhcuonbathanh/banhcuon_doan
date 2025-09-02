@@ -129,7 +129,7 @@ type AccountHandlerInterface interface {
 // ===== USE CASE INTERFACE (Optional - for complex business logic) =====
 type AccountUseCaseInterface interface {
 	// Core user operations
-	RegisterUser(ctx context.Context, req account_dto.RegisterUserRequest) (account_dto.RegisterUserResponse, error)
+	RegisterUser(ctx context.Context, req account_dto.CreateUserRequest) (account_dto.RegisterUserResponse, error)
 	AuthenticateUser(ctx context.Context, req account_dto.LoginRequest) (account_dto.LoginResponse, error)
 	GetUserProfile(ctx context.Context, userID int64) (account_dto.UserProfileResponse, error)
 	UpdateUserProfile(ctx context.Context, req account_dto.UpdateUserRequest) (account_dto.UpdateUserResponse, error)

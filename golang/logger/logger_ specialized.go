@@ -372,3 +372,15 @@ func (l *SpecializedLogger) LogHealthCheck(service string, status string, durati
 		l.Error(message, fields)
 	}
 }
+
+func (l *SpecializedLogger) LogStructValidationError(structName string, structValue interface{}, message string) {
+	fields := map[string]interface{}{
+		"operation":   "validation",
+		"layer":       core.LayerValidation,
+		"struct_name": structName,
+		"struct_value": structValue,
+		"type":        "struct_validation_error",
+	}
+	
+	l.Warn(fmt.Sprintf("Struct validation failed for %s: %s", structName, message), fields)
+}

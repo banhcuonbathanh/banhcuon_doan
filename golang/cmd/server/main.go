@@ -194,14 +194,14 @@ func setupGlobalMiddleware(r *chi.Mux, cfg *utils_config.Config) {
 	}
 
 	// Domain context middleware
-	r.Use(errorcustom.DomainContextMiddleware)
+	// r.Use(errorcustom.DomainContextMiddleware)
 }
 
 func setupDomainHandlers(r *chi.Mux, conn *grpc.ClientConn, cfg *utils_config.Config) {
 	// Account domain with error handling
 	if cfg.IsDomainEnabled("account") {
 		userClient := pb.NewAccountServiceClient(conn)
-		accountHandler := account_handler.NewAccountHandler(userClient, cfg)
+		accountHandler := account_handler.NewAccountHandler(userClient)
 		account_handler.RegisterRoutesAccountHandler(r, accountHandler)
 	}
 

@@ -47,6 +47,7 @@ require (
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0
+	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/golang-migrate/migrate/v4 v4.17.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/errwrap v1.1.0 // indirect

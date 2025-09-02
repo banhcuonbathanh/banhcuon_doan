@@ -4,19 +4,18 @@ package account_service
 import (
 	"context"
 
-	"strings"
 	"time"
 
+	error_custom "english-ai-full/error_custom"
 	account_interface "english-ai-full/internal/account"
 	"english-ai-full/internal/account/account_dto"
-	error_custom "english-ai-full/error_custom"
 	"english-ai-full/internal/proto_qr/account"
 	logg "english-ai-full/logger"
-	"english-ai-full/utils"
+
 	utils_config "english-ai-full/utils/config"
 
+	"github.com/go-playground/validator"
 	"github.com/pkg/errors"
-	
 )
 
 // AccountService implements the main service structure with all account-related functionality
@@ -30,6 +29,7 @@ type AccountService struct {
 	config        *utils_config.Config
 	domain        string
 	account.UnimplementedAccountServiceServer
+		validator     *validator.Validate
 }
 
 // NewAccountService creates a new account service with all dependencies
@@ -48,170 +48,68 @@ func NewAccountService(
 		errorHandler: error_custom.NewServiceErrorManager(),
 		config:       utils_config.GetConfig(),
 		domain:       "account",
+				validator:    validator.New(),
 	}
 }
 
 // NewAccountServiceLegacy creates a service with minimal dependencies for backward compatibility
-func NewAccountServiceLegacy(userRepo account_interface.AccountRepositoryInterface) *AccountService {
-	return &AccountService{
-		userRepo:     userRepo,
-		logger:       logg.NewSpecializedServiceLogger(),
-		errorHandler: error_custom.NewServiceErrorManager(),
-		config:       utils_config.GetConfig(),
-		domain:       "account",
-	}
-}
-
-// ===== HELPER METHODS =====
-
-// buildOperationContext creates standardized context for logging and error handling
-func (s *AccountService) buildOperationContext(operation string, userInfo map[string]interface{}) map[string]interface{} {
-	ctx := map[string]interface{}{
-		"service":   "account",
-		"operation": operation,
-		"domain":    s.domain,
-	}
-	
-	// Merge user-specific context
-	for key, value := range userInfo {
-		ctx[key] = value
-	}
-	
-	return ctx
-}
-
-// validateUserInput performs comprehensive input validation
-func (s *AccountService) validateUserInput(user account_dto.Account) error {
-	var validationErrors []string
-
-	// Email validation
-	if user.Email == "" {
-		validationErrors = append(validationErrors, "email is required")
-	} else if !utils.IsValidEmail(user.Email) {
-		validationErrors = append(validationErrors, "invalid email format")
-	}
-
-	// Name validation
-	if user.Name == "" {
-		validationErrors = append(validationErrors, "name is required")
-	} else if len(strings.TrimSpace(user.Name)) < 2 {
-		validationErrors = append(validationErrors, "name must be at least 2 characters")
-	}
-
-	// Password validation
-	if user.Password == "" {
-		validationErrors = append(validationErrors, "password is required")
-	} else if len(user.Password) < 8 {
-		validationErrors = append(validationErrors, "password must be at least 8 characters")
-	}
-
-	// Role validation
-	if user.Role == "" {
-		validationErrors = append(validationErrors, "role is required")
-	}
-
-	if len(validationErrors) > 0 {
-		return error_custom.NewValidationError("account", "input", strings.Join(validationErrors, "; "), user.Email)
-	}
-
-	return nil
-}
 
 
-// handleServiceError wraps errors with service context and logs them
-func (s *AccountService) handleServiceError(err error, operation string, context map[string]interface{}, startTime *time.Time) error {
-	if err == nil {
-		return nil
-	}
-
-	// Add timing information if provided
-	if startTime != nil {
-		context["duration_ms"] = time.Since(*startTime).Milliseconds()
-	}
-
-	// Add service context
-	context["service"] = "account"
-	context["operation"] = operation
-	context["layer"] = "service"
-
-	// Log the error
-	s.logger.LogServiceCall("account", operation, false, err, context)
-
-	// Convert to APIError and add service layer context
-	apiErr := error_custom.ConvertToAPIError(err)
-	if apiErr == nil {
-		apiErr = error_custom.NewAPIError(
-			"ACCOUNT_SERVICE_ERROR",
-			"Account service operation failed",
-			500,
-		)
-	}
-
-	// Add service layer context
-	apiErr.WithDomain(s.domain).
-		WithLayer("service").
-		WithOperation(operation).
-		WithCause(err)
-
-	// Add additional context
-	for k, v := range context {
-		apiErr.WithDetail(k, v)
-	}
-
-	return apiErr
-}
-// handleServiceSuccess logs successful operations
-func (s *AccountService) handleServiceSuccess(operation string, context map[string]interface{}, startTime time.Time) {
-	context["duration_ms"] = time.Since(startTime).Milliseconds()
-	context["success"] = true
-	s.logger.LogServiceCall("account", operation, true, nil, context)
-}
 // ===== CORE SERVICE METHODS =====
 
 // CreateUser creates a new user account with comprehensive validation and error handling
-func (s *AccountService) CreateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error) {
+func (s *AccountService) CreateUser(ctx context.Context, req *account.AccountReq) (*account.Account, error) {
 	const operation = "create_user"
 	startTime := time.Now()
 	
 	operationCtx := s.buildOperationContext(operation, map[string]interface{}{
-		"email": user.Email,
-		"role":  string(user.Role),
+		"email": req.Email,
+		"role":  req.Role,
 	})
 
 	// Context cancellation check
 	if err := ctx.Err(); err != nil {
-		return account_dto.Account{}, s.handleServiceError(err, operation, operationCtx, &startTime)
+		return nil, s.handleServiceError(err, operation, operationCtx, &startTime)
 	}
 
 	// Input validation
-	if err := s.validateUserInput(user); err != nil {
-		operationCtx["validation_error"] = err.Error()
-		return account_dto.Account{}, s.handleServiceError(err, operation, operationCtx, &startTime)
+	if err := s.validator.Struct(req); err != nil {
+		validationErr := s.formatValidationError(err, req.Email)
+		operationCtx["validation_error"] = validationErr.Error()
+		return nil, s.handleServiceError(validationErr, operation, operationCtx, &startTime)
+	}
+
+	// Convert protobuf request to DTO
+	userDTO := account_dto.Account{
+		BranchID: req.BranchId,
+		Name:     req.Name,
+		Email:    req.Email,
+		Password: req.Password,
+		Avatar:   req.Avatar,
+		Title:    req.Title,
+		Role:     account_dto.Role(req.Role),
+		OwnerID:  req.OwnerId,
+		Status:   "active", // Set default status
 	}
 
 	// Hash password if password hasher is available
 	if s.passwordHash != nil {
-		hashedPassword, err := s.passwordHash.HashPassword(user.Password)
+		hashedPassword, err := s.passwordHash.HashPassword(userDTO.Password)
 		if err != nil {
 			operationCtx["hash_error"] = "failed to hash password"
-			return account_dto.Account{}, s.handleServiceError(
+			return nil, s.handleServiceError(
 				errors.Wrap(err, "failed to hash password"), 
 				operation, operationCtx, &startTime,
 			)
 		}
-		user.Password = hashedPassword
+		userDTO.Password = hashedPassword
 	}
 
-	// Set default status if not provided
-	if user.Status == "" {
-		user.Status = "active"
-	}
-
-	// Call repository to create user
-	createdUser, err := s.userRepo.CreateUser(ctx, user)
+	// Call repository to create user with DTO
+	createdUser, err := s.userRepo.CreateUser(ctx, userDTO)
 	if err != nil {
 		operationCtx["repository_error"] = "failed to create user in repository"
-		return account_dto.Account{}, s.handleServiceError(err, operation, operationCtx, &startTime)
+		return nil, s.handleServiceError(err, operation, operationCtx, &startTime)
 	}
 
 	// Log success
@@ -219,21 +117,21 @@ func (s *AccountService) CreateUser(ctx context.Context, user account_dto.Accoun
 	s.handleServiceSuccess(operation, operationCtx, startTime)
 
 	// Send welcome email if email service is available
-if s.emailService != nil {
-   go func() {
-   	emailCtx := context.Background()
-   	if err := s.emailService.SendWelcomeEmail(emailCtx, createdUser.Email, createdUser.Name); err != nil {
-   		s.logger.LogServiceCall("account", "send_welcome_email", false, err, map[string]interface{}{
-   			"user_id":    createdUser.ID,
-   			"user_email": createdUser.Email,
-   		})
-   	}
-   }()
-}
+	if s.emailService != nil {
+		go func() {
+			emailCtx := context.Background()
+			if err := s.emailService.SendWelcomeEmail(emailCtx, createdUser.Email, createdUser.Name); err != nil {
+				s.logger.LogServiceCall("account", "send_welcome_email", false, err, map[string]interface{}{
+					"user_id":    createdUser.ID,
+					"user_email": createdUser.Email,
+				})
+			}
+		}()
+	}
 
-	return createdUser, nil
+	// Convert DTO to protobuf message before returning
+	return s.convertDTOToProto(&createdUser), nil
 }
-
 
 // AuthenticateUser authenticates a user with email and password
 // func (s *AccountService) AuthenticateUser(ctx context.Context, email, password string) (account_dto.Account, string, error) {

@@ -10,11 +10,11 @@ type LoginRequest struct {
 
 // RegisterUserRequest represents the user registration request payload
 // swagger:model account_dto.RegisterUserRequest
-type RegisterUserRequest struct {
-	Name     string `json:"name" validate:"required,min=2,max=100" example:"John Doe"`
-	Email    string `json:"email" validate:"required,email,uniqueemail" example:"john.doe@example.com"`
-	Password string `json:"password" validate:"required,password" example:"SecurePass123!"`
-}
+// type RegisterUserRequest struct {
+// 	Name     string `json:"name" validate:"required,min=2,max=100" example:"John Doe"`
+// 	Email    string `json:"email" validate:"required,email,uniqueemail" example:"john.doe@example.com"`
+// 	Password string `json:"password" validate:"required,password" example:"SecurePass123!"`
+// }
 type CreateUserRequest struct {
 	BranchID int64  `json:"branch_id"`
 	Name     string `json:"name" validate:"required,min=2,max=100"`

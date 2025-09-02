@@ -3,37 +3,37 @@ package account_proto;
 option go_package = "english-ai-full/internal/proto_qr/account";
 
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/empty.proto";
+// import "google/protobuf/empty.proto";
 
 service AccountService {
   rpc CreateUser(AccountReq) returns (Account);
-  rpc UpdateUser(UpdateUserReq) returns (AccountRes);
-  rpc DeleteUser(DeleteAccountReq) returns (DeleteAccountRes);
-  rpc FindAllUsers(google.protobuf.Empty) returns (AccountList);
-  rpc FindByEmail(FindByEmailReq) returns (AccountRes);
-  rpc Login(LoginReq) returns (AccountRes);
-  rpc Logout(LogoutReq) returns (LogoutRes);
-  rpc Register(RegisterReq) returns (RegisterRes);
-  rpc FindByID(FindByIDReq) returns (FindByIDRes);
+  // rpc UpdateUser(UpdateUserReq) returns (AccountRes);
+  // rpc DeleteUser(DeleteAccountReq) returns (DeleteAccountRes);
+  // rpc FindAllUsers(google.protobuf.Empty) returns (AccountList);
+  // rpc FindByEmail(FindByEmailReq) returns (AccountRes);
+  // rpc Login(LoginReq) returns (AccountRes);
+  // rpc Logout(LogoutReq) returns (LogoutRes);
+  // rpc Register(RegisterReq) returns (RegisterRes);
+  // rpc FindByID(FindByIDReq) returns (FindByIDRes);
   
-  // Password management
-  rpc ChangePassword(ChangePasswordReq) returns (ChangePasswordRes);
-  rpc ResetPassword(ResetPasswordReq) returns (ResetPasswordRes);
-  rpc ForgotPassword(ForgotPasswordReq) returns (ForgotPasswordRes);
+  // // Password management
+  // rpc ChangePassword(ChangePasswordReq) returns (ChangePasswordRes);
+  // rpc ResetPassword(ResetPasswordReq) returns (ResetPasswordRes);
+  // rpc ForgotPassword(ForgotPasswordReq) returns (ForgotPasswordRes);
   
-  // Account verification and status
-  rpc VerifyEmail(VerifyEmailReq) returns (VerifyEmailRes);
-  rpc ResendVerification(ResendVerificationReq) returns (ResendVerificationRes);
-  rpc UpdateAccountStatus(UpdateAccountStatusReq) returns (UpdateAccountStatusRes);
+  // // Account verification and status
+  // rpc VerifyEmail(VerifyEmailReq) returns (VerifyEmailRes);
+  // rpc ResendVerification(ResendVerificationReq) returns (ResendVerificationRes);
+  // rpc UpdateAccountStatus(UpdateAccountStatusReq) returns (UpdateAccountStatusRes);
   
-  // Enhanced search and filtering
-  rpc FindByRole(FindByRoleReq) returns (AccountList);
-  rpc FindByBranch(FindByBranchReq) returns (AccountList);
-  rpc SearchUsers(SearchUsersReq) returns (SearchUsersRes);
+  // // Enhanced search and filtering
+  // rpc FindByRole(FindByRoleReq) returns (AccountList);
+  // rpc FindByBranch(FindByBranchReq) returns (AccountList);
+  // rpc SearchUsers(SearchUsersReq) returns (SearchUsersRes);
   
-  // Token/Session management
-  rpc RefreshToken(RefreshTokenReq) returns (RefreshTokenRes);
-  rpc ValidateToken(ValidateTokenReq) returns (ValidateTokenRes);
+  // // Token/Session management
+  // rpc RefreshToken(RefreshTokenReq) returns (RefreshTokenRes);
+  // rpc ValidateToken(ValidateTokenReq) returns (ValidateTokenRes);
 }
 enum AccountStatus {
   UNKNOWN = 0;

@@ -3,43 +3,44 @@ package account_handler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi"
+	"github.com/go-playground/validator/v10"
 
 	"english-ai-full/internal/account/account_dto"
-	account_service "english-ai-full/internal/account/account_service"
+
 	error_custom "english-ai-full/error_custom"
+	pb "english-ai-full/internal/proto_qr/account"
 	logg "english-ai-full/logger"
 	"english-ai-full/utils"
 )
 
 // AccountHandlerInterface defines the contract for account handlers
-type AccountHandlerInterface interface {
-	// Authentication endpoints
-	Register(w http.ResponseWriter, r *http.Request)
-}
 
 // AccountHandler implements the handler layer for account operations
 type AccountHandler struct {
-	accountService account_service.AccountService
+	userClient      pb.AccountServiceClient
 	handlerErrorMgr *error_custom.HandlerErrorManager
-	logger         *logg.SpecializedLogger
-	domain         string
+	logger          *logg.SpecializedLogger
+	domain          string
+	validator       *validator.Validate
 }
 
 // NewAccountHandler creates a new account handler with dependencies
-func NewAccountHandler(accountService *account_service.AccountService) *AccountHandler {
+func NewAccountHandler(userClient pb.AccountServiceClient) *AccountHandler {
 	return &AccountHandler{
-		accountService:  *accountService,
+		userClient:      userClient,
 		handlerErrorMgr: error_custom.NewHandlerErrorManager(),
-		logger:         logg.NewSpecializedHandlerLogger(),
-		domain:         "account",
+		logger:          logg.NewSpecializedHandlerLogger(),
+		domain:          "account",
+		validator:       validator.New(),
 	}
 }
 
-// Register handles user registration requests
+// Register handles user registration requests new 1212121212121212
 func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	const operation = "register"
 	startTime := time.Now()
@@ -73,7 +74,7 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse and validate request body
-	var registerRequest account_dto.Account
+	var registerRequest account_dto.CreateUserRequest
 	if err := h.handlerErrorMgr.DecodeJSONRequest(r, &registerRequest, h.domain, requestID); err != nil {
 		operationCtx["decode_error"] = "failed to parse request body"
 		h.logRequestEnd(requestID, http.StatusBadRequest, startTime)
@@ -83,25 +84,44 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	// Add parsed data to context (without sensitive info)
 	operationCtx["email"] = registerRequest.Email
-	operationCtx["role"] = string(registerRequest.Role)
+	operationCtx["role"] = registerRequest.Role
+	operationCtx["branch_id"] = registerRequest.BranchID
 
 	// Additional request validation
-	if err := h.validateRegisterRequest(registerRequest); err != nil {
-		operationCtx["validation_error"] = err.Error()
-		h.logRequestEnd(requestID, http.StatusBadRequest, startTime)
-		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestID)
-		return
-	}
-
+if err := h.validator.Struct(registerRequest); err != nil {
+    h.logger.LogStructValidationError("CreateUserRequest", registerRequest, "Request validation failed")
+    
+    if validationErrors, ok := err.(validator.ValidationErrors); ok {
+        // Use the HandleValidationErrors function from HandlerErrorManager
+        h.handlerErrorMgr.HandleValidationErrors(w, validationErrors, h.domain, requestID)
+    } else {
+        // For non-validation errors, use RespondWithError with the error directly
+        // Let RespondWithError handle the conversion to APIError
+        h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestID)
+    }
+    return
+}
 	// Create service context with timeout
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
-	// Call service layer
-	createdUser, err := h.accountService.CreateUser(ctx, registerRequest)
+	// Create protobuf request using AccountReq message
+	pbRequest := &pb.AccountReq{
+		BranchId: registerRequest.BranchID,
+		Name:     registerRequest.Name,
+		Email:    registerRequest.Email,
+		Password: registerRequest.Password,
+		Avatar:   registerRequest.Avatar,
+		Title:    registerRequest.Title,
+		Role:     registerRequest.Role,
+		OwnerId:  registerRequest.OwnerID,
+	}
+
+	// Call service layer using CreateUser RPC
+	createdUser, err := h.userClient.CreateUser(ctx, pbRequest)
 	if err != nil {
 		// Log service call failure
-		h.logger.LogServiceCall("account", "CreateUser", false, err, operationCtx)
+		h.logger.LogServiceCall(h.domain, "CreateUser", false, err, operationCtx)
 		
 		// Determine appropriate HTTP status code based on error type
 		statusCode := h.getHTTPStatusFromError(err)
@@ -111,9 +131,9 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Log successful service call
-	operationCtx["user_id"] = createdUser.ID
+	operationCtx["user_id"] = createdUser.Id
 	operationCtx["created_at"] = createdUser.CreatedAt
-	h.logger.LogServiceCall("account", "CreateUser", true, nil, operationCtx)
+	h.logger.LogServiceCall(h.domain, "CreateUser", true, nil, operationCtx)
 
 	// Prepare response (exclude sensitive data)
 	responseData := h.prepareUserResponse(createdUser)
@@ -123,7 +143,7 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	// Log user activity
 	h.logger.LogUserActivity(
-		string(rune(createdUser.ID)), 
+		fmt.Sprintf("%d", createdUser.Id), 
 		"register",
 		"user_account",
 		map[string]interface{}{
@@ -132,42 +152,32 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 			"client_ip":  clientIP,
 		},
 	)
+
 	// Send successful response
 	h.handlerErrorMgr.RespondWithCreated(w, responseData, h.domain, requestID)
 }
 
-// ===== VALIDATION METHODS =====
 
-// validateRegisterRequest performs additional validation beyond basic JSON parsing
-func (h *AccountHandler) validateRegisterRequest(req account_dto.Account) error {
-	// Validate required fields
-	requiredFields := []string{"email", "name", "password", "role"}
-	if err := h.validateRequiredFields(req, requiredFields); err != nil {
-		return err
+// prepareUserResponse prepares the user response excluding sensitive data
+func (h *AccountHandler) prepareUserResponse(user *pb.Account) map[string]interface{} {
+	return map[string]interface{}{
+		"id":         user.Id,
+		"branch_id":  user.BranchId,
+		"name":       user.Name,
+		"email":      user.Email,
+		"avatar":     user.Avatar,
+		"title":      user.Title,
+		"role":       user.Role,
+		"owner_id":   user.OwnerId,
+		"status":     user.Status.String(),
+		"created_at": user.CreatedAt,
+		"updated_at": user.UpdatedAt,
+		// Note: password is intentionally excluded from response
 	}
-
-	// Email format validation
-	if err := h.validateEmail(req.Email); err != nil {
-		return err
-	}
-
-	// Password strength validation  
-	if err := h.validatePassword(req.Password); err != nil {
-		return err
-	}
-
-	// Name validation
-	if err := h.validateName(req.Name); err != nil {
-		return err
-	}
-
-	// Role validation
-	if err := h.validateRole(string(req.Role)); err != nil {
-		return err
-	}
-
-	return nil
 }
+
+// ===== VALIDATION METHODS ===== new 12121212121212
+
 
 // validateRequiredFields checks if required fields are present and not empty
 func (h *AccountHandler) validateRequiredFields(req account_dto.Account, fields []string) error {
@@ -270,19 +280,7 @@ func (h *AccountHandler) validateRole(role string) error {
 
 // ===== UTILITY METHODS =====
 
-// prepareUserResponse creates a safe response object excluding sensitive data
-func (h *AccountHandler) prepareUserResponse(user account_dto.Account) map[string]interface{} {
-	return map[string]interface{}{
-		"id":         user.ID,
-		"email":      user.Email,
-		"name":       user.Name,
-		"role":       user.Role,
-		"status":     user.Status,
-		"created_at": user.CreatedAt,
-		"updated_at": user.UpdatedAt,
-		// Explicitly exclude: Password, any tokens, etc.
-	}
-}
+
 
 // isPasswordStrong checks password complexity requirements
 func (h *AccountHandler) isPasswordStrong(password string) bool {
@@ -383,4 +381,24 @@ func (h *AccountHandler) SetupRoutes(r chi.Router) {
 		// r.Get("/profile", h.GetProfile)
 		// etc.
 	})
+}
+
+func getRequestID(r *http.Request) string {
+    // Option 1: From header (if set by middleware)
+    if requestID := r.Header.Get("X-Request-ID"); requestID != "" {
+        return requestID
+    }
+    
+    // Option 2: From context (if set by middleware)
+    if requestID := r.Context().Value("request_id"); requestID != nil {
+        if id, ok := requestID.(string); ok {
+            return id
+        }
+    }
+    
+    // Option 3: Generate new UUID (you'll need to import a UUID package)
+    // return uuid.New().String()
+    
+    // Fallback: generate simple ID
+    return fmt.Sprintf("req_%d", time.Now().UnixNano())
 }

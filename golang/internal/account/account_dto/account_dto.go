@@ -3,27 +3,30 @@ package account_dto
 
 import "time"
 
-
 // Account represents a user account
 type Account struct {
-    ID        int64     `json:"id" example:"123"`
-    BranchID  int64     `json:"branch_id" example:"1"`
-    Name      string    `json:"name" example:"John Doe"`
-    Email     string    `json:"email" example:"john.doe@example.com"`
-    Avatar    string    `json:"avatar" example:"https://example.com/avatar.jpg"`
-    Title     string    `json:"title" example:"Manager"`
-    Role      Role      `json:"role" example:"admin"`
-    OwnerID   int64     `json:"owner_id" example:"1"`
-    Status    string    `json:"status" example:"active"`
-    CreatedAt time.Time `json:"created_at" example:"2023-01-01T00:00:00Z"`
-    UpdatedAt time.Time `json:"updated_at" example:"2023-01-01T00:00:00Z"`
+	ID        int64     `json:"id" example:"123"`
+	BranchID  int64     `json:"branch_id" example:"1"`
+	Name      string    `json:"name" example:"John Doe"`
+	Email     string    `json:"email" example:"john.doe@example.com"`
+	Avatar    string    `json:"avatar" example:"https://example.com/avatar.jpg"`
+	Title     string    `json:"title" example:"Manager"`
+	Role      Role      `json:"role" example:"admin"`
+	OwnerID   int64     `json:"owner_id" example:"1"`
+	Status    string    `json:"status" example:"active"`
+	CreatedAt time.Time `json:"created_at" example:"2023-01-01T00:00:00Z"`
+	UpdatedAt time.Time `json:"updated_at" example:"2023-01-01T00:00:00Z"`
 
-    // Add password if needed (use with care)
-    Password string `json:"password,omitempty" example:"securePass123"`
+	// Add password if needed (use with care)
+	Password string `json:"password,omitempty" example:"securePass123"`
 }
 
 // Role represents user roles
 type Role string
+
+func (r Role) String() {
+	panic("unimplemented")
+}
 
 const (
 	RoleAdmin   Role = "admin"
@@ -168,28 +171,28 @@ type ExtendedUserProfile struct {
 
 // BulkOperation represents bulk operation request
 type BulkOperation struct {
-	Operation string  `json:"operation" example:"update_status"`
-	UserIDs   []int64 `json:"user_ids" example:"[1,2,3,4,5]"`
+	Operation string                 `json:"operation" example:"update_status"`
+	UserIDs   []int64                `json:"user_ids" example:"[1,2,3,4,5]"`
 	Data      map[string]interface{} `json:"data"`
 }
 
 // BulkOperationResult represents bulk operation response
 type BulkOperationResult struct {
-	Success     []int64 `json:"success" example:"[1,2,3]"`
-	Failed      []int64 `json:"failed" example:"[4,5]"`
-	Errors      map[string]string `json:"errors,omitempty"`
-	TotalCount  int     `json:"total_count" example:"5"`
-	SuccessCount int    `json:"success_count" example:"3"`
-	FailureCount int    `json:"failure_count" example:"2"`
+	Success      []int64           `json:"success" example:"[1,2,3]"`
+	Failed       []int64           `json:"failed" example:"[4,5]"`
+	Errors       map[string]string `json:"errors,omitempty"`
+	TotalCount   int               `json:"total_count" example:"5"`
+	SuccessCount int               `json:"success_count" example:"3"`
+	FailureCount int               `json:"failure_count" example:"2"`
 }
 
 // ExportRequest represents data export request
 type ExportRequest struct {
-	Format    string            `json:"format" example:"csv"`
-	Filters   SearchFilters     `json:"filters"`
-	Fields    []string          `json:"fields" example:"[\"name\",\"email\",\"role\"]"`
-	SortBy    string            `json:"sort_by" example:"created_at"`
-	SortOrder string            `json:"sort_order" example:"desc"`
+	Format    string        `json:"format" example:"csv"`
+	Filters   SearchFilters `json:"filters"`
+	Fields    []string      `json:"fields" example:"[\"name\",\"email\",\"role\"]"`
+	SortBy    string        `json:"sort_by" example:"created_at"`
+	SortOrder string        `json:"sort_order" example:"desc"`
 }
 
 // ImportRequest represents data import request
@@ -202,13 +205,13 @@ type ImportRequest struct {
 
 // ImportResult represents data import response
 type ImportResult struct {
-	TotalRecords    int                    `json:"total_records" example:"100"`
-	SuccessCount    int                    `json:"success_count" example:"95"`
-	FailureCount    int                    `json:"failure_count" example:"5"`
-	Errors          []map[string]string    `json:"errors,omitempty"`
-	CreatedRecords  []int64                `json:"created_records,omitempty"`
-	UpdatedRecords  []int64                `json:"updated_records,omitempty"`
-	SkippedRecords  []int64                `json:"skipped_records,omitempty"`
+	TotalRecords   int                 `json:"total_records" example:"100"`
+	SuccessCount   int                 `json:"success_count" example:"95"`
+	FailureCount   int                 `json:"failure_count" example:"5"`
+	Errors         []map[string]string `json:"errors,omitempty"`
+	CreatedRecords []int64             `json:"created_records,omitempty"`
+	UpdatedRecords []int64             `json:"updated_records,omitempty"`
+	SkippedRecords []int64             `json:"skipped_records,omitempty"`
 }
 
 // HealthCheck represents system health status
@@ -231,9 +234,9 @@ type HealthCheck struct {
 // LoginUserRes represents the login response
 // swagger:model LoginUserRes
 type LoginUserRes struct {
-	AccessToken  string                `json:"access_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
-	RefreshToken string                `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
-	User         AccountLoginResponse  `json:"user"`
+	AccessToken  string               `json:"access_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	RefreshToken string               `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	User         AccountLoginResponse `json:"user"`
 }
 
 // AccountLoginResponse represents the user data in login response

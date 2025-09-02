@@ -1,7 +1,6 @@
 package errorcustom
 
 import (
-	
 	"encoding/json"
 	"english-ai-full/logger"
 	"fmt"
@@ -11,7 +10,9 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi"
+	"github.com/go-playground/validator/v10"
 )
+
 func NewHandlerErrorManager() *HandlerErrorManager {
     return &HandlerErrorManager{}
 }
@@ -461,4 +462,35 @@ func (hem *HandlerErrorManager) ParseSortingParameters(r *http.Request, allowedF
 	}
 	
 	return sortBy, sortOrder, nil
+}
+
+// func (h *HandlerErrorManager)  HandleValidationErrors(w http.ResponseWriter, validationErrors validator.ValidationErrors, domain, requestID string) {
+// 	errorCollection := NewErrorCollection(domain)
+	
+// 	for _, err := range validationErrors {
+// 		field := err.Field()
+// 		message := getValidationMessage(err)
+// 		validationErr := NewValidationError(domain, field, message, err.Value())
+// 		errorCollection.Add(validationErr)
+// 	}
+
+// 	HandleError(w, errorCollection.ToAPIError(), requestID)
+// }
+
+
+func (h *HandlerErrorManager) HandleValidationErrors(w http.ResponseWriter, validationErrors validator.ValidationErrors, domain, requestID string) {
+	errorCollection := NewErrorCollection(domain)
+	
+	for _, err := range validationErrors {
+		field := err.Field()
+		message := getValidationMessage(err)
+		validationErr := NewValidationError(domain, field, message, err.Value())
+		errorCollection.Add(validationErr)
+	}
+
+	// Convert to APIError and respond - use RespondWithError instead of HandleError
+	apiErr := errorCollection.ToAPIError()
+	if apiErr != nil {
+		h.RespondWithError(w, apiErr, domain, requestID)
+	}
 }

@@ -1,30 +1,42 @@
-// internal/error_custom/error_custom_handler.go
-// Cleaned HTTP error handling with domain support
+// // internal/error_custom/error_custom_handler.go
+// // Cleaned HTTP error handling with domain support
 package errorcustom
 
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"regexp"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
-
-	"github.com/golang-jwt/jwt/v5"
 	"english-ai-full/logger"
+	"fmt"
+	"net/http"
+	"strings"
 
-	"github.com/go-playground/validator/v10"
+"github.com/go-playground/validator/v10"
+	"github.com/golang-jwt/jwt/v5"
 )
 
-// ============================================================================
-// MIDDLEWARE
-// ============================================================================
+// import (
+// 	"context"
+// 	"encoding/json"
+// 	"fmt"
+// 	"io"
+// 	"net/http"
+// 	"regexp"
+// 	"strconv"
+// 	"strings"
+// 	"sync"
+// 	"time"
 
-// RequestIDMiddleware adds unique request ID to each request
+// 	"github.com/golang-jwt/jwt/v5"
+// 	"english-ai-full/logger"
+
+// 	"github.com/go-playground/validator/v10"
+// )
+
+// // ============================================================================
+// // MIDDLEWARE
+// // ============================================================================
+
+// // RequestIDMiddleware adds unique request ID to each request
 func RequestIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestID := generateRequestID()
@@ -34,16 +46,16 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// DomainContextMiddleware automatically detects and sets domain context
-func DomainContextMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		domain := detectDomainFromPath(r.URL.Path)
-		ctx := withDomain(r.Context(), domain)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
+// // DomainContextMiddleware automatically detects and sets domain context
+// func DomainContextMiddleware(next http.Handler) http.Handler {
+// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		domain := detectDomainFromPath(r.URL.Path)
+// 		ctx := withDomain(r.Context(), domain)
+// 		next.ServeHTTP(w, r.WithContext(ctx))
+// 	})
+// }
 
-// LogHTTPMiddleware logs HTTP requests with domain-aware logging
+// // LogHTTPMiddleware logs HTTP requests with domain-aware logging
 func LogHTTPMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestID := GetRequestIDFromContext(r.Context())
@@ -61,7 +73,7 @@ func LogHTTPMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// RecoveryMiddleware recovers from panics with domain-aware logging
+// // RecoveryMiddleware recovers from panics with domain-aware logging
 func RecoveryMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -90,7 +102,7 @@ func RecoveryMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// JWTValidationMiddleware validates JWT tokens and adds user context
+// // JWTValidationMiddleware validates JWT tokens and adds user context
 func JWTValidationMiddleware(secretKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -133,32 +145,32 @@ func JWTValidationMiddleware(secretKey string) func(http.Handler) http.Handler {
 	}
 }
 
-// RateLimitMiddleware provides rate limiting per domain and IP
-func RateLimitMiddleware(domain string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			clientIP := GetClientIP(r)
-			if isRateLimited(domain, clientIP) {
-				requestID := GetRequestIDFromContext(r.Context())
-				rateLimitErr := NewAPIError(
-					GetRateLimitCode(domain),
-					"Rate limit exceeded. Please try again later.",
-					http.StatusTooManyRequests,
-				).WithDomain(domain)
+// // RateLimitMiddleware provides rate limiting per domain and IP
+// func RateLimitMiddleware(domain string) func(http.Handler) http.Handler {
+// 	return func(next http.Handler) http.Handler {
+// 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 			clientIP := GetClientIP(r)
+// 			if isRateLimited(domain, clientIP) {
+// 				requestID := GetRequestIDFromContext(r.Context())
+// 				rateLimitErr := NewAPIError(
+// 					GetRateLimitCode(domain),
+// 					"Rate limit exceeded. Please try again later.",
+// 					http.StatusTooManyRequests,
+// 				).WithDomain(domain)
 				
-				HandleError(w, rateLimitErr, requestID)
-				return
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
-}
+// 				HandleError(w, rateLimitErr, requestID)
+// 				return
+// 			}
+// 			next.ServeHTTP(w, r)
+// 		})
+// 	}
+// }
 
-// ============================================================================
-// ERROR HANDLING
-// ============================================================================
+// // ============================================================================
+// // ERROR HANDLING
+// // ============================================================================
 
-// HandleError converts various error types to APIError and responds appropriately
+// // HandleError converts various error types to APIError and responds appropriately
 func HandleError(w http.ResponseWriter, err error, requestID string) {
 	apiErr := ConvertToAPIError(err)
 	if apiErr == nil {
@@ -187,195 +199,183 @@ func HandleError(w http.ResponseWriter, err error, requestID string) {
 	}
 }
 
-// HandleValidationErrors processes validator validation errors
-func HandleValidationErrors(w http.ResponseWriter, validationErrors validator.ValidationErrors, domain, requestID string) {
-	errorCollection := NewErrorCollection(domain)
+// // HandleValidationErrors processes validator validation errors
+
+// // ============================================================================
+// // REQUEST PARSING UTILITIES
+// // ============================================================================
+
+// // DecodeJSON decodes JSON request body with error handling
+// func DecodeJSON(body io.Reader, target interface{}, domain, requestID string) error {
+// 	bodyBytes, err := io.ReadAll(body)
+// 	if err != nil {
+// 		return NewAPIError(
+// 			GetInvalidInputCode(domain),
+// 			"Failed to read request body",
+// 			http.StatusBadRequest,
+// 		).WithDomain(domain)
+// 	}
+
+// 	if err := json.Unmarshal(bodyBytes, target); err != nil {
+// 		return handleJSONError(err, domain)
+// 	}
 	
-	for _, err := range validationErrors {
-		field := err.Field()
-		message := getValidationMessage(err)
-		validationErr := NewValidationError(domain, field, message, err.Value())
-		errorCollection.Add(validationErr)
-	}
+// 	return nil
+// }
+// // new 1212121
 
-	HandleError(w, errorCollection.ToAPIError(), requestID)
-}
 
-// ============================================================================
-// REQUEST PARSING UTILITIES
-// ============================================================================
+// func GetPaginationParams(r *http.Request, domain string) (limit, offset int64, err error) {
+// 	limit = 10  // default
+// 	offset = 0  // default
 
-// DecodeJSON decodes JSON request body with error handling
-func DecodeJSON(body io.Reader, target interface{}, domain, requestID string) error {
-	bodyBytes, err := io.ReadAll(body)
-	if err != nil {
-		return NewAPIError(
-			GetInvalidInputCode(domain),
-			"Failed to read request body",
-			http.StatusBadRequest,
-		).WithDomain(domain)
-	}
+// 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+// 		if l, parseErr := strconv.ParseInt(limitStr, 10, 64); parseErr != nil {
+// 			return 0, 0, NewValidationError(domain, "limit", "Invalid limit parameter", limitStr)
+// 		} else if l < 1 || l > 100 {
+// 			return 0, 0, NewValidationError(domain, "limit", "Limit must be between 1 and 100", l)
+// 		} else {
+// 			limit = l
+// 		}
+// 	}
 
-	if err := json.Unmarshal(bodyBytes, target); err != nil {
-		return handleJSONError(err, domain)
-	}
+// 	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+// 		if o, parseErr := strconv.ParseInt(offsetStr, 10, 64); parseErr != nil {
+// 			return 0, 0, NewValidationError(domain, "offset", "Invalid offset parameter", offsetStr)
+// 		} else if o < 0 {
+// 			return 0, 0, NewValidationError(domain, "offset", "Offset cannot be negative", o)
+// 		} else {
+// 			offset = o
+// 		}
+// 	}
+
+// 	return limit, offset, nil
+// }
+
+
+
+// var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+
+// // ValidateEmail performs comprehensive email validation
+// func ValidateEmail(email, domain string) error {
+// 	if email == "" {
+// 		return NewValidationError(domain, "email", "Email is required", nil)
+// 	}
 	
-	return nil
-}
-// new 1212121
-
-
-func GetPaginationParams(r *http.Request, domain string) (limit, offset int64, err error) {
-	limit = 10  // default
-	offset = 0  // default
-
-	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-		if l, parseErr := strconv.ParseInt(limitStr, 10, 64); parseErr != nil {
-			return 0, 0, NewValidationError(domain, "limit", "Invalid limit parameter", limitStr)
-		} else if l < 1 || l > 100 {
-			return 0, 0, NewValidationError(domain, "limit", "Limit must be between 1 and 100", l)
-		} else {
-			limit = l
-		}
-	}
-
-	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
-		if o, parseErr := strconv.ParseInt(offsetStr, 10, 64); parseErr != nil {
-			return 0, 0, NewValidationError(domain, "offset", "Invalid offset parameter", offsetStr)
-		} else if o < 0 {
-			return 0, 0, NewValidationError(domain, "offset", "Offset cannot be negative", o)
-		} else {
-			offset = o
-		}
-	}
-
-	return limit, offset, nil
-}
-
-
-
-var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-
-// ValidateEmail performs comprehensive email validation
-func ValidateEmail(email, domain string) error {
-	if email == "" {
-		return NewValidationError(domain, "email", "Email is required", nil)
-	}
+// 	email = strings.TrimSpace(email)
 	
-	email = strings.TrimSpace(email)
+// 	if len(email) > 254 {
+// 		return NewValidationError(domain, "email", "Email address is too long (maximum 254 characters)", email)
+// 	}
 	
-	if len(email) > 254 {
-		return NewValidationError(domain, "email", "Email address is too long (maximum 254 characters)", email)
-	}
+// 	if !emailRegex.MatchString(email) {
+// 		return NewValidationError(domain, "email", "Email format is invalid", email)
+// 	}
 	
-	if !emailRegex.MatchString(email) {
-		return NewValidationError(domain, "email", "Email format is invalid", email)
-	}
-	
-	return nil
-}
+// 	return nil
+// }
 
-// ValidatePassword performs password validation
-func ValidatePassword(password, domain string) error {
-	if len(password) < 8 {
-		return NewValidationError(domain, "password", "Password must be at least 8 characters long", nil)
-	}
+// // ValidatePassword performs password validation
+// func ValidatePassword(password, domain string) error {
+// 	if len(password) < 8 {
+// 		return NewValidationError(domain, "password", "Password must be at least 8 characters long", nil)
+// 	}
 	
-	if len(password) > 100 {
-		return NewValidationError(domain, "password", "Password must be no more than 100 characters long", nil)
-	}
+// 	if len(password) > 100 {
+// 		return NewValidationError(domain, "password", "Password must be no more than 100 characters long", nil)
+// 	}
 	
-	hasUpper := strings.ContainsAny(password, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	hasLower := strings.ContainsAny(password, "abcdefghijklmnopqrstuvwxyz")
-	hasNumber := strings.ContainsAny(password, "0123456789")
-	hasSpecial := strings.ContainsAny(password, "!@#$%^&*()_+-=[]{}|;:,.<>?")
+// 	hasUpper := strings.ContainsAny(password, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+// 	hasLower := strings.ContainsAny(password, "abcdefghijklmnopqrstuvwxyz")
+// 	hasNumber := strings.ContainsAny(password, "0123456789")
+// 	hasSpecial := strings.ContainsAny(password, "!@#$%^&*()_+-=[]{}|;:,.<>?")
 	
-	if !hasUpper || !hasLower || !hasNumber || !hasSpecial {
-		return NewValidationError(domain, "password", 
-			"Password must contain uppercase, lowercase, number, and special character", nil)
-	}
+// 	if !hasUpper || !hasLower || !hasNumber || !hasSpecial {
+// 		return NewValidationError(domain, "password", 
+// 			"Password must contain uppercase, lowercase, number, and special character", nil)
+// 	}
 	
-	return nil
-}
+// 	return nil
+// }
 
 
 
-// RespondWithJSON sends JSON response
-func RespondWithJSON(w http.ResponseWriter, statusCode int, data interface{}, requestID string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
+// // RespondWithJSON sends JSON response
+// func RespondWithJSON(w http.ResponseWriter, statusCode int, data interface{}, requestID string) {
+// 	w.Header().Set("Content-Type", "application/json")
+// 	w.WriteHeader(statusCode)
 	
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		logger.Error("Failed to encode JSON response", map[string]interface{}{
-			"error":       err.Error(),
-			"request_id":  requestID,
-		})
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-	}
-}
+// 	if err := json.NewEncoder(w).Encode(data); err != nil {
+// 		logger.Error("Failed to encode JSON response", map[string]interface{}{
+// 			"error":       err.Error(),
+// 			"request_id":  requestID,
+// 		})
+// 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+// 	}
+// }
 
-// RespondWithSuccess sends successful response
-func RespondWithSuccess(w http.ResponseWriter, data interface{}, domain, requestID string) {
-	response := map[string]interface{}{
-		"success": true,
-		"data":    data,
-	}
+// // RespondWithSuccess sends successful response
+// func RespondWithSuccess(w http.ResponseWriter, data interface{}, domain, requestID string) {
+// 	response := map[string]interface{}{
+// 		"success": true,
+// 		"data":    data,
+// 	}
 	
-	if domain != "" {
-		response["domain"] = domain
-	}
+// 	if domain != "" {
+// 		response["domain"] = domain
+// 	}
 	
-	RespondWithJSON(w, http.StatusOK, response, requestID)
-}
+// 	RespondWithJSON(w, http.StatusOK, response, requestID)
+// }
 
-// ============================================================================
-// CONTEXT UTILITIES
-// ============================================================================
+// // ============================================================================
+// // CONTEXT UTILITIES
+// // ============================================================================
 
 func withRequestID(ctx context.Context, requestID string) context.Context {
 	return context.WithValue(ctx, "request_id", requestID)
 }
 
-func withDomain(ctx context.Context, domain string) context.Context {
-	return context.WithValue(ctx, "domain", domain)
-}
+// func withDomain(ctx context.Context, domain string) context.Context {
+// 	return context.WithValue(ctx, "domain", domain)
+// }
 
 
 
 
 
-func GetUserEmailFromContext(r *http.Request) string {
-	if email, ok := r.Context().Value("user_email").(string); ok {
-		return email
-	}
-	return ""
-}
+// func GetUserEmailFromContext(r *http.Request) string {
+// 	if email, ok := r.Context().Value("user_email").(string); ok {
+// 		return email
+// 	}
+// 	return ""
+// }
 
-func GetUserIDFromContext(r *http.Request) int64 {
-	if userID, ok := r.Context().Value("user_id").(int64); ok {
-		return userID
-	}
-	return 0
-}
+// func GetUserIDFromContext(r *http.Request) int64 {
+// 	if userID, ok := r.Context().Value("user_id").(int64); ok {
+// 		return userID
+// 	}
+// 	return 0
+// }
 
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
+// // ============================================================================
+// // HELPER FUNCTIONS
+// // ============================================================================
 
-func detectDomainFromPath(path string) string {
-	path = strings.ToLower(path)
+// func detectDomainFromPath(path string) string {
+// 	path = strings.ToLower(path)
 	
-	switch {
-	case strings.Contains(path, "/api/accounts") || strings.Contains(path, "/api/auth"):
-		return DomainAccount
-	case strings.Contains(path, "/api/branches"):
-		return "branch"
-	case strings.Contains(path, "/api/admin"):
-		return DomainAdmin
-	default:
-		return DomainSystem
-	}
-}
+// 	switch {
+// 	case strings.Contains(path, "/api/accounts") || strings.Contains(path, "/api/auth"):
+// 		return DomainAccount
+// 	case strings.Contains(path, "/api/branches"):
+// 		return "branch"
+// 	case strings.Contains(path, "/api/admin"):
+// 		return DomainAdmin
+// 	default:
+// 		return DomainSystem
+// 	}
+// }
 
 func shouldSkipJWTValidation(path string) bool {
 	skipRoutes := []string{
@@ -417,16 +417,16 @@ func addUserToContext(ctx context.Context, claims jwt.MapClaims) context.Context
 	return ctx
 }
 
-func handleJSONError(err error, domain string) error {
-	switch {
-	case err.Error() == "unexpected end of JSON input":
-		return NewAPIError(GetInvalidInputCode(domain), "Request body cannot be empty", http.StatusBadRequest).WithDomain(domain)
-	case strings.HasPrefix(err.Error(), "invalid character"):
-		return NewAPIError(GetInvalidInputCode(domain), "Invalid JSON syntax", http.StatusBadRequest).WithDomain(domain)
-	default:
-		return NewAPIError(GetInvalidInputCode(domain), "Invalid JSON format", http.StatusBadRequest).WithDomain(domain)
-	}
-}
+// func handleJSONError(err error, domain string) error {
+// 	switch {
+// 	case err.Error() == "unexpected end of JSON input":
+// 		return NewAPIError(GetInvalidInputCode(domain), "Request body cannot be empty", http.StatusBadRequest).WithDomain(domain)
+// 	case strings.HasPrefix(err.Error(), "invalid character"):
+// 		return NewAPIError(GetInvalidInputCode(domain), "Invalid JSON syntax", http.StatusBadRequest).WithDomain(domain)
+// 	default:
+// 		return NewAPIError(GetInvalidInputCode(domain), "Invalid JSON format", http.StatusBadRequest).WithDomain(domain)
+// 	}
+// }
 
 func logError(apiErr *APIError, requestID string) {
 	severity := GetErrorSeverity(apiErr)
@@ -475,23 +475,23 @@ func getValidationMessage(fe validator.FieldError) string {
 	}
 }
 
-// Rate limiting implementation (simplified)
-var (
-	rateLimiters = make(map[string]*RateLimiter)
-	rateLimiterMutex sync.RWMutex
-)
+// // Rate limiting implementation (simplified)
+// var (
+// 	rateLimiters = make(map[string]*RateLimiter)
+// 	rateLimiterMutex sync.RWMutex
+// )
 
-type RateLimiter struct {
-	requests map[string][]time.Time
-	mutex    sync.RWMutex
-	limit    int
-	window   time.Duration
-}
+// type RateLimiter struct {
+// 	requests map[string][]time.Time
+// 	mutex    sync.RWMutex
+// 	limit    int
+// 	window   time.Duration
+// }
 
-func isRateLimited(domain, clientIP string) bool {
-	// Simplified rate limiting logic
-	// Implementation details depend on your specific requirements
-	return false // Placeholder
-}
-// 
+// func isRateLimited(domain, clientIP string) bool {
+// 	// Simplified rate limiting logic
+// 	// Implementation details depend on your specific requirements
+// 	return false // Placeholder
+// }
+// // 
 

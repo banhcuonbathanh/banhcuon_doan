@@ -1,14 +1,15 @@
 package main
 
 import (
-	"english-ai-full/internal/account"
+	"english-ai-full/internal/account/account_repository"
 	"english-ai-full/internal/branch"
+	"english-ai-full/token"
 
+	"english-ai-full/internal/account/account_service"
 	"log"
 	"net"
 	"os"
 
-	accountRepo "english-ai-full/internal/account"
 	"english-ai-full/internal/db"
 	accountpb "english-ai-full/internal/proto_qr/account"
 	branchpb "english-ai-full/internal/proto_qr/branch"
@@ -20,9 +21,9 @@ import (
 	"google.golang.org/grpc"
 )
 
-func initializeAccountService(accountRepository *account.Repository) *account.ServiceStruct {
+func initializeAccountService(accountRepository *account_repository.Repository) *account_service.AccountService {
 	// Initialize JWT Token Maker
-	tokenMaker := utils.NewJWTTokenMaker("kIOopC3C7wA8DQH6FOF2Jfn+UZP8Q02nGxr/EgFMOmo=")
+	tokenMaker := token.NewJWTTokenMaker("kIOopC3C7wA8DQH6FOF2Jfn+UZP8Q02nGxr/EgFMOmo=")
 	
 	// Initialize Password Hasher
 	passwordHasher := utils.NewBcryptPasswordHasher()
@@ -31,7 +32,7 @@ func initializeAccountService(accountRepository *account.Repository) *account.Se
 	emailService := utils.NewMockEmailService()
 	
 	// Create account service with all dependencies
-	accountService := account.NewAccountService(
+	accountService := account_service.NewAccountService(
 		accountRepository,
 		tokenMaker,
 		passwordHasher,
@@ -50,7 +51,7 @@ func main() {
 	}
 	defer dbConn.Close()
 
-	accountRepository := accountRepo.NewAccountRepository(dbConn)
+	accountRepository := account_repository.NewAccountRepository(dbConn)
 	accountService := initializeAccountService(accountRepository)
 
 	branchRepository := branch.NewBranchRepository(dbConn)
