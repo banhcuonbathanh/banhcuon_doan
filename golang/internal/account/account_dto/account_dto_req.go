@@ -15,17 +15,20 @@ type LoginRequest struct {
 // 	Email    string `json:"email" validate:"required,email,uniqueemail" example:"john.doe@example.com"`
 // 	Password string `json:"password" validate:"required,password" example:"SecurePass123!"`
 // }
-type CreateUserRequest struct {
-	BranchID int64  `json:"branch_id"`
-	Name     string `json:"name" validate:"required,min=2,max=100"`
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,strongpassword"`
-	Avatar   string `json:"avatar,omitempty" validate:"omitempty,url"`
-	Title    string `json:"title,omitempty" validate:"omitempty,max=200"`
-	Role     string `json:"role" validate:"required,userrole"`
-	OwnerID  int64  `json:"owner_id,omitempty"`
-}
+
 // CreateUserRequest represents the user creation request payload
+type CreateUserRequest struct {
+    Name     string `json:"name" validate:"required,min=2,max=100"`
+    Email    string `json:"email" validate:"required,email,max=254"`
+    Password string `json:"password" validate:"required,min=8,max=100"`
+    
+    // Optional fields - use omitempty to make them optional
+    BranchID int64 `json:"branch_id,omitempty" validate:"omitempty"`
+    Avatar   string `json:"avatar,omitempty" validate:"omitempty,url"`
+    Title    string `json:"title,omitempty" validate:"omitempty,max=100"`
+    Role     string `json:"role,omitempty" validate:"omitempty,oneof=user admin moderator"`
+    OwnerID  int64 `json:"owner_id,omitempty" validate:"omitempty"`
+}
 
 
 // UpdateUserRequest represents the user update request payload

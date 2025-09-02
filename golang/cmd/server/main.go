@@ -63,6 +63,7 @@ func main() {
 		r.Use(debugMiddleware)
 	}
 
+	// Setup ONLY basic global middleware (no JWT here)
 	setupGlobalMiddleware(r, cfg)
 
 	/**
@@ -176,7 +177,7 @@ func Start(addr string, r *chi.Mux) error {
 	return http.ListenAndServe(addr, r)
 }
 
-// setupGlobalMiddleware sets up global middleware with correct error custom functions
+// setupGlobalMiddleware sets up ONLY basic global middleware (NO JWT here)
 func setupGlobalMiddleware(r *chi.Mux, cfg *utils_config.Config) {
 	// Core error handling middleware
 	r.Use(errorcustom.RequestIDMiddleware)
@@ -188,10 +189,10 @@ func setupGlobalMiddleware(r *chi.Mux, cfg *utils_config.Config) {
 		r.Use(errorcustom.DebugMiddleware) // Fixed function name
 	}
 
-	// JWT validation middleware for protected routes
-	if cfg.JWT.SecretKey != "" {
-		r.Use(errorcustom.JWTValidationMiddleware(cfg.JWT.SecretKey))
-	}
+	// ❌ REMOVED: JWT middleware is NO LONGER applied globally
+	// if cfg.JWT.SecretKey != "" {
+	//     r.Use(errorcustom.JWTValidationMiddleware(cfg.JWT.SecretKey))
+	// }
 
 	// Domain context middleware
 	// r.Use(errorcustom.DomainContextMiddleware)

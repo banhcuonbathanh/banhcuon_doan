@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi"
 	"github.com/go-playground/validator/v10"
 
 	"english-ai-full/internal/account/account_dto"
@@ -371,17 +370,6 @@ func (h *AccountHandler) logRequestEnd(requestID string, statusCode int, startTi
 
 // ===== ROUTER SETUP HELPER =====
 
-// SetupRoutes sets up the HTTP routes for account handlers
-func (h *AccountHandler) SetupRoutes(r chi.Router) {
-	r.Route("/api/accounts", func(r chi.Router) {
-		r.Post("/register", h.Register)
-		// Future endpoints can be added here:
-		// r.Post("/login", h.Login)
-		// r.Post("/logout", h.Logout)
-		// r.Get("/profile", h.GetProfile)
-		// etc.
-	})
-}
 
 func getRequestID(r *http.Request) string {
     // Option 1: From header (if set by middleware)
