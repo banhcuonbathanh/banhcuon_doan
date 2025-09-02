@@ -3,15 +3,16 @@ package account_repository
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 
 	error_custom "english-ai-full/error_custom"
 	"english-ai-full/internal/account"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/logger"
+	"english-ai-full/logger/core"
 
 	utils_config "english-ai-full/utils/config"
-
 
 	"github.com/aarondl/sqlboiler/v4/boil"
 )
@@ -26,9 +27,13 @@ type Repository struct {
 }
 
 func NewAccountRepository(db *sql.DB) *Repository {
+	// Create a proper specialized database logger
+	coreLogger := logger.NewDatabaseLogger()
+	specializedLogger := logger.NewSpecializedLogger(coreLogger)
+	
 	return &Repository{
 		db:           db,
-		logger:       logger.NewSpecializedDatabaseLogger(),
+		logger:       specializedLogger,
 		errorHandler: error_custom.NewRepositoryErrorManager(),
 		config:       utils_config.GetConfig(),
 	}
@@ -37,37 +42,155 @@ func NewAccountRepository(db *sql.DB) *Repository {
 // ============================================================================
 // IMPROVED IMPLEMENTATION
 // ============================================================================
-
 func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error) {
-	const operation = "create_user"
+	const operation = "register"
 	const table = "accounts"
+	const layer = "repository"
+	const function = "CreateUser"
+	
+	// Set layer and operation for this request
+	r.logger.SetLayer(core.LayerRepository)
+	r.logger.SetOperation(operation)
 	
 	operationCtx := r.buildOperationContext(user)
-	r.logger.LogDBOperation(operation, table, true, nil, operationCtx)
 	startTime := time.Now()
+	
+	// Log the start with explicit layer info
+	r.logger.Info("Starting database operation", map[string]interface{}{
+		"operation": operation,
+		"table":     table,
+		"layer":     layer,
+		"function":  function,
+		"email":     maskEmail(user.Email),
+	})
 
 	if err := ctx.Err(); err != nil {
-		r.logger.LogDBOperation(operation, table, false, err, operationCtx)
+		duration := time.Since(startTime)
+		
+		// Use the specialized method with context
+		r.logger.LogDatabaseOperation(operation, table, duration, false, 0)
+		
+		// Also log with explicit layer info
+		r.logger.Error("Context error in CreateUser", map[string]interface{}{
+			"operation":   operation,
+			"table":       table,
+			"layer":       layer,
+			"function":    function,
+			"error":       err.Error(),
+			"duration_ms": duration.Milliseconds(),
+			"context":     operationCtx,
+		})
 		return account_dto.Account{}, r.handleContextError(ctx, operation, table, operationCtx)
 	}
 
+	// Log validation start with explicit layer
+	r.logger.Debug("Starting user validation", map[string]interface{}{
+		"operation": operation,
+		"layer":     layer,
+		"function":  function,
+		"email":     maskEmail(user.Email),
+		"role":      string(user.Role),
+	})
+
 	ormAccount, err := r.buildORMAccount(user)
 	if err != nil {
-		// Log build failure
-		r.logger.LogDBOperation(operation, table, false, err, operationCtx)
+		duration := time.Since(startTime)
+		
+		r.logger.LogDatabaseOperation(operation, table, duration, false, 0)
+		
+		r.logger.Error("Failed to build ORM account", map[string]interface{}{
+			"operation":   operation,
+			"table":       table,
+			"layer":       layer,
+			"function":    function,
+			"error":       err.Error(),
+			"duration_ms": duration.Milliseconds(),
+			"context":     operationCtx,
+		})
 		return account_dto.Account{}, r.wrapError(err, operation, table, operationCtx, &startTime)
 	}
 
+	// Log insert attempt with explicit layer
+	r.logger.Info("Attempting to insert user", map[string]interface{}{
+		"operation": operation,
+		"table":     table,
+		"layer":     layer,
+		"function":  function,
+		"email":     maskEmail(user.Email),
+		"role":      string(user.Role),
+	})
+
 	if err := ormAccount.Insert(ctx, r.db, boil.Infer()); err != nil {
-		// Add context and log insert failure
-		operationCtx["attempted_email"] = user.Email
-		operationCtx["attempted_role"] = string(user.Role)
-		r.logger.LogDBOperation(operation, table, false, err, operationCtx)
+		duration := time.Since(startTime)
+		
+		// Log database operation failure
+		r.logger.LogDatabaseOperation(operation, table, duration, false, 0)
+		
+		// Enhanced error logging with explicit layer
+		r.logger.Error("Failed to insert user", map[string]interface{}{
+			"operation":       operation,
+			"table":          table,
+			"layer":          layer,
+			"function":       function,
+			"error":          err.Error(),
+			"duration_ms":    duration.Milliseconds(),
+			"attempted_email": maskEmail(user.Email),
+			"attempted_role":  string(user.Role),
+			"context":        operationCtx,
+		})
+		
 		return account_dto.Account{}, r.wrapError(err, operation, table, operationCtx, &startTime)
 	}
 	
+	duration := time.Since(startTime)
+	
+	// Log successful operation with explicit layer
+	r.logger.LogDatabaseOperation(operation, table, duration, true, 1)
+	
+	r.logger.Info("Successfully created user", map[string]interface{}{
+		"operation":   operation,
+		"table":       table,
+		"layer":       layer,
+		"function":    function,
+		"user_id":     ormAccount.ID,
+		"email":       maskEmail(user.Email),
+		"duration_ms": duration.Milliseconds(),
+		"rows_affected": int64(1),
+	})
+
 	return r.handleInsertSuccess(ormAccount, operation, table, operationCtx, startTime), nil
 }
+
+// maskEmail masks the email for security logging
+func maskEmail(email string) string {
+	if email == "" {
+		return ""
+	}
+	
+	// Find the @ symbol
+	atIndex := strings.LastIndex(email, "@")
+	if atIndex == -1 {
+		// Invalid email format, mask everything except first and last char
+		if len(email) <= 2 {
+			return "***"
+		}
+		return email[:1] + "***" + email[len(email)-1:]
+	}
+	
+	username := email[:atIndex]
+	domain := email[atIndex:]
+	
+	// Mask username part
+	if len(username) <= 2 {
+		return "**" + domain
+	} else if len(username) <= 4 {
+		return username[:1] + "**" + username[len(username)-1:] + domain
+	} else {
+		return username[:2] + "***" + username[len(username)-1:] + domain
+	}
+}
+
+// Also update buildOperationContext to include layer and function
 
 // ============================================================================
 // IMPROVED HELPER METHODS

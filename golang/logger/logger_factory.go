@@ -2,7 +2,6 @@
 package logger
 
 
-
 // Global logger instances
 var GlobalSpecializedLogger *SpecializedLogger
 
@@ -87,7 +86,9 @@ func NewCompatibilityLogger() *Logger {
 // Additional utility functions
 func WithContext(fields map[string]interface{}) *SpecializedLogger {
 	logger := NewDefaultSpecializedLogger()
-
+	for key, value := range fields {
+		logger.AddContextField(key, value)
+	}
 	return logger
 }
 

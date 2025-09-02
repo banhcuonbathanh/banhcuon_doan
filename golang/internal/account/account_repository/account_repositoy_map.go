@@ -2,11 +2,13 @@ package account_repository
 
 import (
 	"context"
+	error_custom "english-ai-full/error_custom"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/proto_qr/account"
+	
 	"english-ai-full/orm"
 	"time"
-	error_custom "english-ai-full/error_custom"
+
 	"github.com/aarondl/null/v8"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -144,9 +146,11 @@ func (r *Repository) toNullStringAlways(value string) null.String {
 
 func (r *Repository) buildOperationContext(user account_dto.Account) map[string]interface{} {
 	ctx := map[string]interface{}{
-		"email": user.Email,
-		"name":  user.Name,
-		"role":  string(user.Role),
+		"layer":     "repository",
+		"component": "account_repository",
+		"function":  "register",
+		"email":     maskEmail(user.Email),
+		"role":      string(user.Role),
 	}
 	
 	// Add optional fields only if they have meaningful values
