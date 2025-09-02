@@ -4,6 +4,8 @@ package core
 import (
 	"sync"
 	"time"
+	"fmt"
+	"os"
 )
 
 // Level represents log levels with proper ordering
@@ -111,11 +113,24 @@ type LogBuffer interface {
 
 // NewLogger creates a new enhanced logger instance
 func NewLogger() *CoreLogger {
-	return &CoreLogger{
+	logger := &CoreLogger{
 		level:         InfoLevel,
 		contextFields: make(map[string]interface{}),
 		environment:   "development",
 	}
+	
+	// Create a default console output manager
+	outputManager := NewDefaultOutputManager()
+	logger.SetOutputManager(outputManager)
+	
+	return logger
+}
+
+// SetOutputManager sets the output manager for this logger
+func (l *CoreLogger) SetOutputManager(om OutputManager) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.outputManager = om
 }
 
 // Configuration methods
@@ -207,7 +222,7 @@ func (l *CoreLogger) InfoWithOperation(message, layer, operation string, fields 
 	l.log(InfoLevel, message, mergedFields)
 }
 
-// Specialized logging methods - Add these missing methods
+// Specialized logging methods
 func (l *CoreLogger) LogAuthAttempt(email string, success bool, reason string, additionalContext ...map[string]interface{}) {
 	fields := map[string]interface{}{
 		"operation":      "authentication",
@@ -259,7 +274,7 @@ func (l *CoreLogger) LogAPIRequest(method, path string, statusCode int, duration
 		}
 	}
 	
-	message := "API " + method + " " + path + " returned " + string(rune(statusCode))
+	message := fmt.Sprintf("API %s %s returned %d", method, path, statusCode)
 	
 	if success {
 		l.Info(message, fields)
@@ -289,7 +304,7 @@ func (l *CoreLogger) LogServiceCall(service, method string, success bool, err er
 		}
 	}
 	
-	message := "Service call " + service + "." + method
+	message := fmt.Sprintf("Service call %s.%s", service, method)
 	
 	if success {
 		l.Info(message, fields)
@@ -319,7 +334,7 @@ func (l *CoreLogger) LogDBOperation(operation, table string, success bool, err e
 		}
 	}
 	
-	message := "Database " + operation + " on " + table
+	message := fmt.Sprintf("Database %s on %s", operation, table)
 	
 	if success {
 		l.Info(message, fields)
@@ -337,7 +352,7 @@ func (l *CoreLogger) LogValidationError(field, message string, value interface{}
 		"type":      "validation_error",
 	}
 	
-	l.Warn("Validation failed for field "+field+": "+message, fields)
+	l.Warn(fmt.Sprintf("Validation failed for field %s: %s", field, message), fields)
 }
 
 func (l *CoreLogger) LogUserActivity(userID, email, action, resource string, context map[string]interface{}) {
@@ -351,9 +366,14 @@ func (l *CoreLogger) LogUserActivity(userID, email, action, resource string, con
 		"type":      "user_activity",
 	}
 	
-
+	// Merge context fields
+	if context != nil {
+		for k, v := range context {
+			fields[k] = v
+		}
+	}
 	
-	message := "User " + userID + " performed " + action + " on " + resource
+	message := fmt.Sprintf("User %s performed %s on %s", userID, action, resource)
 	l.Info(message, fields)
 }
 
@@ -375,7 +395,7 @@ func (l *CoreLogger) LogSecurityEvent(eventType, description, severity string, c
 		}
 	}
 	
-	message := "Security event: " + eventType + " - " + description
+	message := fmt.Sprintf("Security event: %s - %s", eventType, description)
 	
 	switch severity {
 	case "low":
@@ -406,7 +426,7 @@ func (l *CoreLogger) LogMetric(metricName string, value interface{}, unit string
 		}
 	}
 	
-	message := "Metric: " + metricName
+	message := fmt.Sprintf("Metric: %s", metricName)
 	l.Debug(message, fields)
 }
 
@@ -426,14 +446,18 @@ func (l *CoreLogger) LogPerformance(operation string, duration time.Duration, co
 		}
 	}
 	
-	message := "Performance: " + operation + " completed"
+	message := fmt.Sprintf("Performance: %s completed", operation)
 	l.Info(message, fields)
 }
 
 // WriteToOutput writes directly to a specific output
 func (l *CoreLogger) WriteToOutput(outputName string, entry *LogEntry) error {
-	if l.outputManager != nil {
-		return l.outputManager.WriteToOutput(outputName, entry)
+	l.mu.RLock()
+	om := l.outputManager
+	l.mu.RUnlock()
+	
+	if om != nil {
+		return om.WriteToOutput(outputName, entry)
 	}
 	return nil
 }
@@ -462,11 +486,19 @@ func (l *CoreLogger) log(level Level, message string, fields ...map[string]inter
 	if caller := getCaller(3); caller != "" {
 		entry.Caller = caller
 	}
+	
+	om := l.outputManager
 	l.mu.RUnlock()
 	
 	// Write to outputs
-	if l.outputManager != nil {
-		l.outputManager.WriteToAll(entry)
+	if om != nil {
+		om.WriteToAll(entry)
+	} else {
+		// Fallback to console if no output manager
+		fmt.Fprintf(os.Stdout, "[%s] %s %s\n", 
+			entry.Timestamp.Format("2006-01-02 15:04:05"), 
+			entry.Level.String(), 
+			entry.Message)
 	}
 	
 	// Add to async buffer if enabled
@@ -511,4 +543,105 @@ func getCaller(skip int) string {
 	// Implementation would use runtime.Caller to get file:line info
 	// Simplified for this example
 	return ""
+}
+
+// Default output manager implementation
+type defaultOutputManager struct {
+	outputs map[string]Output
+	mu      sync.RWMutex
+}
+
+func NewDefaultOutputManager() OutputManager {
+	manager := &defaultOutputManager{
+		outputs: make(map[string]Output),
+	}
+	
+	// Add a simple console output by default
+	consoleOutput := &simpleConsoleOutput{}
+	manager.AddOutput("console", consoleOutput)
+	
+	return manager
+}
+
+func (dom *defaultOutputManager) AddOutput(name string, output Output) error {
+	dom.mu.Lock()
+	defer dom.mu.Unlock()
+	dom.outputs[name] = output
+	return nil
+}
+
+func (dom *defaultOutputManager) RemoveOutput(name string) error {
+	dom.mu.Lock()
+	defer dom.mu.Unlock()
+	
+	if output, exists := dom.outputs[name]; exists {
+		output.Close()
+		delete(dom.outputs, name)
+	}
+	return nil
+}
+
+func (dom *defaultOutputManager) WriteToOutput(name string, entry *LogEntry) error {
+	dom.mu.RLock()
+	output, exists := dom.outputs[name]
+	dom.mu.RUnlock()
+	
+	if !exists {
+		return fmt.Errorf("output %s not found", name)
+	}
+	
+	return output.Write(entry)
+}
+
+func (dom *defaultOutputManager) WriteToAll(entry *LogEntry) error {
+	dom.mu.RLock()
+	outputs := make([]Output, 0, len(dom.outputs))
+	for _, output := range dom.outputs {
+		outputs = append(outputs, output)
+	}
+	dom.mu.RUnlock()
+	
+	var errors []error
+	for _, output := range outputs {
+		if err := output.Write(entry); err != nil {
+			errors = append(errors, err)
+		}
+	}
+	
+	if len(errors) > 0 {
+		return fmt.Errorf("failed to write to %d outputs: %v", len(errors), errors)
+	}
+	
+	return nil
+}
+
+func (dom *defaultOutputManager) Close() error {
+	dom.mu.Lock()
+	defer dom.mu.Unlock()
+	
+	var errors []error
+	for name, output := range dom.outputs {
+		if err := output.Close(); err != nil {
+			errors = append(errors, fmt.Errorf("failed to close output %s: %w", name, err))
+		}
+	}
+	
+if len(errors) > 0 {
+		return fmt.Errorf("failed to close outputs: %v", errors)
+	}
+	
+	return nil
+}
+
+// Simple console output implementation
+type simpleConsoleOutput struct{}
+
+func (sco *simpleConsoleOutput) Write(entry *LogEntry) error {
+	timestamp := entry.Timestamp.Format("2006-01-02 15:04:05.000")
+	fmt.Printf("[%s] %s %s\n", timestamp, entry.Level.String(), entry.Message)
+	return nil
+}
+
+func (sco *simpleConsoleOutput) Close() error {
+	return nil
 }

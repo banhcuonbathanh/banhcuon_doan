@@ -1,4 +1,4 @@
-// internal/logger/logger_global.go - Factory constructors and global convenience functions
+// internal/logger/logger_global.go - Enhanced with proper output configuration
 package logger
 
 import (
@@ -13,6 +13,48 @@ var GlobalLogger *core.CoreLogger
 
 func init() {
 	GlobalLogger = NewDefaultLogger()
+	
+	// Configure outputs for the global logger
+	setupDefaultOutputs(GlobalLogger)
+}
+
+// setupDefaultOutputs configures console output for the logger
+func setupDefaultOutputs(logger *core.CoreLogger) {
+	// Create output manager
+	outputManager := NewOutputManager()
+	
+	// Create console formatter based on environment
+	environment := getEnvironment()
+	var formatter Formatter
+	
+	switch strings.ToLower(environment) {
+	case "production", "prod":
+		formatter = NewJSONFormatter()
+	case "development", "dev":
+		formatter = NewPrettyFormatter(true) // With colors
+	default:
+		formatter = NewTextFormatter()
+	}
+	
+	// Create console output
+	consoleOutput := NewConsoleOutput(formatter, true)
+	
+	// Add console output to manager
+	outputManager.AddOutput("console", consoleOutput)
+	
+	// Set the output manager on the logger
+	// Note: You'll need to add this method to CoreLogger
+	setOutputManager(logger, outputManager)
+}
+
+// Helper function to set output manager (you'll need to add this to CoreLogger)
+func setOutputManager(logger *core.CoreLogger, outputManager *OutputManager) {
+	// This is a workaround - you should add a SetOutputManager method to CoreLogger
+	// For now, we'll use reflection or modify the CoreLogger struct
+	// Add this method to your CoreLogger struct:
+	// func (l *CoreLogger) SetOutputManager(om OutputManager) {
+	//     l.outputManager = om
+	// }
 }
 
 // Factory functions for creating specialized loggers
@@ -31,15 +73,18 @@ func NewDefaultLogger() *core.CoreLogger {
 	return logger
 }
 
+// Rest of your existing functions...
 func NewComponentLogger(component string) *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent(component)
+	setupDefaultOutputs(logger)
 	return logger
 }
 
 func NewLayerLogger(layer string) *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetLayer(layer)
+	setupDefaultOutputs(logger)
 	return logger
 }
 
@@ -47,6 +92,7 @@ func NewHandlerLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("handler")
 	logger.SetLayer(core.LayerHandler)
+	setupDefaultOutputs(logger)
 	return logger
 }
 
@@ -54,6 +100,7 @@ func NewServiceLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("service")
 	logger.SetLayer(core.LayerService)
+	setupDefaultOutputs(logger)
 	return logger
 }
 
@@ -61,6 +108,7 @@ func NewRepositoryLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("repository")
 	logger.SetLayer(core.LayerRepository)
+	setupDefaultOutputs(logger)
 	return logger
 }
 
@@ -68,6 +116,7 @@ func NewMiddlewareLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("middleware")
 	logger.SetLayer(core.LayerMiddleware)
+	setupDefaultOutputs(logger)
 	return logger
 }
 
@@ -75,6 +124,7 @@ func NewAuthLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("auth")
 	logger.SetLayer(core.LayerAuth)
+	setupDefaultOutputs(logger)
 	return logger
 }
 
@@ -82,6 +132,7 @@ func NewValidationLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("validation")
 	logger.SetLayer(core.LayerValidation)
+	setupDefaultOutputs(logger)
 	return logger
 }
 
@@ -89,6 +140,7 @@ func NewCacheLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("cache")
 	logger.SetLayer(core.LayerCache)
+	setupDefaultOutputs(logger)
 	return logger
 }
 
@@ -96,6 +148,7 @@ func NewDatabaseLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("database")
 	logger.SetLayer(core.LayerDatabase)
+	setupDefaultOutputs(logger)
 	return logger
 }
 
@@ -103,6 +156,7 @@ func NewExternalLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("external")
 	logger.SetLayer(core.LayerExternal)
+	setupDefaultOutputs(logger)
 	return logger
 }
 
@@ -110,6 +164,7 @@ func NewSecurityLogger() *core.CoreLogger {
 	logger := NewDefaultLogger()
 	logger.SetComponent("security")
 	logger.SetLayer(core.LayerSecurity)
+	setupDefaultOutputs(logger)
 	return logger
 }
 
@@ -241,9 +296,11 @@ type Logger struct {
 
 // NewLogger creates a new logger instance (maintains compatibility)
 func NewLogger() *Logger {
-	return &Logger{
+	logger := &Logger{
 		CoreLogger: NewDefaultLogger(),
 	}
+	setupDefaultOutputs(logger.CoreLogger)
+	return logger
 }
 
 // Legacy compatibility methods - these delegate to the new enhanced methods
