@@ -1,11 +1,13 @@
-// internal/logger/core/logger_core.go - Enhanced core types and structures
+// internal/logger/core/logger_core.go - Simplified core types and structures
 package core
 
 import (
-	"sync"
-	"time"
+	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
+	"sync"
+	"time"
 )
 
 // Level represents log levels with proper ordering
@@ -33,13 +35,6 @@ func (l Level) String() string {
 	}
 	return "UNKNOWN"
 }
-
-// Output formats
-const (
-	FormatJSON   = "json"
-	FormatText   = "text"
-	FormatPretty = "pretty"
-)
 
 // Layer constants for better organization
 const (
@@ -75,18 +70,10 @@ type LogEntry struct {
 	Layer       string                 `json:"layer,omitempty"`
 }
 
-// Logger represents the main logger with enhanced capabilities
-type CoreLogger struct {
-	level         Level
-	outputManager OutputManager
-	asyncEnabled  bool
-	buffer        LogBuffer
-	contextFields map[string]interface{}
-	component     string
-	layer         string
-	operation     string
-	environment   string
-	mu            sync.RWMutex
+// Output interface for different output destinations
+type Output interface {
+	Write(entry *LogEntry) error
+	Close() error
 }
 
 // OutputManager interface for managing multiple outputs
@@ -98,17 +85,16 @@ type OutputManager interface {
 	Close() error
 }
 
-// Output interface for different output destinations
-type Output interface {
-	Write(entry *LogEntry) error
-	Close() error
-}
-
-// LogBuffer interface for async processing
-type LogBuffer interface {
-	Add(entry *LogEntry) error
-	Flush() error
-	Close() error
+// Logger represents the main logger with enhanced capabilities
+type CoreLogger struct {
+	level         Level
+	outputManager OutputManager
+	contextFields map[string]interface{}
+	component     string
+	layer         string
+	operation     string
+	environment   string
+	mu            sync.RWMutex
 }
 
 // NewLogger creates a new enhanced logger instance
@@ -119,7 +105,7 @@ func NewLogger() *CoreLogger {
 		environment:   "development",
 	}
 	
-	// Create a default console output manager
+	// Create a default console output manager with rich formatting
 	outputManager := NewDefaultOutputManager()
 	logger.SetOutputManager(outputManager)
 	
@@ -222,246 +208,6 @@ func (l *CoreLogger) InfoWithOperation(message, layer, operation string, fields 
 	l.log(InfoLevel, message, mergedFields)
 }
 
-// Specialized logging methods
-func (l *CoreLogger) LogAuthAttempt(email string, success bool, reason string, additionalContext ...map[string]interface{}) {
-	fields := map[string]interface{}{
-		"operation":      "authentication",
-		"layer":          LayerAuth,
-		"email":          maskEmail(email),
-		"success":        success,
-		"reason":         reason,
-		"type":           "auth_attempt",
-		"security_event": !success,
-	}
-	
-	if !success {
-		fields["cause"] = reason
-	}
-	
-	if len(additionalContext) > 0 {
-		for k, v := range additionalContext[0] {
-			fields[k] = v
-		}
-	}
-	
-	message := "Authentication " + map[bool]string{true: "successful", false: "failed"}[success] + " for " + maskEmail(email)
-	
-	if success {
-		l.Info(message, fields)
-	} else {
-		l.Warn(message, fields)
-	}
-}
-
-func (l *CoreLogger) LogAPIRequest(method, path string, statusCode int, duration time.Duration, context map[string]interface{}) {
-	success := statusCode >= 200 && statusCode < 300
-	
-	fields := map[string]interface{}{
-		"operation":    "api_request",
-		"layer":        LayerHandler,
-		"method":       method,
-		"path":         path,
-		"status_code":  statusCode,
-		"duration_ms":  duration.Milliseconds(),
-		"success":      success,
-		"type":         "api_request",
-	}
-	
-	// Merge context fields
-	if context != nil {
-		for k, v := range context {
-			fields[k] = v
-		}
-	}
-	
-	message := fmt.Sprintf("API %s %s returned %d", method, path, statusCode)
-	
-	if success {
-		l.Info(message, fields)
-	} else {
-		l.Warn(message, fields)
-	}
-}
-
-func (l *CoreLogger) LogServiceCall(service, method string, success bool, err error, context map[string]interface{}) {
-	fields := map[string]interface{}{
-		"operation": "service_call",
-		"layer":     LayerService,
-		"service":   service,
-		"method":    method,
-		"success":   success,
-		"type":      "service_call",
-	}
-	
-	if err != nil {
-		fields["error"] = err.Error()
-	}
-	
-	// Merge context fields
-	if context != nil {
-		for k, v := range context {
-			fields[k] = v
-		}
-	}
-	
-	message := fmt.Sprintf("Service call %s.%s", service, method)
-	
-	if success {
-		l.Info(message, fields)
-	} else {
-		l.Error(message, fields)
-	}
-}
-
-func (l *CoreLogger) LogDBOperation(operation, table string, success bool, err error, context map[string]interface{}) {
-	fields := map[string]interface{}{
-		"operation": "db_operation",
-		"layer":     LayerDatabase,
-		"db_operation": operation,
-		"table":     table,
-		"success":   success,
-		"type":      "db_operation",
-	}
-	
-	if err != nil {
-		fields["error"] = err.Error()
-	}
-	
-	// Merge context fields
-	if context != nil {
-		for k, v := range context {
-			fields[k] = v
-		}
-	}
-	
-	message := fmt.Sprintf("Database %s on %s", operation, table)
-	
-	if success {
-		l.Info(message, fields)
-	} else {
-		l.Error(message, fields)
-	}
-}
-
-func (l *CoreLogger) LogValidationError(field, message string, value interface{}) {
-	fields := map[string]interface{}{
-		"operation": "validation",
-		"layer":     LayerValidation,
-		"field":     field,
-		"value":     value,
-		"type":      "validation_error",
-	}
-	
-	l.Warn(fmt.Sprintf("Validation failed for field %s: %s", field, message), fields)
-}
-
-func (l *CoreLogger) LogUserActivity(userID, email, action, resource string, context map[string]interface{}) {
-	fields := map[string]interface{}{
-		"operation": "user_activity",
-		"layer":     LayerHandler,
-		"user_id":   userID,
-		"email":     maskEmail(email),
-		"action":    action,
-		"resource":  resource,
-		"type":      "user_activity",
-	}
-	
-	// Merge context fields
-	if context != nil {
-		for k, v := range context {
-			fields[k] = v
-		}
-	}
-	
-	message := fmt.Sprintf("User %s performed %s on %s", userID, action, resource)
-	l.Info(message, fields)
-}
-
-func (l *CoreLogger) LogSecurityEvent(eventType, description, severity string, context map[string]interface{}) {
-	fields := map[string]interface{}{
-		"operation":      "security_event",
-		"layer":          LayerSecurity,
-		"event_type":     eventType,
-		"description":    description,
-		"severity":       severity,
-		"security_event": true,
-		"type":           "security",
-	}
-	
-	// Merge context fields
-	if context != nil {
-		for k, v := range context {
-			fields[k] = v
-		}
-	}
-	
-	message := fmt.Sprintf("Security event: %s - %s", eventType, description)
-	
-	switch severity {
-	case "low":
-		l.Info(message, fields)
-	case "medium":
-		l.Warn(message, fields)
-	case "high", "critical":
-		l.Error(message, fields)
-	default:
-		l.Warn(message, fields)
-	}
-}
-
-func (l *CoreLogger) LogMetric(metricName string, value interface{}, unit string, context map[string]interface{}) {
-	fields := map[string]interface{}{
-		"operation":    "metric_collection",
-		"layer":        "metrics",
-		"metric_name":  metricName,
-		"metric_value": value,
-		"metric_unit":  unit,
-		"type":         "metric",
-	}
-	
-	// Merge context fields
-	if context != nil {
-		for k, v := range context {
-			fields[k] = v
-		}
-	}
-	
-	message := fmt.Sprintf("Metric: %s", metricName)
-	l.Debug(message, fields)
-}
-
-func (l *CoreLogger) LogPerformance(operation string, duration time.Duration, context map[string]interface{}) {
-	fields := map[string]interface{}{
-		"operation":       "performance_tracking",
-		"layer":           "performance",
-		"perf_operation":  operation,
-		"duration_ms":     duration.Milliseconds(),
-		"type":            "performance",
-	}
-	
-	// Merge context fields
-	if context != nil {
-		for k, v := range context {
-			fields[k] = v
-		}
-	}
-	
-	message := fmt.Sprintf("Performance: %s completed", operation)
-	l.Info(message, fields)
-}
-
-// WriteToOutput writes directly to a specific output
-func (l *CoreLogger) WriteToOutput(outputName string, entry *LogEntry) error {
-	l.mu.RLock()
-	om := l.outputManager
-	l.mu.RUnlock()
-	
-	if om != nil {
-		return om.WriteToOutput(outputName, entry)
-	}
-	return nil
-}
-
 // Core logging implementation
 func (l *CoreLogger) log(level Level, message string, fields ...map[string]interface{}) {
 	l.mu.RLock()
@@ -494,16 +240,11 @@ func (l *CoreLogger) log(level Level, message string, fields ...map[string]inter
 	if om != nil {
 		om.WriteToAll(entry)
 	} else {
-		// Fallback to console if no output manager
+		// Fallback to simple console if no output manager
 		fmt.Fprintf(os.Stdout, "[%s] %s %s\n", 
 			entry.Timestamp.Format("2006-01-02 15:04:05"), 
 			entry.Level.String(), 
 			entry.Message)
-	}
-	
-	// Add to async buffer if enabled
-	if l.asyncEnabled && l.buffer != nil {
-		l.buffer.Add(entry)
 	}
 }
 
@@ -526,23 +267,126 @@ func (l *CoreLogger) mergeFields(fields ...map[string]interface{}) map[string]in
 	return merged
 }
 
-// Helper function to mask email for security
-func maskEmail(email string) string {
-	if email == "" {
-		return ""
-	}
-	
-	// Simple masking implementation
-	if len(email) > 3 {
-		return email[:2] + "***" + email[len(email)-1:]
-	}
-	return "***"
+func getCaller(skip int) string {
+	// Simple implementation - you can enhance this with runtime.Caller
+	return ""
 }
 
-func getCaller(skip int) string {
-	// Implementation would use runtime.Caller to get file:line info
-	// Simplified for this example
-	return ""
+// RichConsoleOutput - Simplified but rich console output
+type RichConsoleOutput struct {
+	useColors bool
+	mu        sync.Mutex
+}
+
+func NewRichConsoleOutput(useColors bool) *RichConsoleOutput {
+	return &RichConsoleOutput{
+		useColors: useColors,
+	}
+}
+
+func (rco *RichConsoleOutput) Write(entry *LogEntry) error {
+	rco.mu.Lock()
+	defer rco.mu.Unlock()
+	
+	timestamp := entry.Timestamp.Format("2006-01-02 15:04:05.000")
+	
+	// Build the log line with all information
+	var parts []string
+	parts = append(parts, fmt.Sprintf("[%s]", timestamp))
+	
+	// Level with color
+	levelStr := entry.Level.String()
+	if rco.useColors {
+		levelStr = rco.colorizeLevel(entry.Level, levelStr)
+	}
+	parts = append(parts, levelStr)
+	
+	// Layer and Component
+	if entry.Layer != "" {
+		layerStr := fmt.Sprintf("[%s]", strings.ToUpper(entry.Layer))
+		if rco.useColors {
+			layerStr = rco.colorize("\033[94m", layerStr) // Light blue
+		}
+		parts = append(parts, layerStr)
+	}
+	
+	if entry.Component != "" {
+		componentStr := fmt.Sprintf("<%s>", entry.Component)
+		if rco.useColors {
+			componentStr = rco.colorize("\033[95m", componentStr) // Magenta
+		}
+		parts = append(parts, componentStr)
+	}
+	
+	if entry.Operation != "" {
+		operationStr := fmt.Sprintf("{%s}", entry.Operation)
+		if rco.useColors {
+			operationStr = rco.colorize("\033[96m", operationStr) // Cyan
+		}
+		parts = append(parts, operationStr)
+	}
+	
+	// Message
+	parts = append(parts, entry.Message)
+	
+	// Join main parts
+	logLine := strings.Join(parts, " ")
+	
+	// Add fields as JSON on the same line if they exist
+	if len(entry.Fields) > 0 {
+		fieldsJSON, err := json.Marshal(entry.Fields)
+		if err == nil {
+			fieldStr := fmt.Sprintf(" | %s", string(fieldsJSON))
+			if rco.useColors {
+				fieldStr = rco.colorize("\033[90m", fieldStr) // Dark gray
+			}
+			logLine += fieldStr
+		}
+	}
+	
+	// Write to appropriate stream
+	if entry.Level >= ErrorLevel {
+		fmt.Fprintf(os.Stderr, "%s\n", logLine)
+	} else {
+		fmt.Fprintf(os.Stdout, "%s\n", logLine)
+	}
+	
+	return nil
+}
+
+func (rco *RichConsoleOutput) colorizeLevel(level Level, text string) string {
+	if !rco.useColors {
+		return text
+	}
+	
+	var color string
+	switch level {
+	case DebugLevel:
+		color = "\033[36m" // Cyan
+	case InfoLevel:
+		color = "\033[32m" // Green
+	case WarnLevel:
+		color = "\033[33m" // Yellow
+	case ErrorLevel:
+		color = "\033[31m" // Red
+	case FatalLevel:
+		color = "\033[35m\033[1m" // Bold Magenta
+	default:
+		return text
+	}
+	
+	return color + text + "\033[0m"
+}
+
+func (rco *RichConsoleOutput) colorize(color, text string) string {
+	if !rco.useColors {
+		return text
+	}
+	return color + text + "\033[0m"
+}
+
+func (rco *RichConsoleOutput) Close() error {
+	return nil
 }
 
 // Default output manager implementation
@@ -556,8 +400,8 @@ func NewDefaultOutputManager() OutputManager {
 		outputs: make(map[string]Output),
 	}
 	
-	// Add a simple console output by default
-	consoleOutput := &simpleConsoleOutput{}
+	// Add a rich console output by default
+	consoleOutput := NewRichConsoleOutput(true) // Enable colors
 	manager.AddOutput("console", consoleOutput)
 	
 	return manager
@@ -626,22 +470,9 @@ func (dom *defaultOutputManager) Close() error {
 		}
 	}
 	
-if len(errors) > 0 {
+	if len(errors) > 0 {
 		return fmt.Errorf("failed to close outputs: %v", errors)
 	}
 	
-	return nil
-}
-
-// Simple console output implementation
-type simpleConsoleOutput struct{}
-
-func (sco *simpleConsoleOutput) Write(entry *LogEntry) error {
-	timestamp := entry.Timestamp.Format("2006-01-02 15:04:05.000")
-	fmt.Printf("[%s] %s %s\n", timestamp, entry.Level.String(), entry.Message)
-	return nil
-}
-
-func (sco *simpleConsoleOutput) Close() error {
 	return nil
 }

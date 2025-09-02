@@ -135,7 +135,7 @@ func (s *AccountService) handleServiceError(err error, operation string, context
 	context["layer"] = "service"
 
 	// Log the error
-	s.logger.LogServiceCall("account", operation, false, err, context)
+	// s.logger.LogServiceCall("account", operation, false, err, context)
 
 	// Convert to APIError and add service layer context
 	apiErr := errorcustom.ConvertToAPIError(err)
@@ -164,7 +164,7 @@ func (s *AccountService) handleServiceError(err error, operation string, context
 func (s *AccountService) handleServiceSuccess(operation string, context map[string]interface{}, startTime time.Time) {
 	context["duration_ms"] = time.Since(startTime).Milliseconds()
 	context["success"] = true
-	s.logger.LogServiceCall("account", operation, true, nil, context)
+	// s.logger.LogServiceCall("account", operation, true, nil, context)
 }
 
 func (s *AccountService) formatValidationError(err error, email string) error {

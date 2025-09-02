@@ -5,7 +5,7 @@ import (
 	"english-ai-full/logger/core"
 	"os"
 	"strings"
-	"time"
+
 )
 
 // Global logger instance
@@ -203,41 +203,41 @@ func InfoWithOperation(message string, layer string, operation string, fields ..
 }
 
 // Global convenience functions for specialized logging
-func LogAuthAttempt(email string, success bool, reason string, additionalContext ...map[string]interface{}) {
-	GlobalLogger.LogAuthAttempt(email, success, reason, additionalContext...)
-}
+// func LogAuthAttempt(email string, success bool, reason string, additionalContext ...map[string]interface{}) {
+// 	GlobalLogger.LogAuthAttempt(email, success, reason, additionalContext...)
+// }
 
-func LogAPIRequest(method, path string, statusCode int, duration time.Duration, context map[string]interface{}) {
-	GlobalLogger.LogAPIRequest(method, path, statusCode, duration, context)
-}
+// func LogAPIRequest(method, path string, statusCode int, duration time.Duration, context map[string]interface{}) {
+// 	GlobalLogger.LogAPIRequest(method, path, statusCode, duration, context)
+// }
 
-func LogServiceCall(service, method string, success bool, err error, context map[string]interface{}) {
-	GlobalLogger.LogServiceCall(service, method, success, err, context)
-}
+// func LogServiceCall(service, method string, success bool, err error, context map[string]interface{}) {
+// 	GlobalLogger.LogServiceCall(service, method, success, err, context)
+// }
 
-func LogDBOperation(operation, table string, success bool, err error, context map[string]interface{}) {
-	GlobalLogger.LogDBOperation(operation, table, success, err, context)
-}
+// func LogDBOperation(operation, table string, success bool, err error, context map[string]interface{}) {
+// 	GlobalLogger.LogDBOperation(operation, table, success, err, context)
+// }
 
-func LogValidationError(field, message string, value interface{}) {
-	GlobalLogger.LogValidationError(field, message, value)
-}
+// func LogValidationError(field, message string, value interface{}) {
+// 	GlobalLogger.LogValidationError(field, message, value)
+// }
 
-func LogUserActivity(userID, email, action, resource string, context map[string]interface{}) {
-	GlobalLogger.LogUserActivity(userID, email, action, resource, context)
-}
+// func LogUserActivity(userID, email, action, resource string, context map[string]interface{}) {
+// 	GlobalLogger.LogUserActivity(userID, email, action, resource, context)
+// }
 
-func LogSecurityEvent(eventType, description, severity string, context map[string]interface{}) {
-	GlobalLogger.LogSecurityEvent(eventType, description, severity, context)
-}
+// func LogSecurityEvent(eventType, description, severity string, context map[string]interface{}) {
+// 	GlobalLogger.LogSecurityEvent(eventType, description, severity, context)
+// }
 
-func LogMetric(metricName string, value interface{}, unit string, context map[string]interface{}) {
-	GlobalLogger.LogMetric(metricName, value, unit, context)
-}
+// func LogMetric(metricName string, value interface{}, unit string, context map[string]interface{}) {
+// 	GlobalLogger.LogMetric(metricName, value, unit, context)
+// }
 
-func LogPerformance(operation string, duration time.Duration, context map[string]interface{}) {
-	GlobalLogger.LogPerformance(operation, duration, context)
-}
+// func LogPerformance(operation string, duration time.Duration, context map[string]interface{}) {
+// 	GlobalLogger.LogPerformance(operation, duration, context)
+// }
 
 // Configuration functions for global logger
 func SetLevel(level core.Level) {

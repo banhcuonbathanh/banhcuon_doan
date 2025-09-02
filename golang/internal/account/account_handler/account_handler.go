@@ -134,7 +134,7 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	createdUser, err := h.userClient.CreateUser(ctx, pbRequest)
 	if err != nil {
 		// Log service call failure
-		h.logger.LogServiceCall(h.domain, "CreateUser", false, err, operationCtx)
+		// h.logger.LogServiceCall(h.domain, "CreateUser", false, err, operationCtx)
 		
 		// Determine appropriate HTTP status code based on error type
 		statusCode := h.getHTTPStatusFromError(err)
@@ -146,7 +146,7 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	// Log successful service call
 	operationCtx["user_id"] = createdUser.Id
 	operationCtx["created_at"] = createdUser.CreatedAt
-	h.logger.LogServiceCall(h.domain, "CreateUser", true, nil, operationCtx)
+	// h.logger.LogServiceCall(h.domain, "CreateUser", true, nil, operationCtx)
 
 	// Prepare response (exclude sensitive data)
 	responseData := h.prepareUserResponse(createdUser)

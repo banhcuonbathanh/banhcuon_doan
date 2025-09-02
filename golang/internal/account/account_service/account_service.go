@@ -121,10 +121,10 @@ func (s *AccountService) CreateUser(ctx context.Context, req *account.AccountReq
 		go func() {
 			emailCtx := context.Background()
 			if err := s.emailService.SendWelcomeEmail(emailCtx, createdUser.Email, createdUser.Name); err != nil {
-				s.logger.LogServiceCall("account", "send_welcome_email", false, err, map[string]interface{}{
-					"user_id":    createdUser.ID,
-					"user_email": createdUser.Email,
-				})
+				// s.logger.LogServiceCall("account", "send_welcome_email", false, err, map[string]interface{}{
+				// 	"user_id":    createdUser.ID,
+				// 	"user_email": createdUser.Email,
+				// })
 			}
 		}()
 	}

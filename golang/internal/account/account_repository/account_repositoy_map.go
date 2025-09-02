@@ -202,7 +202,7 @@ func (r *Repository) handleContextError(ctx context.Context, operation, table st
 	err := ctx.Err()
 	operationCtx["context_error"] = err.Error()
 	
-	r.logger.LogDBOperation(operation, table, false, err, operationCtx)
+	// r.logger.LogDBOperation(operation, table, false, err, operationCtx)
 	
 	return r.errorHandler.HandleDatabaseError(err, "account", table, operation, operationCtx)
 }
@@ -210,7 +210,7 @@ func (r *Repository) handleContextError(ctx context.Context, operation, table st
 func (r *Repository) handleValidationError(err error, operation, table string, operationCtx map[string]interface{}) error {
 	operationCtx["error_type"] = "validation"
 	
-	r.logger.LogDBOperation(operation, table, false, err, operationCtx)
+	// r.logger.LogDBOperation(operation, table, false, err, operationCtx)
 	
 	// Return the validation error directly since it's already properly typed
 	return err
@@ -221,7 +221,7 @@ func (r *Repository) handleInsertError(err error, operation, table string, opera
 	operationCtx["duration_ms"] = duration.Milliseconds()
 	operationCtx["error_type"] = "database_insert"
 	
-	r.logger.LogDBOperation(operation, table, false, err, operationCtx)
+	// r.logger.LogDBOperation(operation, table, false, err, operationCtx)
 	
 	return r.errorHandler.HandleDatabaseError(err, "account", table, operation, operationCtx)
 }
@@ -232,7 +232,7 @@ func (r *Repository) handleInsertSuccess(ormAccount *orm.Account, operation, tab
 	operationCtx["user_id"] = ormAccount.ID
 	operationCtx["success"] = true
 	
-	r.logger.LogDBOperation(operation, table, true, nil, operationCtx)
+	// r.logger.LogDBOperation(operation, table, true, nil, operationCtx)
 	
 	return r.mapORMToDTO(ormAccount)
 }
@@ -253,7 +253,7 @@ func (r *Repository) wrapError(err error, operation, table string, context map[s
 	context["layer"] = "repository"
 
 	// Log the error
-	r.logger.LogDBOperation(operation, table, false, err, context)
+	// r.logger.LogDBOperation(operation, table, false, err, context)
 
 	// Delegate to error handler with full context
 	return r.errorHandler.HandleDatabaseError(err, "account", table, operation, context)
