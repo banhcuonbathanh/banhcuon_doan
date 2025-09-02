@@ -41,9 +41,12 @@ func NewAccountHandler(userClient pb.AccountServiceClient) *AccountHandler {
 
 // Register handles user registration requests new 1212121212121212
 func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("sdfgkjsdlsdflgjlsdfgldsjgljsdlfgjldfjgl")
 	const operation = "register"
 	startTime := time.Now()
-	
+	   h.logger.Info("=== REGISTER FUNCTION STARTED ===", map[string]interface{}{
+        "test": "logging_verification",
+    })
 	// Extract request context information
 	requestID := h.getRequestID(r)
 	clientIP := h.getClientIP(r)
