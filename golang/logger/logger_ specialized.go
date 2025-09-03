@@ -41,38 +41,6 @@ func maskEmail(email string) string {
 	return fmt.Sprintf("%s***%s@%s", username[:2], username[len(username)-1:], domain)
 }
 
-// Enhanced authentication logging
-func (l *SpecializedLogger) LogAuthAttempt(email string, success bool, reason string, additionalContext ...map[string]interface{}) {
-	fields := map[string]interface{}{
-		"operation":      "authentication",
-		"layer":          core.LayerAuth,
-		"email":          maskEmail(email),
-		"success":        success,
-		"reason":         reason,
-		"type":           "auth_attempt",
-		"security_event": !success,
-	}
-	
-	if !success {
-		fields["cause"] = reason
-	}
-	
-	if len(additionalContext) > 0 {
-		for k, v := range additionalContext[0] {
-			fields[k] = v
-		}
-	}
-	
-	message := fmt.Sprintf("Authentication %s for %s", 
-		map[bool]string{true: "successful", false: "failed"}[success], 
-		maskEmail(email))
-	
-	if success {
-		l.Info(message, fields)
-	} else {
-		l.Warn(message, fields)
-	}
-}
 
 // LogPasswordReset logs password reset attempts
 func (l *SpecializedLogger) LogPasswordReset(email string, success bool, reason string) {
@@ -118,50 +86,6 @@ func (l *SpecializedLogger) LogSessionAction(action string, sessionID string, us
 	}
 }
 
-// LogDatabaseOperation logs database operations with performance metrics
-func (l *SpecializedLogger) LogDatabaseOperation(operation string, table string, duration time.Duration, success bool, rowsAffected int64) {
-	fields := map[string]interface{}{
-		"operation":     operation,
-		"layer":         core.LayerDatabase,
-		"table":         table,
-		"duration_ms":   duration.Milliseconds(),
-		"success":       success,
-		"rows_affected": rowsAffected,
-		"type":          "db_operation",
-	}
-	
-	message := fmt.Sprintf("Database %s on %s completed in %v", operation, table, duration)
-	
-	if success {
-		l.Info(message, fields)
-	} else {
-		l.Error(message, fields)
-	}
-}
-
-// LogAPICall logs external API calls
-func (l *SpecializedLogger) LogAPICall(endpoint string, method string, statusCode int, duration time.Duration) {
-	success := statusCode >= 200 && statusCode < 300
-	
-	fields := map[string]interface{}{
-		"operation":    "api_call",
-		"layer":        core.LayerExternal,
-		"endpoint":     endpoint,
-		"method":       method,
-		"status_code":  statusCode,
-		"duration_ms":  duration.Milliseconds(),
-		"success":      success,
-		"type":         "api_call",
-	}
-	
-	message := fmt.Sprintf("API %s %s returned %d in %v", method, endpoint, statusCode, duration)
-	
-	if success {
-		l.Info(message, fields)
-	} else {
-		l.Warn(message, fields)
-	}
-}
 
 // LogCacheOperation logs cache operations
 func (l *SpecializedLogger) LogCacheOperation(operation string, key string, hit bool, duration time.Duration) {
@@ -183,18 +107,7 @@ func (l *SpecializedLogger) LogCacheOperation(operation string, key string, hit 
 }
 
 // LogValidationError logs validation errors
-func (l *SpecializedLogger) LogValidationError(field string, value interface{}, rule string, message string) {
-	fields := map[string]interface{}{
-		"operation": "validation",
-		"layer":     core.LayerValidation,
-		"field":     field,
-		"value":     value,
-		"rule":      rule,
-		"type":      "validation_error",
-	}
-	
-	l.Warn(fmt.Sprintf("Validation failed for field %s: %s", field, message), fields)
-}
+
 
 // LogUserActivity logs user activities
 func (l *SpecializedLogger) LogUserActivity(userID string, action string, resource string, metadata map[string]interface{}) {
@@ -314,35 +227,6 @@ func (l *SpecializedLogger) LogBusinessEvent(eventType string, entityID string, 
 	l.Info(message, fields)
 }
 
-// LogSecurityEvent logs security-related events
-func (l *SpecializedLogger) LogSecurityEvent(eventType string, severity string, userID string, ip string, details map[string]interface{}) {
-	fields := map[string]interface{}{
-		"operation":      "security_event",
-		"layer":          core.LayerSecurity,
-		"event_type":     eventType,
-		"severity":       severity,
-		"user_id":        userID,
-		"ip_address":     ip,
-		"security_event": true,
-		"type":           "security",
-	}
-	
-	// Merge details
-
-	
-	message := fmt.Sprintf("Security event: %s (severity: %s)", eventType, severity)
-	
-	switch severity {
-	case "low":
-		l.Info(message, fields)
-	case "medium":
-		l.Warn(message, fields)
-	case "high", "critical":
-		l.Error(message, fields)
-	default:
-		l.Warn(message, fields)
-	}
-}
 
 // LogHealthCheck logs system health checks
 func (l *SpecializedLogger) LogHealthCheck(service string, status string, duration time.Duration, details map[string]interface{}) {
@@ -384,3 +268,171 @@ func (l *SpecializedLogger) LogStructValidationError(structName string, structVa
 	
 	l.Warn(fmt.Sprintf("Struct validation failed for %s: %s", structName, message), fields)
 }
+
+
+// new 13451235325
+// Enhanced methods in logger_specialized.go
+
+// Enhanced LogAuthAttempt with better error context
+func (l *SpecializedLogger) LogAuthAttempt(email string, success bool, reason string, additionalContext ...map[string]interface{}) {
+	fields := map[string]interface{}{
+		"operation":      "authentication",
+		"layer":          core.LayerAuth,
+		"email":          maskEmail(email),
+		"success":        success,
+		"reason":         reason,
+		"type":           "auth_attempt",
+		"security_event": !success,
+		"domain":         "auth", // Add domain for better error tracking
+	}
+	
+	if !success {
+		fields["cause"] = reason
+	}
+	
+	if len(additionalContext) > 0 {
+		for k, v := range additionalContext[0] {
+			fields[k] = v
+		}
+	}
+	
+	message := fmt.Sprintf("Authentication %s for %s", 
+		map[bool]string{true: "successful", false: "failed"}[success], 
+		maskEmail(email))
+	
+	if success {
+		l.Info(message, fields)
+	} else {
+		l.Error(message, fields) // Changed to Error for failed auth attempts
+	}
+}
+
+// Enhanced LogDatabaseOperation with better error context
+func (l *SpecializedLogger) LogDatabaseOperation(operation string, table string, duration time.Duration, success bool, rowsAffected int64) {
+	fields := map[string]interface{}{
+		"operation":     operation,
+		"layer":         core.LayerDatabase,
+		"table":         table,
+		"duration_ms":   duration.Milliseconds(),
+		"success":       success,
+		"rows_affected": rowsAffected,
+		"type":          "db_operation",
+		"domain":        "database",
+	}
+	
+	message := fmt.Sprintf("Database %s on %s completed in %v", operation, table, duration)
+	
+	if success {
+		l.Info(message, fields)
+	} else {
+		// Add cause for database failures
+		fields["cause"] = fmt.Sprintf("database_%s_failed", strings.ToLower(operation))
+		l.Error(message, fields)
+	}
+}
+
+// Enhanced LogAPICall with better error context
+func (l *SpecializedLogger) LogAPICall(endpoint string, method string, statusCode int, duration time.Duration) {
+	success := statusCode >= 200 && statusCode < 300
+	
+	fields := map[string]interface{}{
+		"operation":    "api_call",
+		"layer":        core.LayerExternal,
+		"endpoint":     endpoint,
+		"method":       method,
+		"status_code":  statusCode,
+		"duration_ms":  duration.Milliseconds(),
+		"success":      success,
+		"type":         "api_call",
+		"domain":       "external_api",
+	}
+	
+	if !success {
+		if statusCode >= 500 {
+			fields["cause"] = "external_service_error"
+		} else if statusCode >= 400 {
+			fields["cause"] = "client_request_error"
+		} else {
+			fields["cause"] = "api_call_failed"
+		}
+	}
+	
+	message := fmt.Sprintf("API %s %s returned %d in %v", method, endpoint, statusCode, duration)
+	
+	if success {
+		l.Info(message, fields)
+	} else {
+		l.Error(message, fields) // Changed to Error for failed API calls
+	}
+}
+
+// Enhanced LogSecurityEvent with better context
+func (l *SpecializedLogger) LogSecurityEvent(eventType string, severity string, userID string, ip string, details map[string]interface{}) {
+	fields := map[string]interface{}{
+		"operation":      "security_event",
+		"layer":          core.LayerSecurity,
+		"event_type":     eventType,
+		"severity":       severity,
+		"user_id":        userID,
+		"ip_address":     ip,
+		"security_event": true,
+		"type":           "security",
+		"domain":         "security",
+		"cause":          fmt.Sprintf("security_event_%s", strings.ToLower(eventType)),
+	}
+	
+	// Merge details
+	if details != nil {
+		for k, v := range details {
+			fields[k] = v
+		}
+	}
+	
+	message := fmt.Sprintf("Security event: %s (severity: %s)", eventType, severity)
+	
+	switch severity {
+	case "low":
+		l.Info(message, fields)
+	case "medium":
+		l.Warn(message, fields)
+	case "high", "critical":
+		l.Error(message, fields)
+	default:
+		l.Warn(message, fields)
+	}
+}
+
+// New method for enhanced request error logging
+func (l *SpecializedLogger) LogRequestError(requestID string, statusCode int, errorMessage string, cause string, domain string, duration time.Duration) {
+	fields := map[string]interface{}{
+		"operation":     "request_error",
+		"layer":         core.LayerHandler,
+		"request_id":    requestID,
+		"status_code":   statusCode,
+		"duration_ms":   duration.Milliseconds(),
+		"type":          "request_error",
+		"domain":        domain,
+		"cause":         cause,
+		"error_message": errorMessage,
+	}
+	
+	message := fmt.Sprintf("Request error occurred: %s", errorMessage)
+	l.Error(message, fields)
+}
+
+// Enhanced LogValidationError with domain context
+func (l *SpecializedLogger) LogValidationError(field string, value interface{}, rule string, message string) {
+	fields := map[string]interface{}{
+		"operation": "validation",
+		"layer":     core.LayerValidation,
+		"field":     field,
+		"value":     value,
+		"rule":      rule,
+		"type":      "validation_error",
+		"domain":    "validation",
+		"cause":     fmt.Sprintf("validation_failed_%s", field),
+	}
+	
+	l.Error(fmt.Sprintf("Validation failed for field %s: %s", field, message), fields)
+}
+// new asdfasdfasdfsdaf
