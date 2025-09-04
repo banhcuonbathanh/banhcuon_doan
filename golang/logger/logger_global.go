@@ -3,13 +3,13 @@ package logger
 
 import (
 	"english-ai-full/logger/core"
-	"os"
+
 	"strings"
 
 )
 
 // Global logger instance
-var GlobalLogger *core.CoreLogger
+
 
 func init() {
 	GlobalLogger = NewDefaultLogger()
@@ -57,116 +57,8 @@ func setOutputManager(logger *core.CoreLogger, outputManager *OutputManager) {
 	// }
 }
 
-// Factory functions for creating specialized loggers
-func NewDefaultLogger() *core.CoreLogger {
-	logger := core.NewLogger()
-	
-	// Set environment-based defaults
-	environment := getEnvironment()
-	logger.SetEnvironment(environment)
-	logger.SetLevel(getMinLogLevel(environment))
-	
-	// Add global context fields
-	logger.AddContextField("environment", environment)
-	logger.AddContextField("service", "shopeasy-api")
-	
-	return logger
-}
 
-// Rest of your existing functions...
-func NewComponentLogger(component string) *core.CoreLogger {
-	logger := NewDefaultLogger()
-	logger.SetComponent(component)
-	setupDefaultOutputs(logger)
-	return logger
-}
 
-func NewLayerLogger(layer string) *core.CoreLogger {
-	logger := NewDefaultLogger()
-	logger.SetLayer(layer)
-	setupDefaultOutputs(logger)
-	return logger
-}
-
-func NewHandlerLogger() *core.CoreLogger {
-	logger := NewDefaultLogger()
-	logger.SetComponent("handler")
-	logger.SetLayer(core.LayerHandler)
-	setupDefaultOutputs(logger)
-	return logger
-}
-
-func NewServiceLogger() *core.CoreLogger {
-	logger := NewDefaultLogger()
-	logger.SetComponent("service")
-	logger.SetLayer(core.LayerService)
-	setupDefaultOutputs(logger)
-	return logger
-}
-
-func NewRepositoryLogger() *core.CoreLogger {
-	logger := NewDefaultLogger()
-	logger.SetComponent("repository")
-	logger.SetLayer(core.LayerRepository)
-	setupDefaultOutputs(logger)
-	return logger
-}
-
-func NewMiddlewareLogger() *core.CoreLogger {
-	logger := NewDefaultLogger()
-	logger.SetComponent("middleware")
-	logger.SetLayer(core.LayerMiddleware)
-	setupDefaultOutputs(logger)
-	return logger
-}
-
-func NewAuthLogger() *core.CoreLogger {
-	logger := NewDefaultLogger()
-	logger.SetComponent("auth")
-	logger.SetLayer(core.LayerAuth)
-	setupDefaultOutputs(logger)
-	return logger
-}
-
-func NewValidationLogger() *core.CoreLogger {
-	logger := NewDefaultLogger()
-	logger.SetComponent("validation")
-	logger.SetLayer(core.LayerValidation)
-	setupDefaultOutputs(logger)
-	return logger
-}
-
-func NewCacheLogger() *core.CoreLogger {
-	logger := NewDefaultLogger()
-	logger.SetComponent("cache")
-	logger.SetLayer(core.LayerCache)
-	setupDefaultOutputs(logger)
-	return logger
-}
-
-func NewDatabaseLogger() *core.CoreLogger {
-	logger := NewDefaultLogger()
-	logger.SetComponent("database")
-	logger.SetLayer(core.LayerDatabase)
-	setupDefaultOutputs(logger)
-	return logger
-}
-
-func NewExternalLogger() *core.CoreLogger {
-	logger := NewDefaultLogger()
-	logger.SetComponent("external")
-	logger.SetLayer(core.LayerExternal)
-	setupDefaultOutputs(logger)
-	return logger
-}
-
-func NewSecurityLogger() *core.CoreLogger {
-	logger := NewDefaultLogger()
-	logger.SetComponent("security")
-	logger.SetLayer(core.LayerSecurity)
-	setupDefaultOutputs(logger)
-	return logger
-}
 
 // Global convenience functions for basic logging
 func Debug(message string, fields ...map[string]interface{}) {
@@ -202,44 +94,7 @@ func InfoWithOperation(message string, layer string, operation string, fields ..
 	GlobalLogger.InfoWithOperation(message, layer, operation, fields...)
 }
 
-// Global convenience functions for specialized logging
-// func LogAuthAttempt(email string, success bool, reason string, additionalContext ...map[string]interface{}) {
-// 	GlobalLogger.LogAuthAttempt(email, success, reason, additionalContext...)
-// }
 
-// func LogAPIRequest(method, path string, statusCode int, duration time.Duration, context map[string]interface{}) {
-// 	GlobalLogger.LogAPIRequest(method, path, statusCode, duration, context)
-// }
-
-// func LogServiceCall(service, method string, success bool, err error, context map[string]interface{}) {
-// 	GlobalLogger.LogServiceCall(service, method, success, err, context)
-// }
-
-// func LogDBOperation(operation, table string, success bool, err error, context map[string]interface{}) {
-// 	GlobalLogger.LogDBOperation(operation, table, success, err, context)
-// }
-
-// func LogValidationError(field, message string, value interface{}) {
-// 	GlobalLogger.LogValidationError(field, message, value)
-// }
-
-// func LogUserActivity(userID, email, action, resource string, context map[string]interface{}) {
-// 	GlobalLogger.LogUserActivity(userID, email, action, resource, context)
-// }
-
-// func LogSecurityEvent(eventType, description, severity string, context map[string]interface{}) {
-// 	GlobalLogger.LogSecurityEvent(eventType, description, severity, context)
-// }
-
-// func LogMetric(metricName string, value interface{}, unit string, context map[string]interface{}) {
-// 	GlobalLogger.LogMetric(metricName, value, unit, context)
-// }
-
-// func LogPerformance(operation string, duration time.Duration, context map[string]interface{}) {
-// 	GlobalLogger.LogPerformance(operation, duration, context)
-// }
-
-// Configuration functions for global logger
 func SetLevel(level core.Level) {
 	GlobalLogger.SetLevel(level)
 }
@@ -264,30 +119,8 @@ func RemoveGlobalField(key string) {
 	GlobalLogger.RemoveContextField(key)
 }
 
-// Helper functions
-func getEnvironment() string {
-	env := os.Getenv("APP_ENV")
-	if env == "" {
-		env = os.Getenv("ENVIRONMENT")
-	}
-	if env == "" {
-		env = "development"
-	}
-	return env
-}
 
-func getMinLogLevel(environment string) core.Level {
-	switch strings.ToLower(environment) {
-	case "production", "prod":
-		return core.InfoLevel
-	case "staging", "stage":
-		return core.InfoLevel
-	case "testing", "test":
-		return core.DebugLevel
-	default: // development
-		return core.DebugLevel
-	}
-}
+
 
 // Legacy compatibility wrapper
 type Logger struct {

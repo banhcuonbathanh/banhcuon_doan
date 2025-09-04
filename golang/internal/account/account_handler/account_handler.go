@@ -33,84 +33,65 @@ func NewAccountHandler(userClient pb.AccountServiceClient) *AccountHandler {
 	return &AccountHandler{
 		userClient:      userClient,
 		handlerErrorMgr: error_custom.NewHandlerErrorManager(),
-		logger:          logg.NewSpecializedHandlerLogger(),
+		// logger:          logg.NewSpecializedHandlerLogger(),
 		domain:          "account",
 		validator:       validator.New(),
+			logger:          logg.NewSmartLogger("account_handler"), 
 	}
 }
 
+// Enhanced Register function with auto-configured logging
 func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
-	// Remove the fmt.Printf - replace with proper logging
-	h.logger.Info("=== REGISTER FUNCTION STARTED ===", map[string]interface{}{
-		"test": "logging_verification",
-		"endpoint": r.URL.Path,
-		"method": r.Method,
-	})
+	// Create request-scoped logger with automatic context extraction
+	requestLogger := h.logger.NewRequestLogger(r)
 	
-	const operation = "register"
-	startTime := time.Now()
+	// Log request start - automatically includes method, endpoint, IP, etc.
+	requestLogger.LogRequestStart()
 	
-	// Extract request context information
-	requestID := h.getRequestID(r)
-	clientIP := h.getClientIP(r)
-	
-	// Build operation context for logging
-	operationCtx := map[string]interface{}{
-		"operation":  operation,
-		"layer":      "handler",
-		"domain":     h.domain,
-		"request_id": requestID,
-		"client_ip":  clientIP,
-		"method":     r.Method,
-		"path":       r.URL.Path,
-	}
-
-	// Log request start
-	h.logger.LogRequestStart(requestID, r.Method, r.URL.Path, "")
-
-	// Context timeout check
+	// Context timeout check with automatic error logging
 	if err := r.Context().Err(); err != nil {
-		h.logger.Error("Request context cancelled", map[string]interface{}{
-			"error":      err.Error(),
-			"request_id": requestID,
+		requestLogger.Error("Request context cancelled", map[string]interface{}{
+			"error": err.Error(),
 		})
-		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestID)
+		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestLogger.context.RequestID)
 		return
 	}
 
 	// Parse and validate request body
 	var registerRequest account_dto.CreateUserRequest
-	if err := h.handlerErrorMgr.DecodeJSONRequest(r, &registerRequest, h.domain, requestID); err != nil {
-		operationCtx["decode_error"] = "failed to parse request body"
-		h.logRequestEnd(requestID, http.StatusBadRequest, startTime)
-		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestID)
+	if err := h.handlerErrorMgr.DecodeJSONRequest(r, &registerRequest, h.domain, requestLogger.context.RequestID); err != nil {
+		// Auto-configured validation error logging
+		requestLogger.LogValidationError(err)
+		requestLogger.LogRequestEnd(http.StatusBadRequest)
+		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestLogger.context.RequestID)
 		return
 	}
 
-	// Add parsed data to context (without sensitive info)
-	operationCtx["email"] = registerRequest.Email
-	operationCtx["role"] = registerRequest.Role
-	operationCtx["branch_id"] = registerRequest.BranchID
+	// Add parsed data to context for automatic inclusion in logs
+	requestLogger.context.WithFields(map[string]interface{}{
+		"email":     registerRequest.Email,
+		"role":      registerRequest.Role,
+		"branch_id": registerRequest.BranchID,
+	})
 
-	// Additional request validation
+	// Validation with auto-configured error logging
 	if err := h.validator.Struct(registerRequest); err != nil {
-		h.logger.LogStructValidationError("CreateUserRequest", registerRequest, "Request validation failed")
+		requestLogger.LogValidationError(err)
 		
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			// Use the HandleValidationErrors function from HandlerErrorManager
-			h.handlerErrorMgr.HandleValidationErrors(w, validationErrors, h.domain, requestID)
+			h.handlerErrorMgr.HandleValidationErrors(w, validationErrors, h.domain, requestLogger.context.RequestID)
 		} else {
-			// For non-validation errors, use RespondWithError with the error directly
-			h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestID)
+			h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestLogger.context.RequestID)
 		}
+		requestLogger.LogRequestEnd(http.StatusBadRequest)
 		return
 	}
 	
-	// Create service context with timeout
+	// Create service context
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
-	// Create protobuf request using AccountReq message
+	// Create protobuf request
 	pbRequest := &pb.AccountReq{
 		BranchId: registerRequest.BranchID,
 		Name:     registerRequest.Name,
@@ -122,50 +103,42 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 		OwnerId:  registerRequest.OwnerID,
 	}
 
-	// Log service call attempt
-	h.logger.Info("Calling CreateUser service", map[string]interface{}{
-		"service": "UserService",
-		"method":  "CreateUser",
-		"email":   registerRequest.Email, // This will be masked in logger
-		"request_id": requestID,
-	})
-
-	// Call service layer using CreateUser RPC
+	// Log service call with automatic timing and error handling
+	requestLogger.LogServiceCallStart("UserService", "CreateUser")
+	serviceCallStart := time.Now()
+	
 	createdUser, err := h.userClient.CreateUser(ctx, pbRequest)
+	serviceCallDuration := time.Since(serviceCallStart)
+	
+	// Automatic service call logging with error details
+	requestLogger.LogServiceCallEnd("UserService", "CreateUser", err, serviceCallDuration)
+	
 	if err != nil {
-		// Log service call failure
-		// h.logger.LogServiceCall(h.domain, "CreateUser", false, err, operationCtx)
-		
-		// Determine appropriate HTTP status code based on error type
 		statusCode := h.getHTTPStatusFromError(err)
-		h.logRequestEnd(requestID, statusCode, startTime)
-		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestID)
+		requestLogger.LogRequestEnd(statusCode)
+		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestLogger.context.RequestID)
 		return
 	}
 
-	// Log successful service call
-	operationCtx["user_id"] = createdUser.Id
-	operationCtx["created_at"] = createdUser.CreatedAt
-	// h.logger.LogServiceCall(h.domain, "CreateUser", true, nil, operationCtx)
+	// Log business event - automatically includes user context
+	requestLogger.LogBusinessEvent("user_created", createdUser.Id, "user", "create", map[string]interface{}{
+		"email": createdUser.Email,
+		"role":  createdUser.Role,
+	})
 
-	// Prepare response (exclude sensitive data)
+	// Prepare response
 	responseData := h.prepareUserResponse(createdUser)
 
-	// Log successful request completion
-	h.logRequestEnd(requestID, http.StatusCreated, startTime)
-
-	// Log user activity
-
-
 	// Send successful response
-	h.handlerErrorMgr.RespondWithCreated(w, responseData, h.domain, requestID)
+	h.handlerErrorMgr.RespondWithCreated(w, responseData, h.domain, requestLogger.Context.RequestID)
 	
-	// Final success log
-	h.logger.Info("User registration completed successfully", map[string]interface{}{
+	// Log successful completion - automatically includes duration and status
+	requestLogger.LogRequestEnd(http.StatusCreated)
+	
+	// Additional success logging with automatic masking and context
+	requestLogger.Info("User registration completed successfully", map[string]interface{}{
 		"user_id": createdUser.Id,
-		"email": createdUser.Email, // Will be masked
-		"request_id": requestID,
-		"duration_ms": time.Since(startTime).Milliseconds(),
+		"email":   createdUser.Email, // Auto-masked by logger
 	})
 }
 
