@@ -3,28 +3,26 @@ package account_handler
 
 import (
 	"context"
-	"fmt"
+	
 	"net/http"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 
+	"english-ai-full/internal"
 	"english-ai-full/internal/account/account_dto"
 
 	error_custom "english-ai-full/error_custom"
 	pb "english-ai-full/internal/proto_qr/account"
 	logg "english-ai-full/logger"
-
 )
 
-// AccountHandlerInterface defines the contract for account handlers
 
-// AccountHandler implements the handler layer for account operations
 type AccountHandler struct {
 	userClient      pb.AccountServiceClient
 	handlerErrorMgr *error_custom.HandlerErrorManager
 	logger          *logg.SpecializedLogger
-	domain          string
+	layerContext    *internal.LayerContext 
 	validator       *validator.Validate
 }
 
@@ -34,60 +32,60 @@ func NewAccountHandler(userClient pb.AccountServiceClient) *AccountHandler {
 		userClient:      userClient,
 		handlerErrorMgr: error_custom.NewHandlerErrorManager(),
 		logger:          logg.NewSpecializedHandlerLogger(),
-		domain:          "account",
+			layerContext: &internal.LayerContext{
+			Domain:      "account",
+			Layer:       "handler",
+			Service:     "account-service",
+			Version:     "1.0.0",        // Optional: add version info
+			Environment: "production",    // Optional: add environment info
+		},
 		validator:       validator.New(),
 	}
 }
 
+
 func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
-	// Remove the fmt.Printf - replace with proper logging
-	h.logger.Info("=== REGISTER FUNCTION STARTED ===", map[string]interface{}{
-		"test": "logging_verification",
-		"endpoint": r.URL.Path,
-		"method": r.Method,
-	})
-	
 	const operation = "register"
 	startTime := time.Now()
 	
 	// Extract request context information
-	requestID := h.getRequestID(r)
-	clientIP := h.getClientIP(r)
+	requestID := h.layerContext.GetRequestID(r)
+	clientIP := h.layerContext.GetClientIP(r)
 	
-	// Build operation context for logging
-	operationCtx := map[string]interface{}{
-		"operation":  operation,
-		"layer":      "handler",
-		"domain":     h.domain,
-		"request_id": requestID,
-		"client_ip":  clientIP,
-		"method":     r.Method,
-		"path":       r.URL.Path,
-	}
+	// Build operation context using layer context
+	operationCtx := h.layerContext.BuildOperationContext(operation, r, requestID)
+	operationCtx["client_ip"] = clientIP
+	
+	// Log with layer context
+	h.logger.Info("=== REGISTER FUNCTION STARTED ===", h.layerContext.MergeWithContext(map[string]interface{}{
+		"test":     "logging_verification",
+		"endpoint": r.URL.Path,
+		"method":   r.Method,
+	}))
 
-	// Log request start
+	// Log request start with layer context
 	h.logger.LogRequestStart(requestID, r.Method, r.URL.Path, "")
 
 	// Context timeout check
 	if err := r.Context().Err(); err != nil {
-		h.logger.Error("Request context cancelled", map[string]interface{}{
+		h.logger.Error("Request context cancelled", h.layerContext.MergeWithContext(map[string]interface{}{
 			"error":      err.Error(),
 			"request_id": requestID,
-		})
-		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestID)
+		}))
+		h.handlerErrorMgr.RespondWithError(w, err, h.layerContext.Domain, requestID)
 		return
 	}
 
 	// Parse and validate request body
 	var registerRequest account_dto.CreateUserRequest
-	if err := h.handlerErrorMgr.DecodeJSONRequest(r, &registerRequest, h.domain, requestID); err != nil {
+	if err := h.handlerErrorMgr.DecodeJSONRequest(r, &registerRequest, h.layerContext.Domain, requestID); err != nil {
 		operationCtx["decode_error"] = "failed to parse request body"
 		h.logRequestEnd(requestID, http.StatusBadRequest, startTime)
-		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestID)
+		h.handlerErrorMgr.RespondWithError(w, err, h.layerContext.Domain, requestID)
 		return
 	}
 
-	// Add parsed data to context (without sensitive info)
+	// Add parsed data to operation context (without sensitive info)
 	operationCtx["email"] = registerRequest.Email
 	operationCtx["role"] = registerRequest.Role
 	operationCtx["branch_id"] = registerRequest.BranchID
@@ -97,11 +95,9 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 		h.logger.LogStructValidationError("CreateUserRequest", registerRequest, "Request validation failed")
 		
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			// Use the HandleValidationErrors function from HandlerErrorManager
-			h.handlerErrorMgr.HandleValidationErrors(w, validationErrors, h.domain, requestID)
+			h.handlerErrorMgr.HandleValidationErrors(w, validationErrors, h.layerContext.Domain, requestID)
 		} else {
-			// For non-validation errors, use RespondWithError with the error directly
-			h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestID)
+			h.handlerErrorMgr.RespondWithError(w, err, h.layerContext.Domain, requestID)
 		}
 		return
 	}
@@ -122,31 +118,27 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 		OwnerId:  registerRequest.OwnerID,
 	}
 
-	// Log service call attempt
-	h.logger.Info("Calling CreateUser service", map[string]interface{}{
-		"service": "UserService",
-		"method":  "CreateUser",
-		"email":   registerRequest.Email, // This will be masked in logger
-		"request_id": requestID,
-	})
+	// Log service call attempt with layer context
+	h.logger.Info("Calling CreateUser service", h.layerContext.MergeWithContext(map[string]interface{}{
+		"service_method": "CreateUser",
+		"target_service": "UserService",
+		"email":          registerRequest.Email, // This will be masked in logger
+		"request_id":     requestID,
+	}))
 
 	// Call service layer using CreateUser RPC
 	createdUser, err := h.userClient.CreateUser(ctx, pbRequest)
 	if err != nil {
-		// Log service call failure
-		// h.logger.LogServiceCall(h.domain, "CreateUser", false, err, operationCtx)
-		
 		// Determine appropriate HTTP status code based on error type
 		statusCode := h.getHTTPStatusFromError(err)
 		h.logRequestEnd(requestID, statusCode, startTime)
-		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestID)
+		h.handlerErrorMgr.RespondWithError(w, err, h.layerContext.Domain, requestID)
 		return
 	}
 
-	// Log successful service call
+	// Log successful service call with layer context
 	operationCtx["user_id"] = createdUser.Id
 	operationCtx["created_at"] = createdUser.CreatedAt
-	// h.logger.LogServiceCall(h.domain, "CreateUser", true, nil, operationCtx)
 
 	// Prepare response (exclude sensitive data)
 	responseData := h.prepareUserResponse(createdUser)
@@ -154,42 +146,20 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	// Log successful request completion
 	h.logRequestEnd(requestID, http.StatusCreated, startTime)
 
-	// Log user activity
-
-
 	// Send successful response
-	h.handlerErrorMgr.RespondWithCreated(w, responseData, h.domain, requestID)
+	h.handlerErrorMgr.RespondWithCreated(w, responseData, h.layerContext.Domain, requestID)
 	
-	// Final success log
-	h.logger.Info("User registration completed successfully", map[string]interface{}{
-		"user_id": createdUser.Id,
-		"email": createdUser.Email, // Will be masked
-		"request_id": requestID,
+	// Final success log with layer context
+	h.logger.Info("User registration completed successfully", h.layerContext.MergeWithContext(map[string]interface{}{
+		"user_id":     createdUser.Id,
+		"email":       createdUser.Email, // Will be masked
+		"request_id":  requestID,
 		"duration_ms": time.Since(startTime).Milliseconds(),
-	})
+	}))
 }
 
-// Helper methods (you might already have these)
-func (h *AccountHandler) getRequestID(r *http.Request) string {
-	// Implementation to extract request ID from headers or generate one
-	requestID := r.Header.Get("X-Request-ID")
-	if requestID == "" {
-		requestID = fmt.Sprintf("req_%d", time.Now().UnixNano())
-	}
-	return requestID
-}
 
-func (h *AccountHandler) getClientIP(r *http.Request) string {
-	// Get client IP from various headers
-	ip := r.Header.Get("X-Forwarded-For")
-	if ip == "" {
-		ip = r.Header.Get("X-Real-IP")
-	}
-	if ip == "" {
-		ip = r.RemoteAddr
-	}
-	return ip
-}
+
 
 func (h *AccountHandler) getHTTPStatusFromError(err error) int {
 	// Your error to HTTP status mapping logic
