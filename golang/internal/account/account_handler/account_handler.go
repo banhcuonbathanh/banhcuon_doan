@@ -53,17 +53,17 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 		requestLogger.Error("Request context cancelled", map[string]interface{}{
 			"error": err.Error(),
 		})
-		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestLogger.context.RequestID)
+		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestLogger.GetRequestID(r))
 		return
 	}
 
 	// Parse and validate request body
 	var registerRequest account_dto.CreateUserRequest
-	if err := h.handlerErrorMgr.DecodeJSONRequest(r, &registerRequest, h.domain, requestLogger.context.RequestID); err != nil {
+	if err := h.handlerErrorMgr.DecodeJSONRequest(r, &registerRequest, h.domain, requestLogger.GetRequestID(r)); err != nil {
 		// Auto-configured validation error logging
 		requestLogger.LogValidationError(err)
 		requestLogger.LogRequestEnd(http.StatusBadRequest)
-		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestLogger.context.RequestID)
+		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestLogger.GetRequestID(r))
 		return
 	}
 
@@ -79,9 +79,9 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 		requestLogger.LogValidationError(err)
 		
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			h.handlerErrorMgr.HandleValidationErrors(w, validationErrors, h.domain, requestLogger.context.RequestID)
+			h.handlerErrorMgr.HandleValidationErrors(w, validationErrors, h.domain, requestLogger.GetRequestID(r))
 		} else {
-			h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestLogger.context.RequestID)
+			h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestLogger.GetRequestID(r))
 		}
 		requestLogger.LogRequestEnd(http.StatusBadRequest)
 		return
@@ -116,7 +116,7 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		statusCode := h.getHTTPStatusFromError(err)
 		requestLogger.LogRequestEnd(statusCode)
-		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestLogger.context.RequestID)
+		h.handlerErrorMgr.RespondWithError(w, err, h.domain, requestLogger.GetRequestID(r))
 		return
 	}
 
@@ -130,7 +130,7 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	responseData := h.prepareUserResponse(createdUser)
 
 	// Send successful response
-	h.handlerErrorMgr.RespondWithCreated(w, responseData, h.domain, requestLogger.Context.RequestID)
+	h.handlerErrorMgr.RespondWithCreated(w, responseData, h.domain, requestLogger.GetRequestID(r))
 	
 	// Log successful completion - automatically includes duration and status
 	requestLogger.LogRequestEnd(http.StatusCreated)

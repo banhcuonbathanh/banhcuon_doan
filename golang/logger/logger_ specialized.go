@@ -32,7 +32,7 @@ type RequestLogger struct {
 // NewRequestLogger creates a request-scoped logger with automatic context extraction
 func (l *SpecializedLogger) NewRequestLogger(r *http.Request) *RequestLogger {
 	ctx := core.NewLogContext().
-		WithRequestID(l.getRequestID(r)).
+		WithRequestID(l.GetRequestID(r)).
 		WithLayer(core.LayerHandler).
 		WithField("method", r.Method).
 		WithField("endpoint", r.URL.Path).
@@ -626,7 +626,7 @@ func (l *SpecializedLogger) maskQuery(query string) string {
 	return maskedQuery
 }
 
-func (l *SpecializedLogger) getRequestID(r *http.Request) string {
+func (l *SpecializedLogger) GetRequestID(r *http.Request) string {
 	// Try multiple common request ID headers
 	requestID := r.Header.Get("X-Request-ID")
 	if requestID == "" {
@@ -641,7 +641,6 @@ func (l *SpecializedLogger) getRequestID(r *http.Request) string {
 	}
 	return requestID
 }
-
 func (l *SpecializedLogger) getClientIP(r *http.Request) string {
 	// Try various headers for client IP
 	ip := r.Header.Get("X-Forwarded-For")

@@ -46,3 +46,8 @@ git branch -d feature-account
 git push origin --delete feature-account
 
 git checkout feature-account-interface-service
+
+#  To switch to the utility_inte_31Aug branch in your Git repository, use the following command:
+
+bash
+git checkout utility_inte_31Aug
