@@ -1,6 +1,6 @@
 # Create feature branch
 
-git checkout -b utility_inte_31Aug
+git checkout -b 7sep_log
 
 # Commit changes
 
