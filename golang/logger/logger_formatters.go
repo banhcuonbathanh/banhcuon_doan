@@ -44,10 +44,7 @@ func (jf *JSONFormatter) Format(entry *core.LogEntry) (string, error) {
 	data["message"] = entry.Message
 	
 	// Add caller info if available
-	if entry.Caller != "" {
-		data["caller"] = entry.Caller
-	}
-	
+
 	// Add metadata fields
 	if entry.Component != "" {
 		data["component"] = entry.Component
@@ -138,10 +135,7 @@ func (tf *TextFormatter) Format(entry *core.LogEntry) (string, error) {
 	}
 	
 	// Caller
-	if tf.showCaller && entry.Caller != "" {
-		parts = append(parts, fmt.Sprintf("(%s)", entry.Caller))
-	}
-	
+
 	// Message
 	parts = append(parts, entry.Message)
 	
@@ -235,13 +229,7 @@ func (pf *PrettyFormatter) Format(entry *core.LogEntry) (string, error) {
 	}
 	
 	// Caller information
-	if pf.showCaller && entry.Caller != "" {
-		caller := fmt.Sprintf("(%s)", entry.Caller)
-		if pf.colors {
-			caller = pf.colorize("\033[36m", caller) // Cyan
-		}
-		parts = append(parts, caller)
-	}
+
 	
 	// Message
 	message := entry.Message

@@ -1,4 +1,4 @@
-// logger/core/constants.go
+// logger/core/constants.go - Enhanced with better error tracking fields
 package core
 
 // Operation constants
@@ -82,12 +82,20 @@ const (
 	FieldQuery        = "query"
 	FieldQueryTime    = "query_time"
 	
-	// Error fields
-	FieldError      = "error"
-	FieldErrorCode  = "error_code"
-	FieldErrorType  = "error_type"
-	FieldCause      = "cause"
-	FieldStackTrace = "stack_trace"
+	// Enhanced Error tracking fields
+	FieldError            = "error"
+	FieldErrorCode        = "error_code"
+	FieldErrorType        = "error_type"
+	FieldCause            = "cause"
+	FieldStackTrace       = "stack_trace"
+	FieldSourceMethod     = "source_method"      // Which method the error originated from
+	FieldErrorLocation    = "error_location"     // Specific location within method where error occurred
+	FieldErrorTimestamp   = "error_timestamp"    // When the error occurred
+	FieldErrorDurationMS  = "error_duration_ms"  // How long the operation took before failing
+	FieldCallerFunction   = "caller_function"    // The calling function
+	FieldCallerFile       = "caller_file"        // The calling file
+	FieldCallerLine       = "caller_line"        // The calling line
+	FieldCallerPackage    = "caller_package"     // The calling package
 	
 	// Validation fields
 	FieldStructName     = "struct_name"
@@ -95,6 +103,7 @@ const (
 	FieldValidationTag  = "validation_tag"
 	FieldValidationMsg  = "validation_message"
 	FieldDecodeError    = "decode_error"
+	FieldValidationStep = "validation_step"     // Which validation step failed
 	
 	// Authentication fields
 	FieldTokenID       = "token_id"
@@ -115,6 +124,22 @@ const (
 	FieldFileSize = "file_size"
 	FieldFileType = "file_type"
 	FieldFilePath = "file_path"
+	
+	// Database-specific fields
+	FieldSQLOperation     = "sql_operation"      // INSERT, UPDATE, DELETE, SELECT
+	FieldDatabaseTable    = "database_table"     // Actual table name
+	FieldBoilOperation    = "boil_operation"     // SQLBoiler operation name
+	FieldConstraintType   = "constraint_type"    // Type of constraint violation
+	
+	// Enhanced context fields
+	FieldInsertStep       = "insert_step"        // Which step of insert process
+	FieldSuccessStep      = "success_step"       // Which step succeeded
+	FieldValidationTarget = "validation_target"  // What was being validated
+	FieldConversionStep   = "conversion_step"    // Which conversion step
+	FieldAnalysisStep     = "analysis_step"      // Which analysis step
+	FieldPerformanceDurationMS = "performance_duration_ms" // Performance timing
+	FieldDatabaseSuccess  = "database_success"   // Database operation success flag
+	FieldContextErrorType = "context_error_type" // Type of context error
 	
 	// Test/Debug fields
 	FieldTest            = "test"
@@ -146,7 +171,7 @@ const (
 	ResponseFieldExpiresAt = "expires_at"
 )
 
-// Log message constants
+// Enhanced Log message constants with better error context
 const (
 	// General messages
 	MsgRequestStarted   = "Request started"
@@ -161,13 +186,16 @@ const (
 	MsgRegisterUserExists        = "User already exists"
 	MsgRegisterServiceCallFailed = "Service call failed"
 	
-	// Database messages
+	// Enhanced Database messages with more context
 	MsgDatabaseOperationStarted  = "Starting database operation"
 	MsgDatabaseOperationFailed   = "Database operation failed"
 	MsgDatabaseOperationSuccess  = "Database operation completed successfully"
 	MsgDatabaseInsertAttempt     = "Attempting to insert user"
 	MsgDatabaseInsertSuccess     = "Successfully created user"
 	MsgDatabaseInsertFailed      = "Failed to insert user"
+	MsgDatabaseConstraintViolation = "Database constraint violation detected"
+	MsgDatabaseConnectionError     = "Database connection error"
+	MsgDatabaseTimeoutError        = "Database operation timeout"
 	
 	// Service messages
 	MsgServiceCallStarted  = "Calling service"
@@ -175,14 +203,16 @@ const (
 	MsgServiceCallFailed   = "Service call failed"
 	MsgServiceCallTimeout  = "Service call timeout"
 	
-	// Validation messages
-	MsgValidationStarted    = "Starting validation"
-	MsgValidationFailed     = "Validation failed"
-	MsgValidationError      = "Validation error"
-	MsgStructValidationError = "Struct validation error"
-	MsgRequestValidationFailed = "Request validation failed"
+	// Enhanced Validation messages
+	MsgValidationStarted        = "Starting validation"
+	MsgValidationFailed         = "Validation failed"
+	MsgValidationError          = "Validation error"
+	MsgStructValidationError    = "Struct validation error"
+	MsgRequestValidationFailed  = "Request validation failed"
+	MsgORMConversionFailed      = "ORM conversion failed"
+	MsgDTOConversionFailed      = "DTO conversion failed"
 	
-	// Context messages
+	// Enhanced Context messages
 	MsgContextCancelled = "Request context cancelled"
 	MsgContextTimeout   = "Context timeout"
 	MsgContextError     = "Context error"
@@ -204,6 +234,11 @@ const (
 	MsgEmailSendStarted = "Email send started"
 	MsgEmailSendSuccess = "Email sent successfully"
 	MsgEmailSendFailed  = "Email send failed"
+	
+	// Error wrapping messages
+	MsgErrorWrappedWithContext = "Error wrapped with enhanced context"
+	MsgErrorCauseAnalyzed      = "Error cause analyzed"
+	MsgStackTraceCapture       = "Stack trace captured for error"
 )
 
 // Test/Debug constants
@@ -214,25 +249,59 @@ const (
 	TestValidation         = "validation_test"
 )
 
-// Error cause constants
+// Enhanced Error cause constants with more specific causes
 const (
+	// Context-related causes
 	CauseContextCancelled       = "context_cancelled"
 	CauseContextTimeout         = "context_timeout"
+	
+	// Validation-related causes
 	CauseValidationFailed       = "validation_failed"
 	CauseStructValidationFailed = "struct_validation_failed"
 	CauseDecodeRequestFailed    = "decode_request_failed"
+	CauseORMConversionFailed    = "orm_conversion_failed"
+	CauseDTOConversionFailed    = "dto_conversion_failed"
+	
+	// Database-related causes
 	CauseDuplicateEmail         = "duplicate_email"
+	CauseDuplicateEntry         = "duplicate_entry"
 	CauseDatabaseError          = "database_error"
+	CauseConstraintViolation    = "constraint_violation"
+	CauseForeignKeyViolation    = "foreign_key_violation"
+	CauseUniqueConstraintViolation = "unique_constraint_violation"
+	CauseDatabaseConnectionFailed  = "database_connection_failed"
+	CauseDatabaseTimeout          = "database_timeout"
+	CauseTransactionFailed        = "transaction_failed"
+	
+	// Service-related causes
 	CauseServiceError           = "service_error"
 	CauseExternalServiceError   = "external_service_error"
+	CauseServiceTimeout         = "service_timeout"
+	CauseServiceUnavailable     = "service_unavailable"
+	
+	// Authentication-related causes
 	CauseAuthenticationFailed   = "authentication_failed"
 	CausePermissionDenied       = "permission_denied"
 	CauseTokenExpired           = "token_expired"
 	CauseInvalidToken           = "invalid_token"
-	CauseEmailSendFailed        = "email_send_failed"
-	CauseFileUploadFailed       = "file_upload_failed"
+	CauseInvalidCredentials     = "invalid_credentials"
+	
+	// Network-related causes
 	CauseNetworkError           = "network_error"
 	CauseTimeout                = "timeout"
+	CauseConnectionRefused      = "connection_refused"
+	CauseConnectionLost         = "connection_lost"
+	
+	// File/Resource-related causes
+	CauseEmailSendFailed        = "email_send_failed"
+	CauseFileUploadFailed       = "file_upload_failed"
+	CauseFileNotFound           = "file_not_found"
+	CauseResourceNotFound       = "resource_not_found"
+	
+	// Business logic causes
+	CauseBusinessRuleViolation  = "business_rule_violation"
+	CauseInvalidState           = "invalid_state"
+	CauseDataInconsistency      = "data_inconsistency"
 )
 
 // Table name constants (for repository layer)
@@ -261,4 +330,26 @@ const (
 	FuncCreateToken     = "CreateToken"
 	FuncValidateToken   = "ValidateToken"
 	FuncRevokeToken     = "RevokeToken"
+	
+	// Helper function names
+	FuncBuildORMAccount         = "buildORMAccount"
+	FuncBuildORMAccountWithContext = "buildORMAccountWithContext"
+	FuncConvertORMToDTO         = "convertORMToDTO"
+	FuncWrapErrorWithContext    = "wrapErrorWithContext"
+	FuncHandleContextError      = "handleContextError"
+	FuncHandleInsertSuccess     = "handleInsertSuccess"
+	FuncDetermineCause          = "determineCause"
+	FuncLogDatabaseOperation    = "logDatabaseOperation"
+)
+
+// Error location constants for better error tracking
+const (
+	LocationContextCheck      = "context_check"
+	LocationBuildORMAccount   = "build_orm_account"
+	LocationDatabaseInsert    = "database_insert"
+	LocationORMConversion     = "orm_conversion"
+	LocationDTOConversion     = "dto_conversion"
+	LocationValidation        = "validation"
+	LocationErrorWrapping     = "error_wrapping"
+	LocationCauseAnalysis     = "cause_analysis"
 )

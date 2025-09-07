@@ -1,10 +1,11 @@
-// internal/logger/core/logger_core.go - Simplified core types and structures
+// logger/core/logger_core.go - Enhanced with better caller tracking and error context
 package core
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -50,13 +51,25 @@ const (
 	LayerSecurity   = "security"
 )
 
+// Enhanced CallerInfo for better error tracking
+type CallerInfo struct {
+	Function string `json:"function"`
+	File     string `json:"file"`
+	Line     int    `json:"line"`
+	Package  string `json:"package"`
+}
+
+func (c CallerInfo) String() string {
+	return fmt.Sprintf("%s:%d", c.File, c.Line)
+}
+
 // LogEntry represents a structured log entry with enhanced metadata
 type LogEntry struct {
 	Timestamp   time.Time              `json:"timestamp"`
 	Level       Level                  `json:"level"`
 	Message     string                 `json:"message"`
 	Fields      map[string]interface{} `json:"fields,omitempty"`
-	Caller      string                 `json:"caller,omitempty"`
+	Caller      *CallerInfo            `json:"caller,omitempty"`
 	RequestID   string                 `json:"request_id,omitempty"`
 	UserID      string                 `json:"user_id,omitempty"`
 	SessionID   string                 `json:"session_id,omitempty"`
@@ -68,6 +81,7 @@ type LogEntry struct {
 	Environment string                 `json:"environment,omitempty"`
 	Cause       string                 `json:"cause,omitempty"`
 	Layer       string                 `json:"layer,omitempty"`
+	StackTrace  []CallerInfo           `json:"stack_trace,omitempty"`
 }
 
 // Output interface for different output destinations
@@ -94,6 +108,8 @@ type CoreLogger struct {
 	layer         string
 	operation     string
 	environment   string
+	captureStack  bool
+	stackDepth    int
 	mu            sync.RWMutex
 }
 
@@ -103,6 +119,8 @@ func NewLogger() *CoreLogger {
 		level:         InfoLevel,
 		contextFields: make(map[string]interface{}),
 		environment:   "development",
+		captureStack:  true,  // Enable stack capture for better debugging
+		stackDepth:    5,     // Capture up to 5 stack frames for errors
 	}
 	
 	// Create a default console output manager with rich formatting
@@ -150,6 +168,15 @@ func (l *CoreLogger) SetEnvironment(env string) {
 	l.environment = env
 }
 
+func (l *CoreLogger) SetStackCapture(enabled bool, depth int) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.captureStack = enabled
+	if depth > 0 {
+		l.stackDepth = depth
+	}
+}
+
 func (l *CoreLogger) AddContextField(key string, value interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -164,36 +191,116 @@ func (l *CoreLogger) RemoveContextField(key string) {
 
 // Core logging methods
 func (l *CoreLogger) Debug(message string, fields ...map[string]interface{}) {
-	l.log(DebugLevel, message, fields...)
+	l.log(DebugLevel, message, 3, fields...)
 }
 
 func (l *CoreLogger) Info(message string, fields ...map[string]interface{}) {
-	l.log(InfoLevel, message, fields...)
+	l.log(InfoLevel, message, 3, fields...)
 }
 
 func (l *CoreLogger) Warn(message string, fields ...map[string]interface{}) {
-	l.log(WarnLevel, message, fields...)
+	l.log(WarnLevel, message, 3, fields...)
 }
 
 func (l *CoreLogger) Error(message string, fields ...map[string]interface{}) {
-	l.log(ErrorLevel, message, fields...)
+	l.log(ErrorLevel, message, 3, fields...)
 }
 
 func (l *CoreLogger) Fatal(message string, fields ...map[string]interface{}) {
-	l.log(FatalLevel, message, fields...)
+	l.log(FatalLevel, message, 3, fields...)
 	// Note: In production, this might call os.Exit(1)
 }
-
 
 func (l *CoreLogger) InfoWithOperation(message, layer, operation string, fields ...map[string]interface{}) {
 	mergedFields := l.mergeFields(fields...)
 	mergedFields["layer"] = layer
 	mergedFields["operation"] = operation
-	l.log(InfoLevel, message, mergedFields)
+	l.log(InfoLevel, message, 3, mergedFields)
 }
 
-// Core logging implementation
-func (l *CoreLogger) log(level Level, message string, fields ...map[string]interface{}) {
+// Enhanced ErrorWithCause method with better caller tracking
+func (l *CoreLogger) ErrorWithCause(message, cause, layer, operation string, fields ...map[string]interface{}) {
+	mergedFields := l.mergeFields(fields...)
+	mergedFields["cause"] = cause
+	mergedFields["layer"] = layer  
+	mergedFields["operation"] = operation
+	
+	// Add domain if not already present
+	if _, exists := mergedFields["domain"]; !exists {
+		// Try to infer domain from layer
+		switch layer {
+		case LayerAuth:
+			mergedFields["domain"] = "auth"
+		case LayerDatabase:
+			mergedFields["domain"] = "database"
+		case LayerExternal:
+			mergedFields["domain"] = "external"
+		case LayerValidation:
+			mergedFields["domain"] = "validation"
+		case LayerSecurity:
+			mergedFields["domain"] = "security"
+		case LayerHandler:
+			mergedFields["domain"] = "handler"
+		case LayerService:
+			mergedFields["domain"] = "service"
+		case LayerRepository:
+			mergedFields["domain"] = "repository"
+		default:
+			mergedFields["domain"] = "system"
+		}
+	}
+	
+	l.log(ErrorLevel, message, 3, mergedFields)
+}
+
+// Enhanced WarnWithCause method
+func (l *CoreLogger) WarnWithCause(message, cause, layer, operation string, fields ...map[string]interface{}) {
+	mergedFields := l.mergeFields(fields...)
+	mergedFields["cause"] = cause
+	mergedFields["layer"] = layer
+	mergedFields["operation"] = operation
+	
+	// Add domain if not already present
+	if _, exists := mergedFields["domain"]; !exists {
+		// Try to infer domain from layer
+		switch layer {
+		case LayerAuth:
+			mergedFields["domain"] = "auth"
+		case LayerDatabase:
+			mergedFields["domain"] = "database"
+		case LayerExternal:
+			mergedFields["domain"] = "external"
+		case LayerValidation:
+			mergedFields["domain"] = "validation"
+		case LayerSecurity:
+			mergedFields["domain"] = "security"
+		case LayerHandler:
+			mergedFields["domain"] = "handler"
+		case LayerService:
+			mergedFields["domain"] = "service"
+		case LayerRepository:
+			mergedFields["domain"] = "repository"
+		default:
+			mergedFields["domain"] = "system"
+		}
+	}
+	
+	l.log(WarnLevel, message, 3, mergedFields)
+}
+
+// New method for enhanced error logging with domain
+func (l *CoreLogger) ErrorWithDomainAndCause(message, domain, cause, layer, operation string, fields ...map[string]interface{}) {
+	mergedFields := l.mergeFields(fields...)
+	mergedFields["domain"] = domain
+	mergedFields["cause"] = cause
+	mergedFields["layer"] = layer  
+	mergedFields["operation"] = operation
+	
+	l.log(ErrorLevel, message, 3, mergedFields)
+}
+
+// Core logging implementation with enhanced caller tracking
+func (l *CoreLogger) log(level Level, message string, callerSkip int, fields ...map[string]interface{}) {
 	l.mu.RLock()
 	if level < l.level {
 		l.mu.RUnlock()
@@ -212,9 +319,14 @@ func (l *CoreLogger) log(level Level, message string, fields ...map[string]inter
 		Environment: l.environment,
 	}
 	
-	// Add caller information
-	if caller := getCaller(3); caller != "" {
+	// Enhanced caller information
+	if caller := l.getEnhancedCaller(callerSkip + 1); caller != nil {
 		entry.Caller = caller
+	}
+	
+	// Capture stack trace for errors and above
+	if level >= ErrorLevel && l.captureStack {
+		entry.StackTrace = l.captureStackTrace(callerSkip+1, l.stackDepth)
 	}
 	
 	om := l.outputManager
@@ -230,6 +342,102 @@ func (l *CoreLogger) log(level Level, message string, fields ...map[string]inter
 			entry.Level.String(), 
 			entry.Message)
 	}
+}
+
+// Enhanced caller information gathering
+func (l *CoreLogger) getEnhancedCaller(skip int) *CallerInfo {
+	pc, file, line, ok := runtime.Caller(skip)
+	if !ok {
+		return nil
+	}
+	
+	// Get function information
+	fn := runtime.FuncForPC(pc)
+	if fn == nil {
+		return nil
+	}
+	
+	fullFuncName := fn.Name()
+	
+	// Extract package and function name
+	var pkg, funcName string
+	if lastSlash := strings.LastIndex(fullFuncName, "/"); lastSlash >= 0 {
+		pkg = fullFuncName[:lastSlash]
+		funcName = fullFuncName[lastSlash+1:]
+	} else {
+		funcName = fullFuncName
+	}
+	
+	// Clean up the function name (remove package prefix if present)
+	if lastDot := strings.LastIndex(funcName, "."); lastDot >= 0 {
+		if len(funcName) > lastDot+1 {
+			// Keep the package part for context
+			pkg = funcName[:lastDot]
+			funcName = funcName[lastDot+1:]
+		}
+	}
+	
+	// Clean up file path to show only relevant part
+	if lastSlash := strings.LastIndex(file, "/"); lastSlash >= 0 {
+		file = file[lastSlash+1:]
+	}
+	
+	return &CallerInfo{
+		Function: funcName,
+		File:     file,
+		Line:     line,
+		Package:  pkg,
+	}
+}
+
+// Capture stack trace for better error debugging
+func (l *CoreLogger) captureStackTrace(skip, depth int) []CallerInfo {
+	var stack []CallerInfo
+	
+	for i := skip; i < skip+depth; i++ {
+		pc, file, line, ok := runtime.Caller(i)
+		if !ok {
+			break
+		}
+		
+		fn := runtime.FuncForPC(pc)
+		if fn == nil {
+			continue
+		}
+		
+		fullFuncName := fn.Name()
+		
+		// Extract package and function name
+		var pkg, funcName string
+		if lastSlash := strings.LastIndex(fullFuncName, "/"); lastSlash >= 0 {
+			pkg = fullFuncName[:lastSlash]
+			funcName = fullFuncName[lastSlash+1:]
+		} else {
+			funcName = fullFuncName
+		}
+		
+		// Clean up the function name
+		if lastDot := strings.LastIndex(funcName, "."); lastDot >= 0 {
+			if len(funcName) > lastDot+1 {
+				pkg = funcName[:lastDot]
+				funcName = funcName[lastDot+1:]
+			}
+		}
+		
+		// Clean up file path
+		if lastSlash := strings.LastIndex(file, "/"); lastSlash >= 0 {
+			file = file[lastSlash+1:]
+		}
+		
+		stack = append(stack, CallerInfo{
+			Function: funcName,
+			File:     file,
+			Line:     line,
+			Package:  pkg,
+		})
+	}
+	
+	return stack
 }
 
 // Helper methods
@@ -251,23 +459,181 @@ func (l *CoreLogger) mergeFields(fields ...map[string]interface{}) map[string]in
 	return merged
 }
 
-func getCaller(skip int) string {
-	// Simple implementation - you can enhance this with runtime.Caller
-	return ""
-}
-
-// RichConsoleOutput - Simplified but rich console output
+// Enhanced RichConsoleOutput with better error formatting
 type RichConsoleOutput struct {
-	useColors bool
-	mu        sync.Mutex
+	useColors   bool
+	showCaller  bool
+	showStack   bool
+	mu          sync.Mutex
 }
 
 func NewRichConsoleOutput(useColors bool) *RichConsoleOutput {
 	return &RichConsoleOutput{
-		useColors: useColors,
+		useColors:  useColors,
+		showCaller: true,
+		showStack:  true, // Show stack trace for errors
 	}
 }
 
+func (rco *RichConsoleOutput) Write(entry *LogEntry) error {
+	rco.mu.Lock()
+	defer rco.mu.Unlock()
+	
+	timestamp := entry.Timestamp.Format("2006-01-02 15:04:05.000")
+	
+	// Build the log line with all information
+	var parts []string
+	
+	// Timestamp with grey color for all levels
+	timestampStr := fmt.Sprintf("[%s]", timestamp)
+	if rco.useColors {
+		timestampStr = rco.colorize("\033[90m", timestampStr) // Dark grey for all timestamps
+	}
+	parts = append(parts, timestampStr)
+	
+	// Level with color
+	levelStr := entry.Level.String()
+	if rco.useColors {
+		levelStr = rco.colorizeLevel(entry.Level, levelStr)
+	}
+	parts = append(parts, levelStr)
+	
+	// Layer and Component
+	if entry.Layer != "" {
+		layerStr := fmt.Sprintf("[%s]", strings.ToUpper(entry.Layer))
+		if rco.useColors {
+			layerStr = rco.colorize("\033[94m", layerStr) // Light blue
+		}
+		parts = append(parts, layerStr)
+	}
+	
+	if entry.Component != "" {
+		componentStr := fmt.Sprintf("<%s>", entry.Component)
+		if rco.useColors {
+			componentStr = rco.colorize("\033[95m", componentStr) // Magenta
+		}
+		parts = append(parts, componentStr)
+	}
+	
+	if entry.Operation != "" {
+		operationStr := fmt.Sprintf("{%s}", entry.Operation)
+		if rco.useColors {
+			operationStr = rco.colorize("\033[96m", operationStr) // Cyan
+		}
+		parts = append(parts, operationStr)
+	}
+	
+	// Enhanced caller information for errors
+	if rco.showCaller && entry.Caller != nil && entry.Level >= ErrorLevel {
+		callerStr := fmt.Sprintf("@%s.%s:%d", entry.Caller.Package, entry.Caller.Function, entry.Caller.Line)
+		if rco.useColors {
+			callerStr = rco.colorize("\033[93m", callerStr) // Bright yellow
+		}
+		parts = append(parts, callerStr)
+	}
+	
+	// Enhanced message with domain and cause for errors/warnings
+	message := entry.Message
+	if entry.Level >= ErrorLevel {
+		// Extract domain and cause from fields for enhanced error display
+		domain := ""
+		cause := ""
+		
+		if entry.Fields != nil {
+			if d, ok := entry.Fields["domain"].(string); ok {
+				domain = d
+			}
+			if c, ok := entry.Fields["cause"].(string); ok {
+				cause = c
+			}
+		}
+		
+		// If we have cause from the entry itself, use that
+		if entry.Cause != "" {
+			cause = entry.Cause
+		}
+		
+		// Build enhanced error message
+		if domain != "" && cause != "" {
+			message = fmt.Sprintf("%s [domain=%s] [cause=%s]", message, domain, cause)
+		} else if domain != "" {
+			message = fmt.Sprintf("%s [domain=%s]", message, domain)
+		} else if cause != "" {
+			message = fmt.Sprintf("%s [cause=%s]", message, cause)
+		}
+	}
+	
+	parts = append(parts, message)
+	
+	// Join main parts
+	logLine := strings.Join(parts, " ")
+	
+	// Add essential fields as JSON on the same line if they exist
+	if len(entry.Fields) > 0 {
+		// Filter out domain and cause since we already included them in the message for errors
+		filteredFields := make(map[string]interface{})
+		for k, v := range entry.Fields {
+			// Skip domain and cause for error levels since they're in the message
+			if entry.Level >= ErrorLevel && (k == "domain" || k == "cause") {
+				continue
+			}
+			// Include other important fields
+			if k == "request_id" || k == "user_id" || k == "email" || k == "method" || 
+			   k == "endpoint" || k == "status_code" || k == "duration_ms" || 
+			   k == "error_code" || k == "service" || k == "layer" || k == "operation" ||
+			   k == "table" || k == "function" || k == "attempted_email" || k == "attempted_role" ||
+			   k == "error" {
+				filteredFields[k] = v
+			}
+		}
+		
+		if len(filteredFields) > 0 {
+			fieldsJSON, err := json.Marshal(filteredFields)
+			if err == nil {
+				fieldStr := fmt.Sprintf(" | %s", string(fieldsJSON))
+				if rco.useColors {
+					fieldStr = rco.colorize("\033[90m", fieldStr) // Dark gray
+				}
+				logLine += fieldStr
+			}
+		}
+	}
+	
+	// Write main log line to appropriate stream
+	if entry.Level >= ErrorLevel {
+		fmt.Fprintf(os.Stderr, "%s\n", logLine)
+		
+		// Add stack trace for errors if available and enabled
+		if rco.showStack && len(entry.StackTrace) > 0 {
+			stackStr := rco.formatStackTrace(entry.StackTrace)
+			if rco.useColors {
+				stackStr = rco.colorize("\033[90m", stackStr) // Dark gray
+			}
+			fmt.Fprintf(os.Stderr, "%s\n", stackStr)
+		}
+	} else {
+		fmt.Fprintf(os.Stdout, "%s\n", logLine)
+	}
+	
+	return nil
+}
+
+func (rco *RichConsoleOutput) formatStackTrace(stack []CallerInfo) string {
+	if len(stack) == 0 {
+		return ""
+	}
+	
+	var lines []string
+	lines = append(lines, "Stack trace:")
+	
+	for i, frame := range stack {
+		line := fmt.Sprintf("  %d. %s.%s() at %s:%d", 
+			i+1, frame.Package, frame.Function, frame.File, frame.Line)
+		lines = append(lines, line)
+	}
+	
+	return strings.Join(lines, "\n")
+}
 
 func (rco *RichConsoleOutput) colorizeLevel(level Level, text string) string {
 	if !rco.useColors {
@@ -390,214 +756,4 @@ func (dom *defaultOutputManager) Close() error {
 	}
 	
 	return nil
-}
-
-// new 1234123412341234
-// Enhanced RichConsoleOutput in logger_core.go
-func (rco *RichConsoleOutput) Write(entry *LogEntry) error {
-	rco.mu.Lock()
-	defer rco.mu.Unlock()
-	
-	timestamp := entry.Timestamp.Format("2006-01-02 15:04:05.000")
-	
-	// Build the log line with all information
-	var parts []string
-	
-	// Timestamp with grey color for all levels
-	timestampStr := fmt.Sprintf("[%s]", timestamp)
-	if rco.useColors {
-		timestampStr = rco.colorize("\033[90m", timestampStr) // Dark grey for all timestamps
-	}
-	parts = append(parts, timestampStr)
-	
-	// Level with color
-	levelStr := entry.Level.String()
-	if rco.useColors {
-		levelStr = rco.colorizeLevel(entry.Level, levelStr)
-	}
-	parts = append(parts, levelStr)
-	
-	// Layer and Component
-	if entry.Layer != "" {
-		layerStr := fmt.Sprintf("[%s]", strings.ToUpper(entry.Layer))
-		if rco.useColors {
-			layerStr = rco.colorize("\033[94m", layerStr) // Light blue
-		}
-		parts = append(parts, layerStr)
-	}
-	
-	if entry.Component != "" {
-		componentStr := fmt.Sprintf("<%s>", entry.Component)
-		if rco.useColors {
-			componentStr = rco.colorize("\033[95m", componentStr) // Magenta
-		}
-		parts = append(parts, componentStr)
-	}
-	
-	if entry.Operation != "" {
-		operationStr := fmt.Sprintf("{%s}", entry.Operation)
-		if rco.useColors {
-			operationStr = rco.colorize("\033[96m", operationStr) // Cyan
-		}
-		parts = append(parts, operationStr)
-	}
-	
-	// Enhanced message with domain and cause for errors/warnings
-	message := entry.Message
-	if entry.Level >= ErrorLevel {
-		// Extract domain and cause from fields for enhanced error display
-		domain := ""
-		cause := ""
-		
-		if entry.Fields != nil {
-			if d, ok := entry.Fields["domain"].(string); ok {
-				domain = d
-			}
-			if c, ok := entry.Fields["cause"].(string); ok {
-				cause = c
-			}
-		}
-		
-		// If we have cause from the entry itself, use that
-		if entry.Cause != "" {
-			cause = entry.Cause
-		}
-		
-		// Build enhanced error message
-		if domain != "" && cause != "" {
-			message = fmt.Sprintf("%s [domain=%s] [cause=%s]", message, domain, cause)
-		} else if domain != "" {
-			message = fmt.Sprintf("%s [domain=%s]", message, domain)
-		} else if cause != "" {
-			message = fmt.Sprintf("%s [cause=%s]", message, cause)
-		}
-	}
-	
-	parts = append(parts, message)
-	
-	// Join main parts
-	logLine := strings.Join(parts, " ")
-	
-	// Add essential fields as JSON on the same line if they exist
-	if len(entry.Fields) > 0 {
-		// Filter out domain and cause since we already included them in the message for errors
-		filteredFields := make(map[string]interface{})
-		for k, v := range entry.Fields {
-			// Skip domain and cause for error levels since they're in the message
-			if entry.Level >= ErrorLevel && (k == "domain" || k == "cause") {
-				continue
-			}
-			// Include other important fields
-			if k == "request_id" || k == "user_id" || k == "email" || k == "method" || 
-			   k == "endpoint" || k == "status_code" || k == "duration_ms" || 
-			   k == "error_code" || k == "service" || k == "layer" || k == "operation" {
-				filteredFields[k] = v
-			}
-		}
-		
-		if len(filteredFields) > 0 {
-			fieldsJSON, err := json.Marshal(filteredFields)
-			if err == nil {
-				fieldStr := fmt.Sprintf(" | %s", string(fieldsJSON))
-				if rco.useColors {
-					fieldStr = rco.colorize("\033[90m", fieldStr) // Dark gray
-				}
-				logLine += fieldStr
-			}
-		}
-	}
-	
-	// Write to appropriate stream
-	if entry.Level >= ErrorLevel {
-		fmt.Fprintf(os.Stderr, "%s\n", logLine)
-	} else {
-		fmt.Fprintf(os.Stdout, "%s\n", logLine)
-	}
-	
-	return nil
-}
-// new 234124124124
-
-
-// Enhanced methods in logger_core.go
-
-// Enhanced ErrorWithCause method
-func (l *CoreLogger) ErrorWithCause(message, cause, layer, operation string, fields ...map[string]interface{}) {
-	mergedFields := l.mergeFields(fields...)
-	mergedFields["cause"] = cause
-	mergedFields["layer"] = layer  
-	mergedFields["operation"] = operation
-	
-	// Add domain if not already present
-	if _, exists := mergedFields["domain"]; !exists {
-		// Try to infer domain from layer
-		switch layer {
-		case LayerAuth:
-			mergedFields["domain"] = "auth"
-		case LayerDatabase:
-			mergedFields["domain"] = "database"
-		case LayerExternal:
-			mergedFields["domain"] = "external"
-		case LayerValidation:
-			mergedFields["domain"] = "validation"
-		case LayerSecurity:
-			mergedFields["domain"] = "security"
-		case LayerHandler:
-			mergedFields["domain"] = "handler"
-		case LayerService:
-			mergedFields["domain"] = "service"
-		case LayerRepository:
-			mergedFields["domain"] = "repository"
-		default:
-			mergedFields["domain"] = "system"
-		}
-	}
-	
-	l.log(ErrorLevel, message, mergedFields)
-}
-
-// Enhanced WarnWithCause method
-func (l *CoreLogger) WarnWithCause(message, cause, layer, operation string, fields ...map[string]interface{}) {
-	mergedFields := l.mergeFields(fields...)
-	mergedFields["cause"] = cause
-	mergedFields["layer"] = layer
-	mergedFields["operation"] = operation
-	
-	// Add domain if not already present
-	if _, exists := mergedFields["domain"]; !exists {
-		// Try to infer domain from layer
-		switch layer {
-		case LayerAuth:
-			mergedFields["domain"] = "auth"
-		case LayerDatabase:
-			mergedFields["domain"] = "database"
-		case LayerExternal:
-			mergedFields["domain"] = "external"
-		case LayerValidation:
-			mergedFields["domain"] = "validation"
-		case LayerSecurity:
-			mergedFields["domain"] = "security"
-		case LayerHandler:
-			mergedFields["domain"] = "handler"
-		case LayerService:
-			mergedFields["domain"] = "service"
-		case LayerRepository:
-			mergedFields["domain"] = "repository"
-		default:
-			mergedFields["domain"] = "system"
-		}
-	}
-	
-	l.log(WarnLevel, message, mergedFields)
-}
-
-// New method for enhanced error logging with domain
-func (l *CoreLogger) ErrorWithDomainAndCause(message, domain, cause, layer, operation string, fields ...map[string]interface{}) {
-	mergedFields := l.mergeFields(fields...)
-	mergedFields["domain"] = domain
-	mergedFields["cause"] = cause
-	mergedFields["layer"] = layer  
-	mergedFields["operation"] = operation
-	
-	l.log(ErrorLevel, message, mergedFields)
 }
