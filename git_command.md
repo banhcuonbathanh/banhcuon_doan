@@ -1,6 +1,6 @@
 # Create feature branch
 
-git checkout -b 7.1sep_log
+git checkout -b 7.2sep_error
 
 # Commit changes
 
