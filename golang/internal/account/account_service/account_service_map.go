@@ -5,11 +5,11 @@ import (
 	errorcustom "english-ai-full/error_custom"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/proto_qr/account"
-	"fmt"
+
 	"strings"
 	"time"
 
-	"github.com/go-playground/validator"
+
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -160,33 +160,33 @@ func (s *AccountService) handleServiceError(err error, operation string, context
 
 	return apiErr
 }
-// handleServiceSuccess logs successful operations
-func (s *AccountService) handleServiceSuccess(operation string, context map[string]interface{}, startTime time.Time) {
-	context["duration_ms"] = time.Since(startTime).Milliseconds()
-	context["success"] = true
-	// s.logger.LogServiceCall("account", operation, true, nil, context)
-}
+// // handleServiceSuccess logs successful operations
+// func (s *AccountService) handleServiceSuccess(operation string, context map[string]interface{}, startTime time.Time) {
+// 	context["duration_ms"] = time.Since(startTime).Milliseconds()
+// 	context["success"] = true
+// 	// s.logger.LogServiceCall("account", operation, true, nil, context)
+// }
 
-func (s *AccountService) formatValidationError(err error, email string) error {
-	var validationErrors []string
+// func (s *AccountService) formatValidationError(err error, email string) error {
+// 	var validationErrors []string
 	
-	for _, err := range err.(validator.ValidationErrors) {
-		switch err.Tag() {
-		case "required":
-			validationErrors = append(validationErrors, fmt.Sprintf("%s is required", err.Field()))
-		case "email":
-			validationErrors = append(validationErrors, "invalid email format")
-		case "min":
-			validationErrors = append(validationErrors, fmt.Sprintf("%s must be at least %s characters", err.Field(), err.Param()))
-		case "oneof":
-			validationErrors = append(validationErrors, fmt.Sprintf("%s must be one of: %s", err.Field(), err.Param()))
-		default:
-			validationErrors = append(validationErrors, fmt.Sprintf("%s is invalid", err.Field()))
-		}
-	}
+// 	for _, err := range err.(validator.ValidationErrors) {
+// 		switch err.Tag() {
+// 		case "required":
+// 			validationErrors = append(validationErrors, fmt.Sprintf("%s is required", err.Field()))
+// 		case "email":
+// 			validationErrors = append(validationErrors, "invalid email format")
+// 		case "min":
+// 			validationErrors = append(validationErrors, fmt.Sprintf("%s must be at least %s characters", err.Field(), err.Param()))
+// 		case "oneof":
+// 			validationErrors = append(validationErrors, fmt.Sprintf("%s must be one of: %s", err.Field(), err.Param()))
+// 		default:
+// 			validationErrors = append(validationErrors, fmt.Sprintf("%s is invalid", err.Field()))
+// 		}
+// 	}
 	
-	return errorcustom.NewValidationError("account", "input", strings.Join(validationErrors, "; "), email)
-}
+// 	return errorcustom.NewValidationError("account", "input", strings.Join(validationErrors, "; "), email)
+// }
 
 func (s *AccountService)  convertDTOToProto(dto *account_dto.Account) *account.Account {
 	return &account.Account{

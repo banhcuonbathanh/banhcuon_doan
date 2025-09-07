@@ -1,11 +1,13 @@
 package account_repository
 
 import (
-	"context"
+
 	error_custom "english-ai-full/error_custom"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/proto_qr/account"
-	
+	"english-ai-full/logger/core"
+	"strings"
+
 	"english-ai-full/orm"
 	"time"
 
@@ -144,31 +146,6 @@ func (r *Repository) toNullStringAlways(value string) null.String {
 }
 
 
-func (r *Repository) buildOperationContext(user account_dto.Account) map[string]interface{} {
-	ctx := map[string]interface{}{
-		"layer":     "repository",
-		"component": "account_repository",
-		"function":  "register",
-		"email":     maskEmail(user.Email),
-		"role":      string(user.Role),
-	}
-	
-	// Add optional fields only if they have meaningful values
-	if user.BranchID != 0 {
-		ctx["branch_id"] = user.BranchID
-	}
-	if user.OwnerID != 0 {
-		ctx["owner_id"] = user.OwnerID
-	}
-	if user.Avatar != "" {
-		ctx["has_avatar"] = true
-	}
-	if user.Title != "" {
-		ctx["has_title"] = true
-	}
-	
-	return ctx
-}
 
 func (r *Repository) buildORMAccount(user account_dto.Account) (*orm.Account, error) {
 	// ✅ Add validation for required fields
@@ -198,15 +175,6 @@ func (r *Repository) buildORMAccount(user account_dto.Account) (*orm.Account, er
 	}, nil
 }
 
-func (r *Repository) handleContextError(ctx context.Context, operation, table string, operationCtx map[string]interface{}) error {
-	err := ctx.Err()
-	operationCtx["context_error"] = err.Error()
-	
-	// r.logger.LogDBOperation(operation, table, false, err, operationCtx)
-	
-	return r.errorHandler.HandleDatabaseError(err, "account", table, operation, operationCtx)
-}
-
 func (r *Repository) handleValidationError(err error, operation, table string, operationCtx map[string]interface{}) error {
 	operationCtx["error_type"] = "validation"
 	
@@ -226,15 +194,64 @@ func (r *Repository) handleInsertError(err error, operation, table string, opera
 	return r.errorHandler.HandleDatabaseError(err, "account", table, operation, operationCtx)
 }
 
-func (r *Repository) handleInsertSuccess(ormAccount *orm.Account, operation, table string, operationCtx map[string]interface{}, startTime time.Time) account_dto.Account {
-	duration := time.Since(startTime)
-	operationCtx["duration_ms"] = duration.Milliseconds()
-	operationCtx["user_id"] = ormAccount.ID
-	operationCtx["success"] = true
+// Enhanced success handling with layer context
+func (r *Repository) handleInsertSuccess(ormAccount interface{}, operation, table string, operationCtx map[string]interface{}, startTime time.Time) account_dto.Account {
+	// Convert ORM account to DTO (implementation depends on your ORM setup)
+	// This is a placeholder - implement according to your ORM model
 	
-	// r.logger.LogDBOperation(operation, table, true, nil, operationCtx)
+	// Log final success with enhanced context
+	r.logger.Info(core.MsgOperationCompleted, r.layerContext.MergeWithContext(map[string]interface{}{
+		core.FieldOperation:  operation,
+		core.FieldTable:      table,
+		core.FieldDurationMS: time.Since(startTime).Milliseconds(),
+		core.FieldSuccess:    true,
+	}))
 	
-	return r.mapORMToDTO(ormAccount)
+	// Return converted DTO (implement based on your ORM model)
+	return account_dto.Account{} // Placeholder
+}
+
+
+
+// Build operation context helper (enhanced)
+func (r *Repository) buildOperationContext(user account_dto.Account) map[string]interface{} {
+	return r.layerContext.BuildOperationContext(core.OperationCreateUser, core.TableAccounts, core.FuncCreateUser, map[string]interface{}{
+		core.FieldEmail:    maskEmail(user.Email),
+		core.FieldRole:     string(user.Role),
+		core.FieldBranchID: user.BranchID,
+		core.FieldOwnerID:  user.OwnerID,
+	})
+}
+
+
+
+// Enhanced email masking function (same as before but with better structure)
+func maskEmail(email string) string {
+	if email == "" {
+		return ""
+	}
+	
+	// Find the @ symbol
+	atIndex := strings.LastIndex(email, "@")
+	if atIndex == -1 {
+		// Invalid email format, mask everything except first and last char
+		if len(email) <= 2 {
+			return "***"
+		}
+		return email[:1] + "***" + email[len(email)-1:]
+	}
+	
+	username := email[:atIndex]
+	domain := email[atIndex:]
+	
+	// Mask username part
+	if len(username) <= 2 {
+		return "**" + domain
+	} else if len(username) <= 4 {
+		return username[:1] + "**" + username[len(username)-1:] + domain
+	} else {
+		return username[:2] + "***" + username[len(username)-1:] + domain
+	}
 }
 
 func (r *Repository) wrapError(err error, operation, table string, context map[string]interface{}, startTime *time.Time) error {

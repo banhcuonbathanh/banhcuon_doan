@@ -3,7 +3,7 @@ package account_repository
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	
 	"strings"
 	"time"
 
@@ -12,7 +12,7 @@ import (
 	"english-ai-full/internal/account"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/logger/core"
-	"english-ai-full/orm"
+	
 
 	utils_config "english-ai-full/utils/config"
 
@@ -213,103 +213,12 @@ func (r *Repository) handleContextError(ctx context.Context, operation, table st
 			r.layerContext.MergeWithContext(operationCtx))
 	}
 	
-	return r.errorHandler.WrapRepositoryError(ctx.Err(), operation, table)
-}
-
-// Enhanced success handling with layer context
-func (r *Repository) handleInsertSuccess(ormAccount interface{}, operation, table string, operationCtx map[string]interface{}, startTime time.Time) account_dto.Account {
-	// Convert ORM account to DTO (implementation depends on your ORM setup)
-	// This is a placeholder - implement according to your ORM model
-	
-	// Log final success with enhanced context
-	r.logger.Info(core.MsgOperationCompleted, r.layerContext.MergeWithContext(map[string]interface{}{
-		core.FieldOperation:  operation,
-		core.FieldTable:      table,
-		core.FieldDurationMS: time.Since(startTime).Milliseconds(),
-		core.FieldSuccess:    true,
-	}))
-	
-	// Return converted DTO (implement based on your ORM model)
-	return account_dto.Account{} // Placeholder
-}
-
-// Enhanced error wrapping with layer context
-func (r *Repository) wrapError(err error, operation, table string, operationCtx map[string]interface{}, startTime *time.Time) error {
-	if startTime != nil {
-		operationCtx[core.FieldDurationMS] = time.Since(*startTime).Milliseconds()
-	}
-	
-	// Log with full context
-	r.logger.Error("Repository operation failed", r.layerContext.MergeWithContext(operationCtx))
-	
-	return r.errorHandler.WrapRepositoryError(err, operation, table)
-}
-
-// Build operation context helper (enhanced)
-func (r *Repository) buildOperationContext(user account_dto.Account) map[string]interface{} {
-	return r.layerContext.BuildOperationContext(core.OperationCreateUser, core.TableAccounts, core.FuncCreateUser, map[string]interface{}{
-		core.FieldEmail:    maskEmail(user.Email),
-		core.FieldRole:     string(user.Role),
-		core.FieldBranchID: user.BranchID,
-		core.FieldOwnerID:  user.OwnerID,
-	})
-}
-
-// buildORMAccount converts DTO to ORM model
-func (r *Repository) buildORMAccount(user account_dto.Account) (*orm.Account, error) {
-	ormAccount := &orm.Account{
-		Name:     user.Name,
-		Email:    user.Email,
-		Password: user.Password,
-		Role:     string(user.Role),
-	}
-	
-	// Set nullable fields
-	if user.BranchID != 0 {
-		ormAccount.BranchID = null.Int64From(user.BranchID)
-	}
-	if user.OwnerID != 0 {
-		ormAccount.OwnerID = null.Int64From(user.OwnerID)
-	}
-	if user.Avatar != "" {
-		ormAccount.Avatar = null.StringFrom(user.Avatar)
-	}
-	if user.Title != "" {
-		ormAccount.Title = null.StringFrom(user.Title)
-	}
-	
-	if ormAccount.Email == "" {
-		return nil, fmt.Errorf("email is required")
-	}
-	
-	return ormAccount, nil
-}
-
-// Enhanced email masking function (same as before but with better structure)
-func maskEmail(email string) string {
-	if email == "" {
-		return ""
-	}
-	
-	// Find the @ symbol
-	atIndex := strings.LastIndex(email, "@")
-	if atIndex == -1 {
-		// Invalid email format, mask everything except first and last char
-		if len(email) <= 2 {
-			return "***"
-		}
-		return email[:1] + "***" + email[len(email)-1:]
-	}
-	
-	username := email[:atIndex]
-	domain := email[atIndex:]
-	
-	// Mask username part
-	if len(username) <= 2 {
-		return "**" + domain
-	} else if len(username) <= 4 {
-		return username[:1] + "**" + username[len(username)-1:] + domain
-	} else {
-		return username[:2] + "***" + username[len(username)-1:] + domain
-	}
+	// Use HandleDatabaseError instead of WrapRepositoryError
+	return r.errorHandler.HandleDatabaseError(
+		ctx.Err(),           // the original context error
+		r.layerContext.Domain, // domain from layer context
+		table,               // table name
+		operation,           // operation name
+		operationCtx,        // operation context
+	)
 }
