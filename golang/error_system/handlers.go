@@ -26,18 +26,11 @@ func (h *RepositoryErrorHandler) Handle(err error, operation, table string, cont
 		return nil
 	}
 	
-	// Check if it's already our AppError
+	// Check if it's already our AppError - pass through unchanged
 	if appErr, ok := IsAppError(err); ok {
 		h.logError(appErr, operation, table, context)
 		return appErr
 	}
-	
-	// Check if it's a context error
-	// if err == context.Canceled || err == context.DeadlineExceeded {
-	// 	appErr := ContextError(context.Background())
-	// 	h.logError(appErr, operation, table, context)
-	// 	return appErr
-	// }
 	
 	// Handle database-specific errors
 	appErr := h.handleDatabaseError(err, operation, table)
@@ -49,7 +42,7 @@ func (h *RepositoryErrorHandler) Handle(err error, operation, table string, cont
 func (h *RepositoryErrorHandler) handleDatabaseError(err error, operation, table string) *AppError {
 	errStr := strings.ToLower(err.Error())
 	
-	// Check for duplicate key violations
+	// Check for duplicate key violations - MOST SPECIFIC FIRST
 	if strings.Contains(errStr, "duplicate") || strings.Contains(errStr, "unique constraint") {
 		if strings.Contains(errStr, "email") {
 			return NewErrorWithInternal(ErrAccountDuplicate, "Account with this email already exists", err)
@@ -116,18 +109,11 @@ func (h *ServiceErrorHandler) Handle(err error, operation string, context map[st
 		return nil
 	}
 	
-	// Check if it's already our AppError - just pass it through
+	// CRITICAL: Check if it's already our AppError - PASS THROUGH UNCHANGED
 	if appErr, ok := IsAppError(err); ok {
 		h.logError(appErr, operation, context)
-		return appErr
+		return appErr // DON'T CREATE NEW ERROR
 	}
-	
-	// Check for context errors
-	// if err == context.Canceled || err == context.DeadlineExceeded {
-	// 	appErr := ContextError(context.Background())
-	// 	h.logError(appErr, operation, context)
-	// 	return appErr
-	// }
 	
 	// Handle validation errors (from validator package)
 	if strings.Contains(err.Error(), "validation") {
@@ -136,7 +122,7 @@ func (h *ServiceErrorHandler) Handle(err error, operation string, context map[st
 		return appErr
 	}
 	
-	// Generic service error
+	// Generic service error - only for non-AppError types
 	appErr := NewErrorWithInternal(ErrSystemError, "Service operation failed", err)
 	h.logError(appErr, operation, context)
 	return appErr
@@ -179,20 +165,20 @@ func (h *HandlerErrorHandler) Handle(err error, operation string, context map[st
 		return nil
 	}
 	
-	// Check if it's already our AppError - just pass it through
+	// CRITICAL: Check if it's already our AppError - PASS THROUGH UNCHANGED
 	if appErr, ok := IsAppError(err); ok {
 		h.logError(appErr, operation, context)
-		return appErr
+		return appErr // DON'T CREATE NEW ERROR
 	}
 	
-	// Handle JSON decode errors
+	// Handle JSON decode errors - only for raw errors
 	if strings.Contains(err.Error(), "json") || strings.Contains(err.Error(), "decode") {
 		appErr := NewErrorWithInternal(ErrInvalidInput, "Invalid JSON format", err)
 		h.logError(appErr, operation, context)
 		return appErr
 	}
 	
-	// Generic handler error
+	// Generic handler error - only for non-AppError types
 	appErr := NewErrorWithInternal(ErrSystemError, "Request processing failed", err)
 	h.logError(appErr, operation, context)
 	return appErr
@@ -216,11 +202,3 @@ func (h *HandlerErrorHandler) logError(appErr *AppError, operation string, conte
 	
 	h.logger.Error("Handler error occurred", logContext)
 }
-
-
-	// Check for context errors
-	// if err == context.Canceled || err == context.DeadlineExceeded {
-	// 	appErr := ContextError(context.Background())
-	// 	h.logError(appErr, operation, context)
-	// 	return appErr
-	// }

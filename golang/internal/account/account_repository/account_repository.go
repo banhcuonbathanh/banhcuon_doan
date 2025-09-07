@@ -50,9 +50,8 @@ func NewAccountRepository(db *sql.DB) *Repository {
 }
 
 
-// ============================================================================
-// IMPROVED IMPLEMENTATION WITH LAYER CONTEXT
-// ============================================================================
+
+
 func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error) {
 	const operation = core.OperationCreateUser
 	const table = core.TableAccounts
@@ -94,7 +93,9 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
 				"source_method":      "CreateUser", // Explicit method identification
 				"error_location":     "context_check",
 			}))
-			appErr := r.errorHandler.Handle(err, operation, table, operationCtx)
+		
+		// CRITICAL: Return AppError directly - don't wrap further
+		appErr := r.errorHandler.Handle(err, operation, table, operationCtx)
 		return account_dto.Account{}, appErr
 	}
 
@@ -127,7 +128,9 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
 				"error_location":     "build_orm_account",
 				"validation_target":  "user_struct_to_orm",
 			}))
-			appErr := r.errorHandler.Handle(err, operation, table, operationCtx)
+		
+		// CRITICAL: Return AppError directly - don't wrap further
+		appErr := r.errorHandler.Handle(err, operation, table, operationCtx)
 		return account_dto.Account{}, appErr
 	}
 
@@ -165,7 +168,9 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
 				"database_table":         table,
 				"boil_operation":         "Insert",
 			}))
-			appErr := r.errorHandler.Handle(err, operation, table, operationCtx)
+		
+		// CRITICAL: Create the correct AppError and return it directly
+		appErr := r.errorHandler.Handle(err, operation, table, operationCtx)
 		return account_dto.Account{}, appErr
 	}
 	
@@ -185,12 +190,60 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
 		"source_method":        "CreateUser",
 		"success_step":         "database_insert_complete",
 	}))
-createdUser := r.mapORMToDTO(ormAccount)
+
+	createdUser := r.mapORMToDTO(ormAccount)
 	return createdUser, nil
 }
 
+// Enhanced buildORMAccountWithContext with better error handling
+func (r *Repository) buildORMAccountWithContext(user account_dto.Account, operationCtx map[string]interface{}) (*orm.Account, error) {
+	// Add validation step logging
+	r.logger.Debug("Building ORM account from DTO", r.layerContext.MergeWithContext(map[string]interface{}{
+		"email":            maskEmail(user.Email),
+		"role":             string(user.Role),
+		"source_method":    "buildORMAccountWithContext", 
+		"validation_step":  "dto_to_orm_conversion",
+	}))
+	
+	// Perform the actual ORM building (your existing logic here)
+	ormAccount, err := r.buildORMAccount(user)
+	if err != nil {
+		// CRITICAL: Check if it's already an AppError before wrapping
+		if appErr, ok := error_system.IsAppError(err); ok {
+			// Log detailed validation error but don't wrap
+			r.logger.Error("ORM account building failed with AppError", r.layerContext.MergeWithContext(map[string]interface{}{
+				"error_code":       appErr.Code,
+				"error_message":    appErr.Message,
+				"email":            maskEmail(user.Email),
+				"role":             string(user.Role),
+				"source_method":    "buildORMAccountWithContext",
+				"error_location":   "orm_conversion",
+			}))
+			return nil, appErr // Return AppError unchanged
+		}
+		
+		// Only wrap if it's not already an AppError
+		r.logger.Error("ORM account building failed with raw error", r.layerContext.MergeWithContext(map[string]interface{}{
+			"error":            err.Error(),
+			"email":            maskEmail(user.Email),
+			"role":             string(user.Role),
+			"source_method":    "buildORMAccountWithContext",
+			"error_location":   "orm_conversion",
+		}))
+		return nil, fmt.Errorf("failed to build ORM account: %w", err)
+	}
+	
+	r.logger.Debug("ORM account built successfully", r.layerContext.MergeWithContext(map[string]interface{}{
+		"email":           maskEmail(user.Email),
+		"role":            string(user.Role),
+		"source_method":   "buildORMAccountWithContext",
+		"success_step":    "orm_conversion_complete",
+	}))
+	
+	return ormAccount, nil
+}
 
-// Helper method to log database operations with enhanced context
+// Other helper methods remain the same...
 func (r *Repository) logDatabaseOperation(operation, table string, duration time.Duration, success bool, rowsAffected int64) {
 	// Build database context with performance metrics
 	dbCtx := r.layerContext.BuildDatabaseContext(operation, table, core.FuncCreateUser, time.Now().Add(-duration), success, rowsAffected)
@@ -223,46 +276,4 @@ func (r *Repository) determineCause(err error) string {
 		return core.CauseDatabaseError
 	}
 }
-
-
-
-
-// new stary
-
-func (r *Repository) buildORMAccountWithContext(user account_dto.Account, operationCtx map[string]interface{}) (*orm.Account, error) {
-	// Add validation step logging
-	r.logger.Debug("Building ORM account from DTO", r.layerContext.MergeWithContext(map[string]interface{}{
-		"email":            maskEmail(user.Email),
-		"role":             string(user.Role),
-		"source_method":    "buildORMAccountWithContext", 
-		"validation_step":  "dto_to_orm_conversion",
-	}))
-	
-	// Perform the actual ORM building (your existing logic here)
-	ormAccount, err := r.buildORMAccount(user)
-	if err != nil {
-		// Log detailed validation error
-		r.logger.Error("ORM account building failed", r.layerContext.MergeWithContext(map[string]interface{}{
-			"error":            err.Error(),
-			"email":            maskEmail(user.Email),
-			"role":             string(user.Role),
-			"source_method":    "buildORMAccountWithContext",
-			"error_location":   "orm_conversion",
-		}))
-		return nil, fmt.Errorf("failed to build ORM account: %w", err)
-	}
-	
-	r.logger.Debug("ORM account built successfully", r.layerContext.MergeWithContext(map[string]interface{}{
-		"email":           maskEmail(user.Email),
-		"role":            string(user.Role),
-		"source_method":   "buildORMAccountWithContext",
-		"success_step":    "orm_conversion_complete",
-	}))
-	
-	return ormAccount, nil
-}
-
-
-// new done
-
-
+// new 131313131313
