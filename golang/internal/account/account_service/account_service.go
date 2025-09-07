@@ -15,7 +15,6 @@ import (
 	utils_config "english-ai-full/utils/config"
 
 	"github.com/go-playground/validator"
-
 )
 
 // AccountService implements the main service structure with all account-related functionality
@@ -25,7 +24,7 @@ type AccountService struct {
 	tokenMaker    account_interface.TokenMakerInterface
 	passwordHash  account_interface.PasswordHasherInterface
 	emailService  account_interface.EmailServiceInterface
-	errorHandler *error_system.ServiceErrorHandler
+	errorHandler  *error_system.ServiceErrorHandler
 	config        *utils_config.Config
 	domain        string
 	layerContext  *common.ServiceLayerContext
@@ -46,13 +45,14 @@ func NewAccountService(
 	// Create logger using layer context - it will be pre-configured
 	logger := layerContext.NewServiceLogger()
 	errorHandler := error_system.NewServiceErrorHandler(logger, "account")
+	
 	return &AccountService{
 		userRepo:     userRepo,
 		tokenMaker:   tokenMaker,
 		passwordHash: passwordHash,
 		emailService: emailService,
 		logger:       logger,
-	errorHandler: errorHandler,
+		errorHandler: errorHandler,
 		config:       utils_config.GetConfig(),
 		domain:       "account",
 		layerContext: layerContext,
@@ -67,10 +67,10 @@ func (s *AccountService) CreateUser(ctx context.Context, req *account.AccountReq
 	
 	// Build operation context using service layer context
 	operationCtx := s.layerContext.BuildOperationContext(operation, map[string]interface{}{
-		"email": maskEmail(req.Email), // Use masked email for security
-		"role":  req.Role,
+		"email":     maskEmail(req.Email), // Use masked email for security
+		"role":      req.Role,
 		"branch_id": req.BranchId,
-		"owner_id": req.OwnerId,
+		"owner_id":  req.OwnerId,
 	})
 
 	// Set operation in logger
@@ -78,18 +78,18 @@ func (s *AccountService) CreateUser(ctx context.Context, req *account.AccountReq
 
 	// Log operation start with enhanced context
 	s.logger.Info(core.MsgOperationStarted, s.layerContext.MergeWithContext(map[string]interface{}{
-		"operation":    operation,
-		"target_user":  maskEmail(req.Email),
+		"operation":      operation,
+		"target_user":    maskEmail(req.Email),
 		"requested_role": req.Role,
-		"branch_id":    req.BranchId,
+		"branch_id":      req.BranchId,
 	}))
 
 	// Context cancellation check
 	if err := ctx.Err(); err != nil {
-		s.logger.ErrorWithCause(core.MsgContextError, core.CauseContextCancelled, 
+		s.logger.ErrorWithCause(core.MsgContextError, core.CauseContextCancelled,
 			core.LayerService, operation, s.layerContext.MergeWithContext(operationCtx))
 
-				appErr := s.errorHandler.Handle(err, operation, operationCtx)
+		appErr := s.errorHandler.Handle(err, operation, operationCtx)
 		return nil, appErr
 	}
 
@@ -105,8 +105,8 @@ func (s *AccountService) CreateUser(ctx context.Context, req *account.AccountReq
 
 	// Log validation success
 	s.logger.Info("Request validation completed successfully", s.layerContext.MergeWithContext(map[string]interface{}{
-		"operation": operation,
-		"email": maskEmail(req.Email),
+		"operation":              operation,
+		"email":                  maskEmail(req.Email),
 		"validation_duration_ms": time.Since(startTime).Milliseconds(),
 	}))
 
@@ -126,33 +126,33 @@ func (s *AccountService) CreateUser(ctx context.Context, req *account.AccountReq
 	// Hash password if password hasher is available
 	if s.passwordHash != nil {
 		hashStartTime := time.Now()
-		
+
 		s.logger.Debug("Starting password hashing", s.layerContext.MergeWithContext(map[string]interface{}{
 			"operation": operation,
-			"email": maskEmail(req.Email),
+			"email":     maskEmail(req.Email),
 		}))
 
 		hashedPassword, err := s.passwordHash.HashPassword(userDTO.Password)
 		if err != nil {
 			operationCtx["hash_error"] = "failed to hash password"
-			
+
 			s.logger.ErrorWithCause("Password hashing failed", "password_hash_error",
 				core.LayerService, operation, s.layerContext.MergeWithContext(map[string]interface{}{
-					"email": maskEmail(req.Email),
+					"email":            maskEmail(req.Email),
 					"hash_duration_ms": time.Since(hashStartTime).Milliseconds(),
-					"error": err.Error(),
+					"error":            err.Error(),
 				}))
-			
+
 			// Use ServiceErrorManager to handle this as a system error
-		appErr := s.errorHandler.Handle(err, operation, operationCtx)
+			appErr := s.errorHandler.Handle(err, operation, operationCtx)
 			return nil, appErr
 		}
-		
+
 		userDTO.Password = hashedPassword
-		
+
 		s.logger.Debug("Password hashing completed", s.layerContext.MergeWithContext(map[string]interface{}{
-			"operation": operation,
-			"email": maskEmail(req.Email),
+			"operation":        operation,
+			"email":            maskEmail(req.Email),
 			"hash_duration_ms": time.Since(hashStartTime).Milliseconds(),
 		}))
 	}
@@ -160,11 +160,11 @@ func (s *AccountService) CreateUser(ctx context.Context, req *account.AccountReq
 	// Log repository call attempt
 	repoStartTime := time.Now()
 	s.logger.Info("Calling repository to create user", s.layerContext.MergeWithContext(map[string]interface{}{
-		"operation": operation,
-		"target_layer": core.LayerRepository,
+		"operation":       operation,
+		"target_layer":    core.LayerRepository,
 		"target_function": core.FuncCreateUser,
-		"email": maskEmail(req.Email),
-		"role": req.Role,
+		"email":           maskEmail(req.Email),
+		"role":            req.Role,
 	}))
 
 	// Call repository to create user with DTO
@@ -172,31 +172,43 @@ func (s *AccountService) CreateUser(ctx context.Context, req *account.AccountReq
 	if err != nil {
 		operationCtx["repository_error"] = "failed to create user in repository"
 		operationCtx["repository_duration_ms"] = time.Since(repoStartTime).Milliseconds()
-		
-		// Enhanced error logging with repository context
-		s.logger.ErrorWithDomainAndCause("Repository call failed", s.layerContext.Domain, 
-			core.CauseDatabaseError, core.LayerService, operation, 
-			s.layerContext.MergeWithContext(map[string]interface{}{
-				"target_layer": core.LayerRepository,
-				"target_function": core.FuncCreateUser,
-				"email": maskEmail(req.Email),
+
+		// CRITICAL: Check if it's already our AppError - DON'T WRAP IT
+		if appErr, ok := error_system.IsAppError(err); ok {
+			s.logger.Error("Repository returned AppError, passing through", s.layerContext.MergeWithContext(map[string]interface{}{
+				"error_code":             appErr.Code,
+				"error_message":          appErr.Message,
+				"email":                  maskEmail(req.Email),
 				"repository_duration_ms": time.Since(repoStartTime).Milliseconds(),
-				"total_duration_ms": time.Since(startTime).Milliseconds(),
-				"error": err.Error(),
+				"total_duration_ms":      time.Since(startTime).Milliseconds(),
 			}))
-		
-appErr := s.errorHandler.Handle(err, operation, operationCtx)
+			return nil, appErr // Pass through unchanged
+		}
+
+		// Enhanced error logging with repository context - only for raw errors
+		s.logger.ErrorWithDomainAndCause("Repository call failed", s.layerContext.Domain,
+			core.CauseDatabaseError, core.LayerService, operation,
+			s.layerContext.MergeWithContext(map[string]interface{}{
+				"target_layer":           core.LayerRepository,
+				"target_function":        core.FuncCreateUser,
+				"email":                  maskEmail(req.Email),
+				"repository_duration_ms": time.Since(repoStartTime).Milliseconds(),
+				"total_duration_ms":      time.Since(startTime).Milliseconds(),
+				"error":                  err.Error(),
+			}))
+
+		appErr := s.errorHandler.Handle(err, operation, operationCtx)
 		return nil, appErr
 	}
 
 	// Log successful repository call
 	repositoryDuration := time.Since(repoStartTime)
 	s.logger.Info("Repository call completed successfully", s.layerContext.MergeWithContext(map[string]interface{}{
-		"operation": operation,
-		"target_layer": core.LayerRepository,
-		"target_function": core.FuncCreateUser,
-		"user_id": createdUser.ID,
-		"email": maskEmail(createdUser.Email),
+		"operation":              operation,
+		"target_layer":           core.LayerRepository,
+		"target_function":        core.FuncCreateUser,
+		"user_id":                createdUser.ID,
+		"email":                  maskEmail(createdUser.Email),
 		"repository_duration_ms": repositoryDuration.Milliseconds(),
 	}))
 
@@ -208,13 +220,13 @@ appErr := s.errorHandler.Handle(err, operation, operationCtx)
 	// Log main operation success
 	totalDuration := time.Since(startTime)
 	s.logger.Info(core.MsgOperationCompleted, s.layerContext.MergeWithContext(map[string]interface{}{
-		"operation": operation,
-		"user_id": createdUser.ID,
-		"email": maskEmail(createdUser.Email),
-		"role": createdUser.Role,
-		"branch_id": createdUser.BranchID,
-		"success": true,
-		"duration_ms": totalDuration.Milliseconds(),
+		"operation":              operation,
+		"user_id":                createdUser.ID,
+		"email":                  maskEmail(createdUser.Email),
+		"role":                   createdUser.Role,
+		"branch_id":              createdUser.BranchID,
+		"success":                true,
+		"duration_ms":            totalDuration.Milliseconds(),
 		"repository_duration_ms": repositoryDuration.Milliseconds(),
 	}))
 
@@ -222,30 +234,30 @@ appErr := s.errorHandler.Handle(err, operation, operationCtx)
 	if s.emailService != nil {
 		s.logger.Debug("Initiating welcome email send", s.layerContext.MergeWithContext(map[string]interface{}{
 			"operation": "send_welcome_email",
-			"user_id": createdUser.ID,
-			"email": maskEmail(createdUser.Email),
-			"async": true,
+			"user_id":   createdUser.ID,
+			"email":     maskEmail(createdUser.Email),
+			"async":     true,
 		}))
 
 		go func() {
 			emailStartTime := time.Now()
 			emailCtx := context.Background()
-			
+
 			if err := s.emailService.SendWelcomeEmail(emailCtx, createdUser.Email, createdUser.Name); err != nil {
 				s.logger.ErrorWithCause("Welcome email send failed", core.CauseEmailSendFailed,
 					core.LayerService, "send_welcome_email", s.layerContext.MergeWithContext(map[string]interface{}{
-						"user_id": createdUser.ID,
-						"email": maskEmail(createdUser.Email),
-						"email_duration_ms": time.Since(emailStartTime).Milliseconds(),
-						"error": err.Error(),
+						"user_id":            createdUser.ID,
+						"email":              maskEmail(createdUser.Email),
+						"email_duration_ms":  time.Since(emailStartTime).Milliseconds(),
+						"error":              err.Error(),
 					}))
 			} else {
 				s.logger.Info("Welcome email sent successfully", s.layerContext.MergeWithContext(map[string]interface{}{
-					"operation": "send_welcome_email",
-					"user_id": createdUser.ID,
-					"email": maskEmail(createdUser.Email),
-					"email_duration_ms": time.Since(emailStartTime).Milliseconds(),
-					"success": true,
+					"operation":          "send_welcome_email",
+					"user_id":            createdUser.ID,
+					"email":              maskEmail(createdUser.Email),
+					"email_duration_ms":  time.Since(emailStartTime).Milliseconds(),
+					"success":            true,
 				}))
 			}
 		}()
@@ -263,19 +275,19 @@ func maskEmail(email string) string {
 	if email == "" {
 		return ""
 	}
-	
+
 	parts := strings.Split(email, "@")
 	if len(parts) != 2 {
 		return "invalid_email"
 	}
-	
+
 	username := parts[0]
 	domain := parts[1]
-	
+
 	if len(username) <= 2 {
 		return "**@" + domain
 	}
-	
+
 	maskedUsername := username[:2] + strings.Repeat("*", len(username)-2)
 	return maskedUsername + "@" + domain
 }
@@ -283,20 +295,20 @@ func maskEmail(email string) string {
 // Updated handleServiceSuccess method to use enhanced logging
 func (s *AccountService) handleServiceSuccess(operation string, operationCtx map[string]interface{}, startTime time.Time) {
 	duration := time.Since(startTime)
-	
+
 	// Update context with success metrics
 	successCtx := s.layerContext.MergeWithContext(operationCtx)
 	successCtx["success"] = true
 	successCtx["duration_ms"] = duration.Milliseconds()
 	successCtx["timestamp"] = time.Now().UTC().Format(time.RFC3339)
-	
+
 	s.logger.Info("Service operation completed successfully", successCtx)
 }
 
 // Helper method to determine error cause
 func (s *AccountService) determineErrorCause(err error) string {
 	errStr := strings.ToLower(err.Error())
-	
+
 	switch {
 	case strings.Contains(errStr, "network") || strings.Contains(errStr, "connection"):
 		return core.CauseNetworkError
