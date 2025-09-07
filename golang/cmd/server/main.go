@@ -11,7 +11,7 @@ import (
 
 	"english-ai-full/internal/account/account_handler" // Add this import
 	"english-ai-full/internal/branch"
-	errorcustom "english-ai-full/error_custom" // Fix import name
+
 	branchpb "english-ai-full/internal/proto_qr/branch"
 	delivery "english-ai-full/internal/delivery"
 	order "english-ai-full/internal/order"
@@ -64,7 +64,7 @@ func main() {
 	}
 
 	// Setup ONLY basic global middleware (no JWT here)
-	setupGlobalMiddleware(r, cfg)
+	// setupGlobalMiddleware(r, cfg)
 
 	/**
 	python server
@@ -178,25 +178,25 @@ func Start(addr string, r *chi.Mux) error {
 }
 
 // setupGlobalMiddleware sets up ONLY basic global middleware (NO JWT here)
-func setupGlobalMiddleware(r *chi.Mux, cfg *utils_config.Config) {
-	// Core error handling middleware
-	r.Use(errorcustom.RequestIDMiddleware)
-	r.Use(errorcustom.LogHTTPMiddleware)
-	r.Use(errorcustom.RecoveryMiddleware)
+// func setupGlobalMiddleware(r *chi.Mux, cfg *utils_config.Config) {
+// 	// Core error handling middleware
+// 	r.Use(errorcustom.RequestIDMiddleware)
+// 	r.Use(errorcustom.LogHTTPMiddleware)
+// 	r.Use(errorcustom.RecoveryMiddleware)
 
-	// Environment-specific middleware
-	if cfg.Environment == "development" {
-		r.Use(errorcustom.DebugMiddleware) // Fixed function name
-	}
+// 	// Environment-specific middleware
+// 	if cfg.Environment == "development" {
+// 		r.Use(errorcustom.DebugMiddleware) // Fixed function name
+// 	}
 
-	// ❌ REMOVED: JWT middleware is NO LONGER applied globally
-	// if cfg.JWT.SecretKey != "" {
-	//     r.Use(errorcustom.JWTValidationMiddleware(cfg.JWT.SecretKey))
-	// }
+// 	// ❌ REMOVED: JWT middleware is NO LONGER applied globally
+// 	// if cfg.JWT.SecretKey != "" {
+// 	//     r.Use(errorcustom.JWTValidationMiddleware(cfg.JWT.SecretKey))
+// 	// }
 
-	// Domain context middleware
-	// r.Use(errorcustom.DomainContextMiddleware)
-}
+// 	// Domain context middleware
+// 	// r.Use(errorcustom.DomainContextMiddleware)
+// }
 
 func setupDomainHandlers(r *chi.Mux, conn *grpc.ClientConn, cfg *utils_config.Config) {
 	// Account domain with error handling
@@ -230,10 +230,10 @@ func StartWithErrorHandling(addr string, r *chi.Mux, cfg *utils_config.Config) {
 
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		// Enhanced error logging with context using fixed function name
-		errorcustom.LogCriticalError("server_startup_failed", map[string]interface{}{
-			"address": addr,
-			"error":   err.Error(),
-		})
+		// errorcustom.LogCriticalError("server_startup_failed", map[string]interface{}{
+		// 	"address": addr,
+		// 	"error":   err.Error(),
+		// })
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }

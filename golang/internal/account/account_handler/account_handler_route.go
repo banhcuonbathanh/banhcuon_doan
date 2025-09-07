@@ -5,8 +5,8 @@ package account_handler
 import (
 	"net/http"
 
-	errorcustom "english-ai-full/error_custom"
-	utils_config "english-ai-full/utils/config"
+
+	// utils_config "english-ai-full/utils/config"
 
 	"github.com/go-chi/chi"
 )
@@ -47,10 +47,10 @@ func RegisterRoutesAccountHandler(r *chi.Mux, accountHandler *AccountHandler) {
 			
 			// PROTECTED password routes (WITH JWT middleware)
 			r.Group(func(r chi.Router) {
-				cfg := utils_config.GetConfig()
-				if cfg != nil && cfg.JWT.SecretKey != "" {
-					r.Use(errorcustom.JWTValidationMiddleware(cfg.JWT.SecretKey))
-				}
+				// cfg := utils_config.GetConfig()
+				// if cfg != nil && cfg.JWT.SecretKey != "" {
+				// 	r.Use(errorcustom.JWTValidationMiddleware(cfg.JWT.SecretKey))
+				// }
 				// r.Put("/change", accountHandler.ChangePassword)
 			})
 		})
@@ -64,10 +64,10 @@ func RegisterRoutesAccountHandler(r *chi.Mux, accountHandler *AccountHandler) {
 		// PROTECTED user management routes (WITH JWT middleware)
 		r.Group(func(r chi.Router) {
 			// Apply JWT middleware only to this group
-			cfg := utils_config.GetConfig()
-			if cfg != nil && cfg.JWT.SecretKey != "" {
-				r.Use(errorcustom.JWTValidationMiddleware(cfg.JWT.SecretKey))
-			}
+			// cfg := utils_config.GetConfig()
+			// if cfg != nil && cfg.JWT.SecretKey != "" {
+			// 	r.Use(errorcustom.JWTValidationMiddleware(cfg.JWT.SecretKey))
+			// }
 			// Alternative: if you have the auth middleware package working:
 			// r.Use(auth.AuthMiddleware)
 			

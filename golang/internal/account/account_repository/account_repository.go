@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	error_custom "english-ai-full/error_custom"
+	"english-ai-full/error_system"
 	common "english-ai-full/internal"
 	"english-ai-full/internal/account"
 	"english-ai-full/internal/account/account_dto"
@@ -25,7 +25,7 @@ var _ account.AccountRepositoryInterface = (*Repository)(nil)
 type Repository struct {
 	db           *sql.DB
 	logger       *core.CoreLogger
-	errorHandler *error_custom.RepositoryErrorManager
+		errorHandler *error_system.RepositoryErrorHandler
 	config       *utils_config.Config
 	layerContext *common.RepositoryLayerContext
 }
@@ -36,14 +36,14 @@ func NewAccountRepository(db *sql.DB) *Repository {
 	
 	// Create logger using layer context - it will be pre-configured
 	logger := layerContext.NewRepositoryLogger()
-	
+		errorHandler := error_system.NewRepositoryErrorHandler(logger, "account")
 	// Enable enhanced error tracking with stack traces
 	logger.SetStackCapture(true, 3) // Capture 3 stack frames for better context
 	
 	return &Repository{
 		db:           db,
 		logger:       logger,
-		errorHandler: error_custom.NewRepositoryErrorManager(),
+			errorHandler: errorHandler,
 		config:       utils_config.GetConfig(),
 		layerContext: layerContext,
 	}
@@ -94,8 +94,8 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
 				"source_method":      "CreateUser", // Explicit method identification
 				"error_location":     "context_check",
 			}))
-		
-		return account_dto.Account{}, r.handleContextError(ctx, operation, table, operationCtx)
+			appErr := r.errorHandler.Handle(err, operation, table, operationCtx)
+		return account_dto.Account{}, appErr
 	}
 
 	// Log validation start with layer context
@@ -127,8 +127,8 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
 				"error_location":     "build_orm_account",
 				"validation_target":  "user_struct_to_orm",
 			}))
-		
-		return account_dto.Account{}, r.wrapErrorWithContext(err, operation, table, operationCtx, &startTime, "build_orm_account")
+			appErr := r.errorHandler.Handle(err, operation, table, operationCtx)
+		return account_dto.Account{}, appErr
 	}
 
 	// Log insert attempt with enhanced context
@@ -165,8 +165,8 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
 				"database_table":         table,
 				"boil_operation":         "Insert",
 			}))
-		
-		return account_dto.Account{}, r.wrapErrorWithContext(err, operation, table, operationCtx, &startTime, "database_insert")
+			appErr := r.errorHandler.Handle(err, operation, table, operationCtx)
+		return account_dto.Account{}, appErr
 	}
 	
 	duration := time.Since(startTime)
@@ -185,8 +185,8 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
 		"source_method":        "CreateUser",
 		"success_step":         "database_insert_complete",
 	}))
-
-	return r.handleInsertSuccess(ormAccount, operation, table, operationCtx, startTime), nil
+createdUser := r.mapORMToDTO(ormAccount)
+	return createdUser, nil
 }
 
 
@@ -224,25 +224,7 @@ func (r *Repository) determineCause(err error) string {
 	}
 }
 
-// Enhanced error handling with layer context
-func (r *Repository) handleContextError(ctx context.Context, operation, table string, operationCtx map[string]interface{}) error {
-	if ctx.Err() == context.Canceled {
-		r.logger.ErrorWithCause(core.MsgContextCancelled, core.CauseContextCancelled, core.LayerRepository, operation,
-			r.layerContext.MergeWithContext(operationCtx))
-	} else if ctx.Err() == context.DeadlineExceeded {
-		r.logger.ErrorWithCause(core.MsgContextTimeout, core.CauseContextTimeout, core.LayerRepository, operation,
-			r.layerContext.MergeWithContext(operationCtx))
-	}
-	
-	// Use HandleDatabaseError instead of WrapRepositoryError
-	return r.errorHandler.HandleDatabaseError(
-		ctx.Err(),           // the original context error
-		r.layerContext.Domain, // domain from layer context
-		table,               // table name
-		operation,           // operation name
-		operationCtx,        // operation context
-	)
-}
+
 
 
 // new stary
@@ -284,37 +266,3 @@ func (r *Repository) buildORMAccountWithContext(user account_dto.Account, operat
 // new done
 
 
-
-// wrapErrorWithContext wraps errors with enhanced context information
-func (r *Repository) wrapErrorWithContext(err error, operation, table string, operationCtx map[string]interface{}, startTime *time.Time, errorLocation string) error {
-	duration := time.Since(*startTime)
-	
-	// Create enhanced error context
-	errorCtx := make(map[string]interface{})
-	for k, v := range operationCtx {
-		errorCtx[k] = v
-	}
-	
-	// Add error-specific context
-	errorCtx["error_duration_ms"] = duration.Milliseconds()
-	errorCtx["error_location"] = errorLocation
-	errorCtx["error_timestamp"] = time.Now().Format(time.RFC3339)
-	
-	// Log the wrapped error with full context
-	r.logger.Error("Wrapping repository error with context", r.layerContext.MergeWithContext(map[string]interface{}{
-		"original_error":   err.Error(),
-		"error_location":   errorLocation,
-		"duration_ms":      duration.Milliseconds(),
-		"operation":        operation,
-		"table":            table,
-		"source_method":    "wrapErrorWithContext",
-	}))
-	
-	return r.errorHandler.HandleDatabaseError(
-		err,                    // the original error
-		r.layerContext.Domain,  // domain from layer context
-		table,                  // table name
-		operation,              // operation name
-		errorCtx,              // enhanced operation context
-	)
-}

@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"english-ai-full/error_system"
 	"english-ai-full/internal"
-	error_custom "english-ai-full/error_custom"
+
 	account_interface "english-ai-full/internal/account"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/proto_qr/account"
@@ -14,7 +15,7 @@ import (
 	utils_config "english-ai-full/utils/config"
 
 	"github.com/go-playground/validator"
-	"github.com/pkg/errors"
+
 )
 
 // AccountService implements the main service structure with all account-related functionality
@@ -24,7 +25,7 @@ type AccountService struct {
 	tokenMaker    account_interface.TokenMakerInterface
 	passwordHash  account_interface.PasswordHasherInterface
 	emailService  account_interface.EmailServiceInterface
-	errorHandler  *error_custom.ServiceErrorManager
+	errorHandler *error_system.ServiceErrorHandler
 	config        *utils_config.Config
 	domain        string
 	layerContext  *common.ServiceLayerContext
@@ -44,14 +45,14 @@ func NewAccountService(
 	
 	// Create logger using layer context - it will be pre-configured
 	logger := layerContext.NewServiceLogger()
-	
+	errorHandler := error_system.NewServiceErrorHandler(logger, "account")
 	return &AccountService{
 		userRepo:     userRepo,
 		tokenMaker:   tokenMaker,
 		passwordHash: passwordHash,
 		emailService: emailService,
 		logger:       logger,
-		errorHandler: error_custom.NewServiceErrorManager(),
+	errorHandler: errorHandler,
 		config:       utils_config.GetConfig(),
 		domain:       "account",
 		layerContext: layerContext,
@@ -87,24 +88,19 @@ func (s *AccountService) CreateUser(ctx context.Context, req *account.AccountReq
 	if err := ctx.Err(); err != nil {
 		s.logger.ErrorWithCause(core.MsgContextError, core.CauseContextCancelled, 
 			core.LayerService, operation, s.layerContext.MergeWithContext(operationCtx))
-		return nil, s.errorHandler.HandleContextError(ctx, s.layerContext.Domain, operation)
+
+				appErr := s.errorHandler.Handle(err, operation, operationCtx)
+		return nil, appErr
 	}
 
 	// Input validation
 	if err := s.validator.Struct(req); err != nil {
-		validationErr := s.formatValidationError(err, req.Email)
-		operationCtx["validation_error"] = validationErr.Error()
-		
-		// Log validation failure with specific details
-		s.logger.ErrorWithCause(core.MsgValidationFailed, core.CauseStructValidationFailed,
-			core.LayerService, operation, s.layerContext.MergeWithContext(map[string]interface{}{
-				"email": maskEmail(req.Email),
-				"validation_details": validationErr.Error(),
-				"duration_ms": time.Since(startTime).Milliseconds(),
-			}))
-		
-		// Use ServiceErrorManager to wrap validation error
-		return nil, s.errorHandler.WrapRepositoryError(validationErr, s.layerContext.Domain, operation, operationCtx)
+		s.logger.Error("Request validation failed", s.layerContext.MergeWithContext(map[string]interface{}{
+			"error": err.Error(),
+			"email": maskEmail(req.Email),
+		}))
+		appErr := s.errorHandler.Handle(err, operation, operationCtx)
+		return nil, appErr
 	}
 
 	// Log validation success
@@ -148,11 +144,8 @@ func (s *AccountService) CreateUser(ctx context.Context, req *account.AccountReq
 				}))
 			
 			// Use ServiceErrorManager to handle this as a system error
-			wrappedErr := s.errorHandler.WrapRepositoryError(
-				errors.Wrap(err, "failed to hash password"), 
-				s.layerContext.Domain, operation, operationCtx,
-			)
-			return nil, wrappedErr
+		appErr := s.errorHandler.Handle(err, operation, operationCtx)
+			return nil, appErr
 		}
 		
 		userDTO.Password = hashedPassword
@@ -192,8 +185,8 @@ func (s *AccountService) CreateUser(ctx context.Context, req *account.AccountReq
 				"error": err.Error(),
 			}))
 		
-		// Use ServiceErrorManager to wrap repository error
-		return nil, s.errorHandler.WrapRepositoryError(err, s.layerContext.Domain, operation, operationCtx)
+appErr := s.errorHandler.Handle(err, operation, operationCtx)
+		return nil, appErr
 	}
 
 	// Log successful repository call
@@ -313,25 +306,3 @@ func (s *AccountService) determineErrorCause(err error) string {
 		return core.CauseServiceError
 	}
 }
-
-// Helper method to format validation errors
-func (s *AccountService) formatValidationError(err error, email string) error {
-	if validationErrors, ok := err.(validator.ValidationErrors); ok {
-		// Create a structured validation error
-		return error_custom.NewValidationError(
-			s.layerContext.Domain, 
-			validationErrors[0].Field(), 
-			"Validation failed: " + validationErrors[0].Tag(), 
-			validationErrors[0].Value(),
-		)
-	}
-	
-	// Fallback to generic validation error
-	return error_custom.NewValidationError(
-		s.layerContext.Domain,
-		"request",
-		"Request validation failed",
-		email,
-	)
-}
-// convertDTOToProto converts DTO to protobuf message

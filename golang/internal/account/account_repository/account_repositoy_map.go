@@ -1,11 +1,10 @@
 package account_repository
 
 import (
-
-	error_custom "english-ai-full/error_custom"
+	"english-ai-full/error_system"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/proto_qr/account"
-	"english-ai-full/logger/core"
+
 	"strings"
 
 	"english-ai-full/orm"
@@ -147,16 +146,17 @@ func (r *Repository) toNullStringAlways(value string) null.String {
 
 
 
+// Keep existing helper methods but simplify error handling in them
 func (r *Repository) buildORMAccount(user account_dto.Account) (*orm.Account, error) {
-	// ✅ Add validation for required fields
+	// Validation
 	if user.Email == "" {
-		return nil, error_custom.NewValidationError("account", "email", "Email is required", user.Email)
+		return nil, error_system.ValidationError("email", "Email is required")
 	}
 	if user.Name == "" {
-		return nil, error_custom.NewValidationError("account", "name", "Name is required", user.Name)
+		return nil, error_system.ValidationError("name", "Name is required") 
 	}
 	if user.Password == "" {
-		return nil, error_custom.NewValidationError("account", "password", "Password is required", "[REDACTED]")
+		return nil, error_system.ValidationError("password", "Password is required")
 	}
 
 	now := time.Now()
@@ -164,64 +164,18 @@ func (r *Repository) buildORMAccount(user account_dto.Account) (*orm.Account, er
 		BranchID:  r.toNullInt64(user.BranchID),
 		Name:      user.Name,
 		Email:     user.Email,
-		Password:  user.Password, // Should already be hashed
+		Password:  user.Password,
 		Avatar:    r.toNullString(user.Avatar),
 		Title:     r.toNullString(user.Title),
 		Role:      string(user.Role),
 		OwnerID:   r.toNullInt64(user.OwnerID),
-		Status:    r.toNullString(string(user.Status)),
+		Status:    r.toNullString(user.Status),
 		CreatedAt: null.TimeFrom(now),
 		UpdatedAt: null.TimeFrom(now),
 	}, nil
 }
 
-func (r *Repository) handleValidationError(err error, operation, table string, operationCtx map[string]interface{}) error {
-	operationCtx["error_type"] = "validation"
-	
-	// r.logger.LogDBOperation(operation, table, false, err, operationCtx)
-	
-	// Return the validation error directly since it's already properly typed
-	return err
-}
 
-func (r *Repository) handleInsertError(err error, operation, table string, operationCtx map[string]interface{}, startTime time.Time) error {
-	duration := time.Since(startTime)
-	operationCtx["duration_ms"] = duration.Milliseconds()
-	operationCtx["error_type"] = "database_insert"
-	
-	// r.logger.LogDBOperation(operation, table, false, err, operationCtx)
-	
-	return r.errorHandler.HandleDatabaseError(err, "account", table, operation, operationCtx)
-}
-
-// Enhanced success handling with layer context
-func (r *Repository) handleInsertSuccess(ormAccount interface{}, operation, table string, operationCtx map[string]interface{}, startTime time.Time) account_dto.Account {
-	// Convert ORM account to DTO (implementation depends on your ORM setup)
-	// This is a placeholder - implement according to your ORM model
-	
-	// Log final success with enhanced context
-	r.logger.Info(core.MsgOperationCompleted, r.layerContext.MergeWithContext(map[string]interface{}{
-		core.FieldOperation:  operation,
-		core.FieldTable:      table,
-		core.FieldDurationMS: time.Since(startTime).Milliseconds(),
-		core.FieldSuccess:    true,
-	}))
-	
-	// Return converted DTO (implement based on your ORM model)
-	return account_dto.Account{} // Placeholder
-}
-
-
-
-// Build operation context helper (enhanced)
-func (r *Repository) buildOperationContext(user account_dto.Account) map[string]interface{} {
-	return r.layerContext.BuildOperationContext(core.OperationCreateUser, core.TableAccounts, core.FuncCreateUser, map[string]interface{}{
-		core.FieldEmail:    maskEmail(user.Email),
-		core.FieldRole:     string(user.Role),
-		core.FieldBranchID: user.BranchID,
-		core.FieldOwnerID:  user.OwnerID,
-	})
-}
 
 
 
@@ -254,25 +208,4 @@ func maskEmail(email string) string {
 	}
 }
 
-func (r *Repository) wrapError(err error, operation, table string, context map[string]interface{}, startTime *time.Time) error {
-	if err == nil {
-		return nil
-	}
-
-	// Add timing information if provided
-	if startTime != nil {
-		context["duration_ms"] = time.Since(*startTime).Milliseconds()
-	}
-
-	// Add operation context
-	context["operation"] = operation
-	context["table"] = table
-	context["layer"] = "repository"
-
-	// Log the error
-	// r.logger.LogDBOperation(operation, table, false, err, context)
-
-	// Delegate to error handler with full context
-	return r.errorHandler.HandleDatabaseError(err, "account", table, operation, context)
-}
-
+// 

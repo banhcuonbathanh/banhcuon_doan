@@ -3,22 +3,23 @@ package account_handler
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 
+	"english-ai-full/error_system"
 	"english-ai-full/internal"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/logger/core"
 
-	error_custom "english-ai-full/error_custom"
 	pb "english-ai-full/internal/proto_qr/account"
 )
 
 type AccountHandler struct {
 	userClient      pb.AccountServiceClient
-	handlerErrorMgr *error_custom.HandlerErrorManager
+	errorHandler *error_system.HandlerErrorHandler
 	logger          *core.CoreLogger
 	layerContext    *common.HandlerLayerContext
 	validator       *validator.Validate
@@ -31,10 +32,10 @@ func NewAccountHandler(userClient pb.AccountServiceClient) *AccountHandler {
 	
 	// Create logger using layer context - it will be pre-configured
 	logger := layerContext.NewHandlerLogger()
-
+	errorHandler := error_system.NewHandlerErrorHandler(logger, "account")
 	return &AccountHandler{
 		userClient:      userClient,
-		handlerErrorMgr: error_custom.NewHandlerErrorManager(),
+		errorHandler: errorHandler,
 		logger:          logger,
 		layerContext:    layerContext,
 		validator:       validator.New(),
@@ -70,20 +71,14 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	// Context timeout check
 	if err := r.Context().Err(); err != nil {
-		h.logger.ErrorWithCause("Request context cancelled", err.Error(), core.LayerHandler, operation, 
-			h.layerContext.MergeWithContext(map[string]interface{}{
-				"request_id": requestID,
-			}))
-		h.handlerErrorMgr.RespondWithError(w, err, h.layerContext.Domain, requestID)
+		h.handleError(w, err, operation, operationCtx, startTime)
 		return
 	}
 
 	// Parse and validate request body
 	var registerRequest account_dto.CreateUserRequest
-	if err := h.handlerErrorMgr.DecodeJSONRequest(r, &registerRequest, h.layerContext.Domain, requestID); err != nil {
-		operationCtx["decode_error"] = "failed to parse request body"
-		h.logRequestEnd(requestID, http.StatusBadRequest, startTime)
-		h.handlerErrorMgr.RespondWithError(w, err, h.layerContext.Domain, requestID)
+	if err := h.decodeJSONRequest(r, &registerRequest); err != nil {
+		h.handleError(w, err, operation, operationCtx, startTime)
 		return
 	}
 
@@ -94,13 +89,20 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	// Additional request validation
 	if err := h.validator.Struct(registerRequest); err != nil {
-		h.logStructValidationError("CreateUserRequest", registerRequest, "Request validation failed")
+		h.logger.Error("Request validation failed", h.layerContext.MergeWithContext(map[string]interface{}{
+			"error": err.Error(),
+			"email": maskEmail(registerRequest.Email),
+		}))
 		
+		// Convert validator errors to our format
+		appErr := error_system.ValidationError("request", "Validation failed")
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			h.handlerErrorMgr.HandleValidationErrors(w, validationErrors, h.layerContext.Domain, requestID)
-		} else {
-			h.handlerErrorMgr.RespondWithError(w, err, h.layerContext.Domain, requestID)
+			field := validationErrors[0].Field()
+			reason := validationErrors[0].Tag()
+			appErr = error_system.ValidationError(field, reason)
 		}
+		
+		h.writeErrorResponse(w, appErr, requestID, startTime)
 		return
 	}
 	
@@ -131,20 +133,17 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	// Call service layer using CreateUser RPC
 	createdUser, err := h.userClient.CreateUser(ctx, pbRequest)
 	if err != nil {
-		// Determine appropriate HTTP status code based on error type
-		statusCode := h.getHTTPStatusFromError(err)
-		h.logRequestEnd(requestID, statusCode, startTime)
+		duration := time.Since(startTime)
+		operationCtx["duration_ms"] = duration.Milliseconds()
 		
-		// Enhanced error logging
-		h.logger.ErrorWithDomainAndCause("Service call failed", h.layerContext.Domain, err.Error(), core.LayerHandler, operation,
-			h.layerContext.MergeWithContext(map[string]interface{}{
-				"service_method": "CreateUser",
-				"email":          maskEmail(registerRequest.Email),
-				"request_id":     requestID,
-				"status_code":    statusCode,
-			}))
+		h.logger.Error("Service call failed", h.layerContext.MergeWithContext(map[string]interface{}{
+			"error":       err.Error(),
+			"email":       maskEmail(registerRequest.Email),
+			"request_id":  requestID,
+			"duration_ms": duration.Milliseconds(),
+		}))
 		
-		h.handlerErrorMgr.RespondWithError(w, err, h.layerContext.Domain, requestID)
+		h.handleError(w, err, operation, operationCtx, startTime)
 		return
 	}
 
@@ -159,15 +158,9 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	h.logRequestEnd(requestID, http.StatusCreated, startTime)
 
 	// Send successful response
-	h.handlerErrorMgr.RespondWithCreated(w, responseData, h.layerContext.Domain, requestID)
+		h.writeSuccessResponse(w, responseData, http.StatusCreated, requestID)
 	
-	// Final success log with layer context
-	h.logger.Info(core.MsgRegisterCompleted, h.layerContext.MergeWithContext(map[string]interface{}{
-		core.FieldUserID:    createdUser.Id,
-		core.FieldEmail:     maskEmail(createdUser.Email),
-		core.FieldRequestID: requestID,
-		core.FieldDurationMS: time.Since(startTime).Milliseconds(),
-	}))
+
 }
 
 // Helper methods
@@ -245,4 +238,65 @@ func maskEmail(email string) string {
 		return "***@" + email[at+1:]
 	}
 	return email[:1] + "***@" + email[at+1:]
+}
+
+
+// Add this function to your AccountHandler struct
+
+// handleError processes errors and sends appropriate HTTP responses
+func (h *AccountHandler) handleError(w http.ResponseWriter, err error, operation string, context map[string]interface{}, startTime time.Time) {
+	duration := time.Since(startTime)
+	context["duration_ms"] = duration.Milliseconds()
+
+	// Check if it's already our AppError
+	if appErr, ok := error_system.IsAppError(err); ok {
+		h.writeErrorResponse(w, appErr, context["request_id"].(string), startTime)
+		return
+	}
+
+	// Convert to AppError using our error handler
+	appErr := h.errorHandler.Handle(err, operation, context)
+	h.writeErrorResponse(w, appErr, context["request_id"].(string), startTime)
+}
+
+// writeErrorResponse sends the error response to the client
+func (h *AccountHandler) writeErrorResponse(w http.ResponseWriter, appErr *error_system.AppError, requestID string, startTime time.Time) {
+	duration := time.Since(startTime)
+	
+	// Log the error
+	h.logger.Error("Request completed with error", h.layerContext.MergeWithContext(map[string]interface{}{
+		"error_code":   appErr.Code,
+		"status_code":  appErr.HTTPStatus,
+		"request_id":   requestID,
+		"duration_ms":  duration.Milliseconds(),
+	}))
+
+	// Write the HTTP response
+	appErr.WriteHTTPResponse(w)
+}
+
+
+// Add these functions to your AccountHandler struct
+
+
+
+// decodeJSONRequest parses JSON request body into the destination struct
+func (h *AccountHandler) decodeJSONRequest(r *http.Request, dest interface{}) error {
+	if err := json.NewDecoder(r.Body).Decode(dest); err != nil {
+		return error_system.NewErrorWithInternal(error_system.ErrInvalidInput, "Invalid JSON format", err)
+	}
+	return nil
+}
+
+// writeSuccessResponse sends a successful HTTP response to the client
+func (h *AccountHandler) writeSuccessResponse(w http.ResponseWriter, data interface{}, statusCode int, requestID string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	
+	response := map[string]interface{}{
+		"success": true,
+		"data":    data,
+	}
+	
+	json.NewEncoder(w).Encode(response)
 }
