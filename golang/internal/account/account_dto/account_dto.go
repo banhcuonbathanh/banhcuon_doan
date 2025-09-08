@@ -3,46 +3,7 @@ package account_dto
 
 import "time"
 
-// Account represents a user account
-type Account struct {
-	ID        int64     `json:"id" example:"123"`
-	BranchID  int64     `json:"branch_id" example:"1"`
-	Name      string    `json:"name" example:"John Doe"`
-	Email     string    `json:"email" example:"john.doe@example.com"`
-	Avatar    string    `json:"avatar" example:"https://example.com/avatar.jpg"`
-	Title     string    `json:"title" example:"Manager"`
-	Role      Role      `json:"role" example:"admin"`
-	OwnerID   int64     `json:"owner_id" example:"1"`
-	Status    string    `json:"status" example:"active"`
-	CreatedAt time.Time `json:"created_at" example:"2023-01-01T00:00:00Z"`
-	UpdatedAt time.Time `json:"updated_at" example:"2023-01-01T00:00:00Z"`
 
-	// Add password if needed (use with care)
-	Password string `json:"password,omitempty" example:"securePass123"`
-}
-
-// Role represents user roles
-type Role string
-
-func (r Role) String() {
-	panic("unimplemented")
-}
-
-const (
-	RoleAdmin   Role = "admin"
-	RoleManager Role = "manager"
-	RoleUser    Role = "user"
-)
-
-// AccountStatus represents account status
-type AccountStatus string
-
-const (
-	StatusActive    AccountStatus = "active"
-	StatusInactive  AccountStatus = "inactive"
-	StatusSuspended AccountStatus = "suspended"
-	StatusPending   AccountStatus = "pending"
-)
 
 // PaginationInfo represents pagination metadata
 type PaginationInfo struct {
@@ -223,16 +184,7 @@ type HealthCheck struct {
 	Uptime    string            `json:"uptime" example:"72h30m"`
 }
 
-// // RegisterUserRequest represents the user registration request payload
-// // swagger:model RegisterUserRequest
-// type RegisterUserRequest struct {
-// 	Name     string `json:"name" validate:"required,min=2,max=100" example:"John Doe"`
-// 	Email    string `json:"email" validate:"required,email" example:"john.doe@example.com"`
-// 	Password string `json:"password" validate:"required" example:"SecurePass123!"`
-// }
 
-// LoginUserRes represents the login response
-// swagger:model LoginUserRes
 type LoginUserRes struct {
 	AccessToken  string               `json:"access_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
 	RefreshToken string               `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
@@ -251,3 +203,80 @@ type AccountLoginResponse struct {
 	Role     string `json:"role" example:"admin"`
 	OwnerID  int64  `json:"owner_id" example:"1"`
 }
+
+
+
+// Account represents a user account
+type Account struct {
+	ID        int64     `json:"id" example:"123"`
+	BranchID  int64     `json:"branch_id" example:"1"`
+	Name      string    `json:"name" example:"John Doe"`
+	Email     string    `json:"email" example:"john.doe@example.com"`
+	Avatar    string    `json:"avatar" example:"https://example.com/avatar.jpg"`
+	Title     string    `json:"title" example:"Manager"`
+	Role      Role      `json:"role" example:"admin"`
+	OwnerID   int64     `json:"owner_id" example:"1"`
+	Status    string    `json:"status" example:"active"`
+	CreatedAt time.Time `json:"created_at" example:"2023-01-01T00:00:00Z"`
+	UpdatedAt time.Time `json:"updated_at" example:"2023-01-01T00:00:00Z"`
+
+	// Add password if needed (use with care)
+	Password string `json:"password,omitempty" example:"securePass123"`
+}
+
+// Role represents user roles
+type Role string
+
+// String method for Role - fixed implementation
+func (r Role) String() string {
+	return string(r)
+}
+
+const (
+	RoleAdmin   Role = "admin"
+	RoleManager Role = "manager"
+	RoleUser    Role = "user"
+	RoleGuest   Role = "guest" // Added RoleGuest constant
+)
+
+// GetDefaultRole returns the default role when none is specified
+func GetDefaultRole() Role {
+	return RoleGuest
+}
+
+// IsValidRole checks if a role string is valid
+func IsValidRole(role string) bool {
+	switch Role(role) {
+	case RoleAdmin, RoleManager, RoleUser, RoleGuest:
+		return true
+	default:
+		return false
+	}
+}
+
+// NormalizeRole returns a valid role, defaulting to guest if invalid or empty
+func NormalizeRole(role string) Role {
+	if role == "" {
+		return RoleGuest
+	}
+	
+	if IsValidRole(role) {
+		return Role(role)
+	}
+	
+	return RoleGuest // Default to guest for invalid roles
+}
+
+// AccountStatus represents account status
+type AccountStatus string
+
+const (
+	StatusActive    AccountStatus = "active"
+	StatusInactive  AccountStatus = "inactive"
+	StatusSuspended AccountStatus = "suspended"
+	StatusPending   AccountStatus = "pending"
+)
+
+// Rest of the file remains the same...
+// (keeping all the other structs and types as they were)
+// new asdfasdfsadfsd

@@ -17,6 +17,10 @@ type LoginRequest struct {
 // }
 
 // CreateUserRequest represents the user creation request payload
+// internal/account/account_dto/account_dto_req.go
+
+
+// CreateUserRequest represents the user creation request payload
 type CreateUserRequest struct {
     Name     string `json:"name" validate:"required,min=2,max=100"`
     Email    string `json:"email" validate:"required,email,max=254"`
@@ -26,10 +30,27 @@ type CreateUserRequest struct {
     BranchID int64 `json:"branch_id,omitempty" validate:"omitempty"`
     Avatar   string `json:"avatar,omitempty" validate:"omitempty,url"`
     Title    string `json:"title,omitempty" validate:"omitempty,max=100"`
-    Role     string `json:"role,omitempty" validate:"omitempty,oneof=user admin moderator"`
+    Role     string `json:"role,omitempty" validate:"omitempty,oneof=user admin manager guest"` // Added guest to validation
     OwnerID  int64 `json:"owner_id,omitempty" validate:"omitempty"`
 }
 
+// GetEffectiveRole returns the role to use, defaulting to "guest" if empty
+func (r *CreateUserRequest) GetEffectiveRole() string {
+    if r.Role == "" {
+        return "guest"
+    }
+    return r.Role
+}
+
+// NormalizeFields normalizes the request fields, setting defaults where needed
+func (r *CreateUserRequest) NormalizeFields() {
+    if r.Role == "" {
+        r.Role = "guest"
+    }
+}
+
+// Rest of the file remains the same...
+// (keeping all the other request structs as they were)
 
 // UpdateUserRequest represents the user update request payload
 type UpdateUserRequest struct {
