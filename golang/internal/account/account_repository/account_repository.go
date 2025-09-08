@@ -14,6 +14,7 @@ import (
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/logger/core"
 	"english-ai-full/orm"
+	"english-ai-full/utils"
 
 	utils_config "english-ai-full/utils/config"
 
@@ -61,7 +62,7 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
 	
 	// Build operation context using layer context
 	operationCtx := r.layerContext.BuildOperationContext(operation, table, function, map[string]interface{}{
-		"email": maskEmail(user.Email),
+		"email": utils.MaskEmail(user.Email),
 		"role":  string(user.Role),
 	})
 	
@@ -73,7 +74,7 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
 		core.FieldOperation: operation,
 		core.FieldTable:     table,
 		core.FieldFunction:  function,
-		core.FieldEmail:     maskEmail(user.Email),
+		core.FieldEmail:     utils.MaskEmail(user.Email),
 	}))
 
 	// Context timeout check
@@ -103,7 +104,7 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
 	r.logger.Debug("Starting user validation", r.layerContext.MergeWithContext(map[string]interface{}{
 		core.FieldOperation: operation,
 		core.FieldFunction:  function,
-		core.FieldEmail:     maskEmail(user.Email),
+		core.FieldEmail:       utils.MaskEmail(user.Email),
 		core.FieldRole:      string(user.Role),
 		"source_method":     "CreateUser",
 		"validation_step":   "build_orm_account",
@@ -139,7 +140,7 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
 		core.FieldOperation: operation,
 		core.FieldTable:     table,
 		core.FieldFunction:  function,
-		core.FieldEmail:     maskEmail(user.Email),
+		core.FieldEmail:     utils.MaskEmail(user.Email),
 		core.FieldRole:      string(user.Role),
 		"source_method":     "CreateUser",
 		"insert_step":       "database_insert",
@@ -158,7 +159,7 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
 			r.layerContext.MergeWithContext(map[string]interface{}{
 				core.FieldError:          err.Error(),
 				core.FieldDurationMS:     duration.Milliseconds(),
-				core.FieldAttemptedEmail: maskEmail(user.Email),
+				core.FieldAttemptedEmail:   utils.MaskEmail(user.Email),
 				core.FieldAttemptedRole:  string(user.Role),
 				core.FieldTable:          table,
 				core.FieldFunction:       function,
@@ -181,7 +182,7 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
 	
 	r.logger.Info(core.MsgDatabaseInsertSuccess, r.layerContext.MergeWithContext(map[string]interface{}{
 		core.FieldUserID:       ormAccount.ID,
-		core.FieldEmail:        maskEmail(user.Email),
+		core.FieldEmail:         utils.MaskEmail(user.Email),
 		core.FieldDurationMS:   duration.Milliseconds(),
 		core.FieldRowsAffected: int64(1),
 		core.FieldOperation:    operation,
@@ -199,7 +200,7 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
 func (r *Repository) buildORMAccountWithContext(user account_dto.Account, operationCtx map[string]interface{}) (*orm.Account, error) {
 	// Add validation step logging
 	r.logger.Debug("Building ORM account from DTO", r.layerContext.MergeWithContext(map[string]interface{}{
-		"email":            maskEmail(user.Email),
+		"email":             utils.MaskEmail(user.Email),
 		"role":             string(user.Role),
 		"source_method":    "buildORMAccountWithContext", 
 		"validation_step":  "dto_to_orm_conversion",
@@ -214,7 +215,7 @@ func (r *Repository) buildORMAccountWithContext(user account_dto.Account, operat
 			r.logger.Error("ORM account building failed with AppError", r.layerContext.MergeWithContext(map[string]interface{}{
 				"error_code":       appErr.Code,
 				"error_message":    appErr.Message,
-				"email":            maskEmail(user.Email),
+				"email":             utils.MaskEmail(user.Email),
 				"role":             string(user.Role),
 				"source_method":    "buildORMAccountWithContext",
 				"error_location":   "orm_conversion",
@@ -225,7 +226,7 @@ func (r *Repository) buildORMAccountWithContext(user account_dto.Account, operat
 		// Only wrap if it's not already an AppError
 		r.logger.Error("ORM account building failed with raw error", r.layerContext.MergeWithContext(map[string]interface{}{
 			"error":            err.Error(),
-			"email":            maskEmail(user.Email),
+			"email":          utils.MaskEmail(user.Email),
 			"role":             string(user.Role),
 			"source_method":    "buildORMAccountWithContext",
 			"error_location":   "orm_conversion",
@@ -234,7 +235,7 @@ func (r *Repository) buildORMAccountWithContext(user account_dto.Account, operat
 	}
 	
 	r.logger.Debug("ORM account built successfully", r.layerContext.MergeWithContext(map[string]interface{}{
-		"email":           maskEmail(user.Email),
+		"email":          utils.MaskEmail(user.Email),
 		"role":            string(user.Role),
 		"source_method":   "buildORMAccountWithContext",
 		"success_step":    "orm_conversion_complete",

@@ -353,3 +353,31 @@ func GenerateUUID() string {
 	
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
+
+func MaskEmail(email string) string {
+	if email == "" {
+		return ""
+	}
+	
+	// Find the @ symbol
+	atIndex := strings.LastIndex(email, "@")
+	if atIndex == -1 {
+		// Invalid email format, mask everything except first and last char
+		if len(email) <= 2 {
+			return "***"
+		}
+		return email[:1] + "***" + email[len(email)-1:]
+	}
+	
+	username := email[:atIndex]
+	domain := email[atIndex:]
+	
+	// Mask username part
+	if len(username) <= 2 {
+		return "**" + domain
+	} else if len(username) <= 4 {
+		return username[:1] + "**" + username[len(username)-1:] + domain
+	} else {
+		return username[:2] + "***" + username[len(username)-1:] + domain
+	}
+}

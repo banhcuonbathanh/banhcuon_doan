@@ -5,7 +5,7 @@ import (
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/proto_qr/account"
 
-	"strings"
+	
 
 	"english-ai-full/orm"
 	"time"
@@ -180,32 +180,5 @@ func (r *Repository) buildORMAccount(user account_dto.Account) (*orm.Account, er
 
 
 // Enhanced email masking function (same as before but with better structure)
-func maskEmail(email string) string {
-	if email == "" {
-		return ""
-	}
-	
-	// Find the @ symbol
-	atIndex := strings.LastIndex(email, "@")
-	if atIndex == -1 {
-		// Invalid email format, mask everything except first and last char
-		if len(email) <= 2 {
-			return "***"
-		}
-		return email[:1] + "***" + email[len(email)-1:]
-	}
-	
-	username := email[:atIndex]
-	domain := email[atIndex:]
-	
-	// Mask username part
-	if len(username) <= 2 {
-		return "**" + domain
-	} else if len(username) <= 4 {
-		return username[:1] + "**" + username[len(username)-1:] + domain
-	} else {
-		return username[:2] + "***" + username[len(username)-1:] + domain
-	}
-}
 
 // 
