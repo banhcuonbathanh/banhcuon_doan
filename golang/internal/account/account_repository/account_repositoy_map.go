@@ -1,16 +1,17 @@
 package account_repository
 
 import (
+	"context"
 	"english-ai-full/error_system"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/proto_qr/account"
-
-	
+	"english-ai-full/utils"
 
 	"english-ai-full/orm"
 	"time"
 
 	"github.com/aarondl/null/v8"
+"github.com/aarondl/sqlboiler/v4/queries/qm"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -182,3 +183,40 @@ func (r *Repository) buildORMAccount(user account_dto.Account) (*orm.Account, er
 // Enhanced email masking function (same as before but with better structure)
 
 // 
+
+
+
+func (r *Repository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
+	const operation = "exists_by_email"
+	
+	r.logger.Debug("Checking if email exists", r.layerContext.MergeWithContext(map[string]interface{}{
+		"email": utils.MaskEmail(email),
+		"operation": operation,
+	}))
+	
+	// Context timeout check
+	if err := ctx.Err(); err != nil {
+		return false, r.errorHandler.Handle(err, operation, "accounts", map[string]interface{}{
+			"email": utils.MaskEmail(email),
+		})
+	}
+	
+	// Query database for existing email
+	exists, err := orm.Accounts(qm.Where("email = ?", email)).Exists(ctx, r.db)
+	if err != nil {
+		r.logger.Error("Failed to check email existence", r.layerContext.MergeWithContext(map[string]interface{}{
+			"email": utils.MaskEmail(email),
+			"error": err.Error(),
+		}))
+		return false, r.errorHandler.Handle(err, operation, "accounts", map[string]interface{}{
+			"email": utils.MaskEmail(email),
+		})
+	}
+	
+	r.logger.Debug("Email existence check completed", r.layerContext.MergeWithContext(map[string]interface{}{
+		"email": utils.MaskEmail(email),
+		"exists": exists,
+	}))
+	
+	return exists, nil
+}

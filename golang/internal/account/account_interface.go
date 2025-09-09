@@ -18,6 +18,7 @@ import (
 type AccountRepositoryInterface interface {
 	// User management
 	CreateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
+		ExistsByEmail(ctx context.Context, email string) (bool, error) 
 	// Register(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
 	// FindByEmail(ctx context.Context, email string) (account_dto.Account, error)
 	// FindByID(ctx context.Context, id int64) (account_dto.Account, error)
