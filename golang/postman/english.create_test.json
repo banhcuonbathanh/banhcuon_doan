@@ -590,12 +590,10 @@
 						"method": "POST",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:8888/users/logout",
-							"protocol": "http",
+							"raw": "{{base_url}}/users/logout",
 							"host": [
-								"localhost"
+								"{{base_url}}"
 							],
-							"port": "8888",
 							"path": [
 								"users",
 								"logout"
