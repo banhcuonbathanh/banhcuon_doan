@@ -1,0 +1,402 @@
+{
+	"id": "3ec8e15f-7234-41e6-a522-81854edaa57d",
+	"name": "restaruant",
+	"timestamp": "2025-09-10T03:22:27.928Z",
+	"collection_id": "46758297-f9175e70-2612-4067-b107-111719e5a6a5",
+	"folder_id": 0,
+	"environment_id": "46758297-056632e4-6538-434c-bbb5-990e9dbc8028",
+	"totalPass": 12,
+	"delay": 0,
+	"persist": true,
+	"status": "error",
+	"startedAt": "2025-09-10T03:22:27.505Z",
+	"totalFail": 11,
+	"results": [
+		{
+			"id": "190cb663-3b97-4fb3-a5e2-0cc4768e3ccc",
+			"name": "Server Status Check",
+			"url": "/",
+			"time": 3,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status code is 200": true,
+				"Response contains server status": true
+			},
+			"testPassFailCounts": {
+				"Status code is 200": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response contains server status": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				3
+			],
+			"allTests": [
+				{
+					"Status code is 200": true,
+					"Response contains server status": true
+				}
+			]
+		},
+		{
+			"id": "11a016e9-42b0-4b27-b4e4-e91b2a712506",
+			"name": "Health Check",
+			"url": "http://localhost:8080/health",
+			"time": 1,
+			"responseCode": {
+				"code": 200,
+				"name": "OK"
+			},
+			"tests": {
+				"Status code is 200": true,
+				"Response contains health status": true
+			},
+			"testPassFailCounts": {
+				"Status code is 200": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response contains health status": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				1
+			],
+			"allTests": [
+				{
+					"Status code is 200": true,
+					"Response contains health status": true
+				}
+			]
+		},
+		{
+			"id": "c77ab7f5-ba45-48c6-9f24-66ab01658639",
+			"name": "Register User - Success Case ✅",
+			"url": "http://localhost:8080/accounts/auth/register",
+			"time": 2,
+			"responseCode": {
+				"code": 400,
+				"name": "Bad Request"
+			},
+			"tests": {
+				"Status code is 201": false,
+				"Response contains user data": false,
+				"Password is not returned": true
+			},
+			"testPassFailCounts": {
+				"Status code is 201": {
+					"pass": 0,
+					"fail": 1
+				},
+				"Response contains user data": {
+					"pass": 0,
+					"fail": 1
+				},
+				"Password is not returned": {
+					"pass": 1,
+					"fail": 0
+				}
+			},
+			"times": [
+				2
+			],
+			"allTests": [
+				{
+					"Status code is 201": false,
+					"Response contains user data": false,
+					"Password is not returned": true
+				}
+			]
+		},
+		{
+			"id": "188c4f84-91b3-4164-9250-0e355f76d295",
+			"name": "Register User - Email Duplication ❌",
+			"url": "http://localhost:8080/accounts/auth/register",
+			"time": 1,
+			"responseCode": {
+				"code": 400,
+				"name": "Bad Request"
+			},
+			"tests": {
+				"Status code is 400 or 409": true,
+				"Response contains error message about duplicate email": false
+			},
+			"testPassFailCounts": {
+				"Status code is 400 or 409": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response contains error message about duplicate email": {
+					"pass": 0,
+					"fail": 1
+				}
+			},
+			"times": [
+				1
+			],
+			"allTests": [
+				{
+					"Status code is 400 or 409": true,
+					"Response contains error message about duplicate email": false
+				}
+			]
+		},
+		{
+			"id": "f7872d06-40f2-4d5c-bbfd-4aff22c6a771",
+			"name": "Register User - Wrong Email Format ❌",
+			"url": "http://localhost:8080/accounts/auth/register",
+			"time": 12,
+			"responseCode": {
+				"code": 400,
+				"name": "Bad Request"
+			},
+			"tests": {
+				"Status code is 400": true,
+				"Response contains error message about invalid email": false
+			},
+			"testPassFailCounts": {
+				"Status code is 400": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response contains error message about invalid email": {
+					"pass": 0,
+					"fail": 1
+				}
+			},
+			"times": [
+				12
+			],
+			"allTests": [
+				{
+					"Status code is 400": true,
+					"Response contains error message about invalid email": false
+				}
+			]
+		},
+		{
+			"id": "015f3474-4315-479f-9d9a-1454ac2bc93e",
+			"name": "Register User - Weak Password ❌",
+			"url": "http://localhost:8080/accounts/auth/register",
+			"time": 2,
+			"responseCode": {
+				"code": 400,
+				"name": "Bad Request"
+			},
+			"tests": {
+				"Status code is 400": true,
+				"Response contains error message about weak password": false
+			},
+			"testPassFailCounts": {
+				"Status code is 400": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response contains error message about weak password": {
+					"pass": 0,
+					"fail": 1
+				}
+			},
+			"times": [
+				2
+			],
+			"allTests": [
+				{
+					"Status code is 400": true,
+					"Response contains error message about weak password": false
+				}
+			]
+		},
+		{
+			"id": "855d1d84-1ced-4369-8c5f-a34a86c7bd7e",
+			"name": "Register User - Missing Required Fields (Name) ❌",
+			"url": "http://localhost:8080/accounts/auth/register",
+			"time": 2,
+			"responseCode": {
+				"code": 400,
+				"name": "Bad Request"
+			},
+			"tests": {
+				"Status code is 400": true,
+				"Response contains error message about missing fields": false
+			},
+			"testPassFailCounts": {
+				"Status code is 400": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response contains error message about missing fields": {
+					"pass": 0,
+					"fail": 1
+				}
+			},
+			"times": [
+				2
+			],
+			"allTests": [
+				{
+					"Status code is 400": true,
+					"Response contains error message about missing fields": false
+				}
+			]
+		},
+		{
+			"id": "79367619-2f0c-4aa0-99d6-2ab4792b4b65",
+			"name": "Register User - Missing Required Fields (Email) ❌",
+			"url": "http://localhost:8080/accounts/auth/register",
+			"time": 2,
+			"responseCode": {
+				"code": 400,
+				"name": "Bad Request"
+			},
+			"tests": {
+				"Status code is 400": true,
+				"Response contains error message about missing fields": false
+			},
+			"testPassFailCounts": {
+				"Status code is 400": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response contains error message about missing fields": {
+					"pass": 0,
+					"fail": 1
+				}
+			},
+			"times": [
+				2
+			],
+			"allTests": [
+				{
+					"Status code is 400": true,
+					"Response contains error message about missing fields": false
+				}
+			]
+		},
+		{
+			"id": "dd0acc04-a191-46be-960c-8149519c35f4",
+			"name": "Register User - Missing Required Fields (Password) ❌",
+			"url": "http://localhost:8080/accounts/auth/register",
+			"time": 2,
+			"responseCode": {
+				"code": 400,
+				"name": "Bad Request"
+			},
+			"tests": {
+				"Status code is 400": true,
+				"Response contains error message about missing fields": false
+			},
+			"testPassFailCounts": {
+				"Status code is 400": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response contains error message about missing fields": {
+					"pass": 0,
+					"fail": 1
+				}
+			},
+			"times": [
+				2
+			],
+			"allTests": [
+				{
+					"Status code is 400": true,
+					"Response contains error message about missing fields": false
+				}
+			]
+		},
+		{
+			"id": "cc0dcbbf-d256-4437-bd33-e7421f6b9679",
+			"name": "Register User - Invalid JSON ❌",
+			"url": "http://localhost:8080/accounts/auth/register",
+			"time": 2,
+			"responseCode": {
+				"code": 400,
+				"name": "Bad Request"
+			},
+			"tests": {
+				"Status code is 400": true,
+				"Response contains error message about invalid JSON": false
+			},
+			"testPassFailCounts": {
+				"Status code is 400": {
+					"pass": 1,
+					"fail": 0
+				},
+				"Response contains error message about invalid JSON": {
+					"pass": 0,
+					"fail": 1
+				}
+			},
+			"times": [
+				2
+			],
+			"allTests": [
+				{
+					"Status code is 400": true,
+					"Response contains error message about invalid JSON": false
+				}
+			]
+		}
+	],
+	"count": 1,
+	"totalTime": 29,
+	"collection": {
+		"requests": [
+			{
+				"id": "190cb663-3b97-4fb3-a5e2-0cc4768e3ccc",
+				"method": "GET"
+			},
+			{
+				"id": "11a016e9-42b0-4b27-b4e4-e91b2a712506",
+				"method": "GET"
+			},
+			{
+				"id": "c77ab7f5-ba45-48c6-9f24-66ab01658639",
+				"method": "POST"
+			},
+			{
+				"id": "188c4f84-91b3-4164-9250-0e355f76d295",
+				"method": "POST"
+			},
+			{
+				"id": "f7872d06-40f2-4d5c-bbfd-4aff22c6a771",
+				"method": "POST"
+			},
+			{
+				"id": "015f3474-4315-479f-9d9a-1454ac2bc93e",
+				"method": "POST"
+			},
+			{
+				"id": "855d1d84-1ced-4369-8c5f-a34a86c7bd7e",
+				"method": "POST"
+			},
+			{
+				"id": "79367619-2f0c-4aa0-99d6-2ab4792b4b65",
+				"method": "POST"
+			},
+			{
+				"id": "dd0acc04-a191-46be-960c-8149519c35f4",
+				"method": "POST"
+			},
+			{
+				"id": "cc0dcbbf-d256-4437-bd33-e7421f6b9679",
+				"method": "POST"
+			},
+			{
+				"id": "de03787d-fd5f-49cc-953e-0ba9d86a2144",
+				"method": "POST"
+			}
+		]
+	}
+}

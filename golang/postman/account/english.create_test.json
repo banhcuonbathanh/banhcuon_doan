@@ -1,0 +1,1337 @@
+{
+	"info": {
+		"_postman_id": "14612249-7a96-4888-be2f-51c3b2f42d32",
+		"name": "Account API - Enhanced Tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "37760297",
+		"description": "Enhanced collection with comprehensive account management test cases based on Go Chi router structure"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8888",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health & Status",
+			"item": [
+				{
+					"name": "Server Status Check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains server status\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('message', 'Server is running');",
+									"    pm.expect(responseJson).to.have.property('status', 'ok');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": ["{{base_url}}"],
+							"path": [""]
+						}
+					}
+				},
+				{
+					"name": "Health Check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains health status\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('status', 'healthy');",
+									"    pm.expect(responseJson).to.have.property('service', 'account-service');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Authentication (Public)",
+			"item": [
+				{
+					"name": "Register User - Success Case ✅",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response contains user data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('email');",
+									"    pm.expect(responseJson).to.have.property('name');",
+									"});",
+									"",
+									"pm.test(\"Password is not returned\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.not.have.property('password');",
+									"});",
+									"",
+									"// Store user ID for cleanup if needed",
+									"if (pm.response.json().id) {",
+									"    pm.collectionVariables.set('created_user_id', pm.response.json().id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@example.com\",\n    \"password\": \"SecurePassword123!\",\n    \"role\": \"Employee\",\n    \"phone\": \"1234567890\",\n    \"image\": \"john.jpg\",\n    \"address\": \"123 Main St, Anytown, USA\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Register User - Email Duplication ❌",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400 or 409\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([400, 409]);",
+									"});",
+									"",
+									"pm.test(\"Response contains error message about duplicate email\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.error || responseJson.message).to.include.oneOf(['duplicate', 'exists', 'already']);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Jane Doe\",\n    \"email\": \"john.doe@example.com\",\n    \"password\": \"SecurePassword123!\",\n    \"role\": \"Employee\",\n    \"phone\": \"0987654321\",\n    \"image\": \"jane.jpg\",\n    \"address\": \"456 Oak St, Another City, USA\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Register User - Wrong Email Format ❌",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response contains error message about invalid email\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.error || responseJson.message).to.include.oneOf(['email', 'invalid', 'format']);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Invalid Email User\",\n    \"email\": \"invalid-email-format\",\n    \"password\": \"SecurePassword123!\",\n    \"role\": \"Employee\",\n    \"phone\": \"1234567890\",\n    \"image\": \"invalid.jpg\",\n    \"address\": \"789 Pine St, Test City, USA\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Register User - Weak Password ❌",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response contains error message about weak password\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.error || responseJson.message).to.include.oneOf(['password', 'weak', 'requirements', 'strong']);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Weak Password User\",\n    \"email\": \"weak.password@example.com\",\n    \"password\": \"123\",\n    \"role\": \"Employee\",\n    \"phone\": \"1234567890\",\n    \"image\": \"weak.jpg\",\n    \"address\": \"321 Elm St, Password City, USA\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Register User - Missing Required Fields (Name) ❌",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response contains error message about missing fields\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.error || responseJson.message).to.include.oneOf(['required', 'missing', 'name']);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"missing.name@example.com\",\n    \"password\": \"SecurePassword123!\",\n    \"role\": \"Employee\",\n    \"phone\": \"1234567890\",\n    \"image\": \"missing.jpg\",\n    \"address\": \"654 Maple St, Missing City, USA\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Register User - Missing Required Fields (Email) ❌",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response contains error message about missing fields\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.error || responseJson.message).to.include.oneOf(['required', 'missing', 'email']);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Missing Email User\",\n    \"password\": \"SecurePassword123!\",\n    \"role\": \"Employee\",\n    \"phone\": \"1234567890\",\n    \"image\": \"missing-email.jpg\",\n    \"address\": \"987 Cedar St, No Email City, USA\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Register User - Missing Required Fields (Password) ❌",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response contains error message about missing fields\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.error || responseJson.message).to.include.oneOf(['required', 'missing', 'password']);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Missing Password User\",\n    \"email\": \"missing.password@example.com\",\n    \"role\": \"Employee\",\n    \"phone\": \"1234567890\",\n    \"image\": \"missing-password.jpg\",\n    \"address\": \"147 Birch St, No Password City, USA\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Register User - Invalid JSON ❌",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response contains error message about invalid JSON\", function () {",
+									"    const responseText = pm.response.text();",
+									"    pm.expect(responseText).to.include.oneOf(['JSON', 'parse', 'invalid', 'syntax']);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Invalid JSON User\",\n    \"email\": \"invalid.json@example.com\",\n    \"password\": \"SecurePassword123!\",\n    \"role\": \"Employee\",\n    \"phone\": \"1234567890\",\n    \"image\": \"invalid.jpg\",\n    \"address\": \"258 Spruce St, JSON City, USA\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Login - Success Case ✅",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains token\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('token');",
+									"    pm.expect(responseJson.token).to.not.be.empty;",
+									"});",
+									"",
+									"// Store JWT token for protected endpoints",
+									"if (pm.response.json().token) {",
+									"    pm.collectionVariables.set('jwt_token', pm.response.json().token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"john.doe@example.com\",\n    \"password\": \"SecurePassword123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Login - Invalid Credentials ❌",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Response contains error message\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.error || responseJson.message).to.include.oneOf(['invalid', 'credentials', 'unauthorized']);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"john.doe@example.com\",\n    \"password\": \"WrongPassword123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Logout",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains success message\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.message).to.include.oneOf(['logout', 'success', 'signed out']);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/accounts/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "auth", "logout"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Account Management (Protected)",
+			"item": [
+				{
+					"name": "Get All Accounts",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains accounts array\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('data');",
+									"    pm.expect(responseJson.data).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Pagination info present\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('total');",
+									"    pm.expect(responseJson).to.have.property('page');",
+									"    pm.expect(responseJson).to.have.property('page_size');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/accounts?page=1&page_size=10",
+							"host": ["{{base_url}}"],
+							"path": ["accounts"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "10"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Account by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains user data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('email');",
+									"    pm.expect(responseJson).to.have.property('name');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/accounts/1",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Account",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response contains created user data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('email');",
+									"    pm.expect(responseJson).to.have.property('name');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Admin Created User\",\n    \"email\": \"admin.created@example.com\",\n    \"password\": \"SecurePassword123!\",\n    \"role\": \"Manager\",\n    \"phone\": \"1234567890\",\n    \"image\": \"admin-created.jpg\",\n    \"address\": \"789 Admin St, Management City, USA\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts",
+							"host": ["{{base_url}}"],
+							"path": ["accounts"]
+						}
+					}
+				},
+				{
+					"name": "Update Account by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains updated user data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('name', 'John Doe Updated');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"John Doe Updated\",\n    \"phone\": \"0987654321\",\n    \"address\": \"456 Updated St, New City, USA\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts/1",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "1"]
+						}
+					}
+				},
+				{
+					"name": "Delete Account by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 204\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+									"});",
+									"",
+									"pm.test(\"Account deletion confirmed\", function () {",
+									"    if (pm.response.code === 200) {",
+									"        const responseJson = pm.response.json();",
+									"        pm.expect(responseJson.message).to.include.oneOf(['deleted', 'removed', 'success']);",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/accounts/2",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "2"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Profile Management (Protected)",
+			"item": [
+				{
+					"name": "Get Current User Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains profile data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('email');",
+									"    pm.expect(responseJson).to.have.property('name');",
+									"    pm.expect(responseJson).to.have.property('role');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/accounts/profile",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Update Current User Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains updated profile data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('name');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Profile Name\",\n    \"phone\": \"9876543210\",\n    \"address\": \"789 Profile St, Profile City, USA\",\n    \"image\": \"updated-profile.jpg\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts/profile",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Change Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains success message\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.message).to.include.oneOf(['password', 'changed', 'updated', 'success']);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"current_password\": \"SecurePassword123!\",\n    \"new_password\": \"NewSecurePassword123!\",\n    \"confirm_password\": \"NewSecurePassword123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts/profile/password",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "profile", "password"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Error Handling & Edge Cases",
+			"item": [
+				{
+					"name": "Get Non-existent Account ❌",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"Response contains not found message\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.error || responseJson.message).to.include.oneOf(['not found', 'does not exist', '404']);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/accounts/99999",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "99999"]
+						}
+					}
+				},
+				{
+					"name": "Access Protected Route Without Token ❌",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Response contains unauthorized message\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.error || responseJson.message).to.include.oneOf(['unauthorized', 'token', 'authentication']);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/accounts",
+							"host": ["{{base_url}}"],
+							"path": ["accounts"]
+						}
+					}
+				},
+				{
+					"name": "Access Protected Route With Invalid Token ❌",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Response contains invalid token message\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.error || responseJson.message).to.include.oneOf(['invalid', 'token', 'unauthorized']);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "invalid.token.here",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/accounts",
+							"host": ["{{base_url}}"],
+							"path": ["accounts"]
+						}
+					}
+				},
+				{
+					"name": "Update Non-existent Account ❌",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"Response contains not found message\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.error || responseJson.message).to.include.oneOf(['not found', 'does not exist', '404']);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Non-existent User\",\n    \"phone\": \"1234567890\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts/99999",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "99999"]
+						}
+					}
+				},
+				{
+					"name": "Delete Non-existent Account ❌",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"Response contains not found message\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.error || responseJson.message).to.include.oneOf(['not found', 'does not exist', '404']);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/accounts/99999",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "99999"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Performance & Load Testing",
+			"item": [
+				{
+					"name": "Bulk Account Creation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response time is less than 2000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});",
+									"",
+									"pm.test(\"Response contains created accounts\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('created');",
+									"    pm.expect(responseJson.created).to.be.a('number');",
+									"    pm.expect(responseJson.created).to.be.above(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"accounts\": [\n        {\n            \"name\": \"Bulk User 1\",\n            \"email\": \"bulk1@example.com\",\n            \"password\": \"SecurePassword123!\",\n            \"role\": \"Employee\",\n            \"phone\": \"1234567801\",\n            \"image\": \"bulk1.jpg\",\n            \"address\": \"101 Bulk St, Test City, USA\"\n        },\n        {\n            \"name\": \"Bulk User 2\",\n            \"email\": \"bulk2@example.com\",\n            \"password\": \"SecurePassword123!\",\n            \"role\": \"Employee\",\n            \"phone\": \"1234567802\",\n            \"image\": \"bulk2.jpg\",\n            \"address\": \"102 Bulk St, Test City, USA\"\n        },\n        {\n            \"name\": \"Bulk User 3\",\n            \"email\": \"bulk3@example.com\",\n            \"password\": \"SecurePassword123!\",\n            \"role\": \"Employee\",\n            \"phone\": \"1234567803\",\n            \"image\": \"bulk3.jpg\",\n            \"address\": \"103 Bulk St, Test City, USA\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/accounts/bulk",
+							"host": ["{{base_url}}"],
+							"path": ["accounts", "bulk"]
+						}
+					}
+				},
+				{
+					"name": "Large Dataset Retrieval",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response time is acceptable for large dataset\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(5000);",
+									"});",
+									"",
+									"pm.test(\"Response contains data array\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('data');",
+									"    pm.expect(responseJson.data).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/accounts?page=1&page_size=100",
+							"host": ["{{base_url}}"],
+							"path": ["accounts"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "100"
+								}
+							]
+						}
+					}
+				}
+			]
+		}
+	]
+}
