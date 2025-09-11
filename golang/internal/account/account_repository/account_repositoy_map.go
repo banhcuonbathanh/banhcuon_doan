@@ -127,23 +127,8 @@ func (r *Repository) toNullString(value string) null.String {
 	}
 }
 
-// Alternative helper methods with different null handling logic:
 
-// toNullInt64FromPointer converts *int64 to null.Int64 (if you need pointer handling)
-func (r *Repository) toNullInt64FromPointer(value *int64) null.Int64 {
-	if value == nil {
-		return null.Int64{Valid: false}
-	}
-	return null.Int64{Int64: *value, Valid: true}
-}
 
-// toNullStringAlways converts string to null.String (always valid, even if empty)
-func (r *Repository) toNullStringAlways(value string) null.String {
-	return null.String{
-		String: value,
-		Valid:  true,
-	}
-}
 
 
 

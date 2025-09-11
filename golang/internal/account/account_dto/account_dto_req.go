@@ -1,31 +1,19 @@
 // internal/account/account_dto/account_dto_req.go
 package account_dto
 
-// LoginRequest represents the login request payload
-// swagger:model account_dto.LoginRequest
+import "fmt"
+
 type LoginRequest struct {
 	Email    string `json:"email" validate:"required,email" example:"user@example.com"`
 	Password string `json:"password" validate:"required" example:"password123"`
 }
 
-// RegisterUserRequest represents the user registration request payload
-// swagger:model account_dto.RegisterUserRequest
-// type RegisterUserRequest struct {
-// 	Name     string `json:"name" validate:"required,min=2,max=100" example:"John Doe"`
-// 	Email    string `json:"email" validate:"required,email,uniqueemail" example:"john.doe@example.com"`
-// 	Password string `json:"password" validate:"required,password" example:"SecurePass123!"`
-// }
 
-// CreateUserRequest represents the user creation request payload
-// internal/account/account_dto/account_dto_req.go
-
-
-// CreateUserRequest represents the user creation request payload
 type CreateUserRequest struct {
     Name     string `json:"name" validate:"required,min=2,max=100"`
     Email    string `json:"email" validate:"required,email,max=254"`
     Password string `json:"password" validate:"required,min=8,max=100"`
-    
+       ConfirmPassword string `json:"confirm_password" validate:"required,min=8,max=100"`
     // Optional fields - use omitempty to make them optional
     BranchID int64 `json:"branch_id,omitempty" validate:"omitempty"`
     Avatar   string `json:"avatar,omitempty" validate:"omitempty,url"`
@@ -33,7 +21,13 @@ type CreateUserRequest struct {
     Role     string `json:"role,omitempty" validate:"omitempty,oneof=user admin manager guest"` // Added guest to validation
     OwnerID  int64 `json:"owner_id,omitempty" validate:"omitempty"`
 }
-
+// ValidatePasswordMatch validates that password and confirm password match
+func (r *CreateUserRequest) ValidatePasswordMatch() error {
+    if r.Password != r.ConfirmPassword {
+        return fmt.Errorf("password and confirm password do not match")
+    }
+    return nil
+}
 // GetEffectiveRole returns the role to use, defaulting to "guest" if empty
 func (r *CreateUserRequest) GetEffectiveRole() string {
     if r.Role == "" {
@@ -110,21 +104,8 @@ type SearchUsersRequest struct {
 	SortOrder string `json:"sort_order,omitempty" example:"desc"`
 }
 
-// PaginationResponse represents pagination information
-type PaginationResponse struct {
-	Page       int32 `json:"page" example:"1"`
-	PageSize   int32 `json:"page_size" example:"10"`
-	TotalCount int64 `json:"total_count" example:"100"`
-	TotalPages int32 `json:"total_pages" example:"10"`
-	HasNext    bool  `json:"has_next" example:"true"`
-	HasPrev    bool  `json:"has_prev" example:"false"`
-}
 
-// UsersListResponse represents a paginated list of users
-type UsersListResponse struct {
-	Users      []UserProfile      `json:"users"`
-	Pagination PaginationResponse `json:"pagination"`
-}
+
 
 // SearchUsersResponse represents search results with pagination
 type SearchUsersResponse struct {
@@ -133,7 +114,7 @@ type SearchUsersResponse struct {
 	Page       int32              `json:"page" example:"1"`
 	PageSize   int32              `json:"page_size" example:"10"`
 	TotalPages int32              `json:"total_pages" example:"5"`
-	Pagination PaginationResponse `json:"pagination"`
+	Pagination PaginationInfo `json:"pagination"`
 }
 
 // APIErrorResponse represents an API error response

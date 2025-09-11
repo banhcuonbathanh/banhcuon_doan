@@ -45,6 +45,8 @@ type AppError struct {
 	Details    map[string]interface{} `json:"details,omitempty"`
 	HTTPStatus int                    `json:"-"`
 	Internal   error                  `json:"-"` // Original error for logging
+
+		
 }
 
 func (e *AppError) Error() string {

@@ -58,25 +58,6 @@ type UserResponse struct {
 	User UserProfile `json:"user"`
 }
 
-// type UserProfileResponse struct {
-// 	User UserProfile `json:"user"`
-// }
-
-// type UpdateUserResponse struct {
-// 	User    UserProfile `json:"user"`
-// 	Success bool        `json:"success"`
-// 	Message string      `json:"message,omitempty"`
-// }
-
-// type DeleteUserResponse struct {
-// 	Success bool   `json:"success"`
-// 	Message string `json:"message"`
-// }
-
-// type UsersListResponse struct {
-// 	Users []UserProfile `json:"users"`
-// 	Total int64         `json:"total"`
-// }
 
 // ===== PASSWORD MANAGEMENT RESPONSES =====
 type ChangePasswordResponse struct {
@@ -112,24 +93,6 @@ type UpdateAccountStatusResponse struct {
 	Status  string `json:"status"`
 }
 
-// ===== SEARCH AND FILTERING RESPONSES =====
-// type SearchUsersResponse struct {
-// 	Users      []UserSummary    `json:"users"`
-// 	TotalCount int64            `json:"total_count"`
-// 	Page       int32            `json:"page"`
-// 	PageSize   int32            `json:"page_size"`
-// 	TotalPages int32            `json:"total_pages"`
-// 	Pagination PaginationInfo   `json:"pagination"`
-// }
-
-// type PaginationInfo struct {
-// 	CurrentPage  int32 `json:"current_page"`
-// 	TotalPages   int32 `json:"total_pages"`
-// 	TotalItems   int64 `json:"total_items"`
-// 	ItemsPerPage int32 `json:"items_per_page"`
-// 	HasNext      bool  `json:"has_next"`
-// 	HasPrevious  bool  `json:"has_previous"`
-// }
 
 type FindByRoleResponse struct {
 	Users []UserProfile `json:"users"`
@@ -225,41 +188,6 @@ type HealthCheckResponse struct {
 	Uptime    string    `json:"uptime"`
 }
 
-// type RegisterResponse struct {
-// 	ID     int64  `json:"id"`
-// 	Name   string `json:"name"`
-// 	Email  string `json:"email"`
-// 	Status bool   `json:"status"`
-// }
-
-// type CreateUserResponse struct {
-// 	ID       int64  `json:"id"`
-// 	Name     string `json:"name"`
-// 	Email    string `json:"email"`
-// 	Avatar   string `json:"avatar"`
-// 	Title    string `json:"title"`
-// 	Role     string `json:"role"`
-// 	BranchID int64  `json:"branch_id"`
-// 	Status   string `json:"status"`
-// 	Created  bool   `json:"created"`
-// 	OwnerID int64 `json:"owner_id"`
-// }
-
-
-// type FindAccountByIDResponse struct {
-// 	ID        int64     `json:"id"`
-// 	Name      string    `json:"name"`
-// 	Email     string    `json:"email"`
-// 	Avatar    string    `json:"avatar"`
-// 	Title     string    `json:"title"`
-// 	Role      string    `json:"role"`
-// 	BranchID  int64     `json:"branch_id"`
-// 	Status    string    `json:"status"`
-// 	Created   bool      `json:"created"`
-// 	OwnerID   int64     `json:"owner_id"`
-// 	CreatedAt time.Time `json:"created_at"`
-// 	UpdatedAt time.Time `json:"updated_at"`
-// }
 
 type FindByEmailResponse struct {
     ID        int64     `json:"id"`

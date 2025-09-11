@@ -37,23 +37,7 @@ type APIResponse struct {
 	Error   string      `json:"error,omitempty" example:""`
 }
 
-// ValidationError represents field validation errors
-type ValidationError struct {
-	Field   string `json:"field" example:"email"`
-	Message string `json:"message" example:"Email is required"`
-	Tag     string `json:"tag" example:"required"`
-	Value   string `json:"value" example:""`
-}
 
-// ErrorResponse represents detailed error response
-type ErrorResponse struct {
-	Error       string            `json:"error" example:"validation_error"`
-	Message     string            `json:"message" example:"Validation failed"`
-	Code        int               `json:"code" example:"400"`
-	Details     map[string]string `json:"details,omitempty"`
-	Validations []ValidationError `json:"validations,omitempty"`
-	Timestamp   time.Time         `json:"timestamp" example:"2023-01-01T00:00:00Z"`
-}
 
 // TokenClaims represents JWT token claims
 type TokenClaims struct {

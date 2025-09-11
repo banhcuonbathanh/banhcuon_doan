@@ -1,0 +1,21 @@
+{
+	"info": {
+		"_postman_id": "14612249-7a96-4888-be2f-51c3b2f42d32",
+		"name": "Account API - Enhanced Tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "37760297",
+		"description": "Enhanced collection with comprehensive account management test cases based on Go Chi router structure"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

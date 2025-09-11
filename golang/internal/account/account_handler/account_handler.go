@@ -60,14 +60,7 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 	// Set operation in logger
 	h.logger.SetOperation(operation)
 	
-	// Log with layer context
-	h.logger.Info("=== REGISTER FUNCTION STARTED ===", h.layerContext.MergeWithContext(map[string]interface{}{
-		"test":       "logging_verification",
-		"endpoint":   r.URL.Path,
-		"method":     r.Method,
-		"request_id": requestID,
-		"client_ip":  clientIP,
-	}))
+
 
 	// Log request start with layer context
 	h.logRequestStart(requestID, r.Method, r.URL.Path, "")
@@ -108,7 +101,16 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 		h.writeErrorResponse(w, appErr, requestID, startTime)
 		return
 	}
-	
+	if err := registerRequest.ValidatePasswordMatch(); err != nil {
+    h.logger.Error("Password confirmation validation failed", h.layerContext.MergeWithContext(map[string]interface{}{
+        "error": err.Error(),
+        "email": maskEmail(registerRequest.Email),
+    }))
+    
+    appErr := error_system.ValidationError("confirm_password", "Passwords do not match")
+    h.writeErrorResponse(w, appErr, requestID, startTime)
+    return
+}
 	// Create service context with timeout
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
@@ -125,13 +127,6 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 		OwnerId:  registerRequest.OwnerID,
 	}
 
-	// Log service call attempt with layer context
-	h.logger.Info("Calling CreateUser service", h.layerContext.MergeWithContext(map[string]interface{}{
-		"service_method": "CreateUser",
-		"target_service": "UserService",
-		"email":          maskEmail(registerRequest.Email),
-		"request_id":     requestID,
-	}))
 
 	// Call service layer using CreateUser RPC
 	createdUser, err := h.userClient.CreateUser(ctx, pbRequest)
@@ -187,9 +182,3 @@ func maskEmail(email string) string {
 }
 
 
-// new asdfasdfasd
-
-// internal/account/account_handler/account_handler.go - Updated handleError method
-
-
-// ... (keep all existing code, only replacing handleError method)

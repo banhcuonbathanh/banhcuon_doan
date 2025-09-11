@@ -1,0 +1,85 @@
+{
+	"info": {
+		"_postman_id": "14612249-7a96-4888-be2f-51c3b2f42d32",
+		"name": "Account API - Enhanced Tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "37760297",
+		"description": "Enhanced collection with comprehensive account management test cases based on Go Chi router structure"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "created_user_id",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Register User - Success Case ✅",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test(\"Response contains user data\", function () {",
+							"    const responseJson = pm.response.json();",
+							"    pm.expect(responseJson).to.have.property('id');",
+							"    pm.expect(responseJson).to.have.property('email');",
+							"    pm.expect(responseJson).to.have.property('name');",
+							"});",
+							"",
+							"pm.test(\"Password is not returned\", function () {",
+							"    const responseJson = pm.response.json();",
+							"    pm.expect(responseJson).to.not.have.property('password');",
+							"    pm.expect(responseJson).to.not.have.property('confirm_password');",
+							"});",
+							"",
+							"// Store user ID for cleanup if needed",
+							"if (pm.response.json().id) {",
+							"    pm.collectionVariables.set('created_user_id', pm.response.json().id);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@example.com\",\n    \"password\": \"SecurePassword123!\",\n    \"confirm_password\": \"SecurePassword123!\",\n    \"role\": \"\",\n    \"avatar\": \"https://example.com/john.jpg\",\n    \"title\": \"Software Engineer\",\n    \"branch_id\": 1,\n    \"owner_id\": 1\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/accounts/auth/register",
+					"host": ["{{base_url}}"],
+					"path": ["accounts", "auth", "register"]
+				}
+			}
+		}
+	]
+}

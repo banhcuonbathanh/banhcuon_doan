@@ -353,3 +353,21 @@ The key things to verify:
 - ✅ Indexes on `deleted_at` columns exist for performance
 
 Let me know what each verification command shows!
+
+
+
+### Method 1: Check All Tables in public Schema (Quick & Common)
+SELECT 
+    tablename,
+    (xpath('/row/cnt/text()', 
+           query_to_xml(format('SELECT COUNT(*) AS cnt FROM %I', tablename), false, true, '')))[1]::text::int AS row_count
+FROM 
+    pg_tables 
+WHERE 
+    schemaname = 'public'
+ORDER BY 
+    tablename;
+
+# DELETE — Slower but safer in complex cases
+
+DELETE FROM accounts;
