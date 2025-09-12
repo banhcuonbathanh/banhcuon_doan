@@ -13,11 +13,9 @@ import (
 	"english-ai-full/internal/branch"
 
 	branchpb "english-ai-full/internal/proto_qr/branch"
-	delivery "english-ai-full/internal/delivery"
-	order "english-ai-full/internal/order"
+
 	pb "english-ai-full/internal/proto_qr/account"
-	ws2 "english-ai-full/internal/ws2"
-	"english-ai-full/token"
+
 	utils_config "english-ai-full/utils/config"
 
 	"github.com/go-chi/chi"
@@ -143,33 +141,33 @@ func getEnvWithDefault(key, defaultValue string) string {
 	return value
 }
 
-func SetupWs2(r chi.Router, orderHandler *order.OrderHandlerController, deliveryHandler *delivery.DeliveryHandlerController, cfg *utils_config.Config) {
-	log.Println("golang/cmd/server/main.go")
+// func SetupWs2(r chi.Router, orderHandler *order.OrderHandlerController, deliveryHandler *delivery.DeliveryHandlerController, cfg *utils_config.Config) {
+// 	log.Println("golang/cmd/server/main.go")
 
-	// Initialize the JWT token maker
-	tokenMaker := token.NewJWTMaker(cfg.JWT.SecretKey)
+// 	// Initialize the JWT token maker
+// 	tokenMaker := token.NewJWTMaker(cfg.JWT.SecretKey)
 
-	// Create message handlers
-	orderMsgHandler := ws2.NewOrderMessageHandler(orderHandler)
-	deliveryMsgHandler := ws2.NewDeliveryMessageHandler(deliveryHandler)
+// 	// Create message handlers
+// 	orderMsgHandler := ws2.NewOrderMessageHandler(orderHandler)
+// 	deliveryMsgHandler := ws2.NewDeliveryMessageHandler(deliveryHandler)
 
-	// Create a combined message handler
-	combinedHandler := ws2.NewCombinedMessageHandler(orderMsgHandler, deliveryMsgHandler)
+// 	// Create a combined message handler
+// 	combinedHandler := ws2.NewCombinedMessageHandler(orderMsgHandler, deliveryMsgHandler)
 
-	// Create and setup the hub
-	hub := ws2.NewHub(combinedHandler)
-	broadcaster := ws2.NewBroadcaster(hub)
+// 	// Create and setup the hub
+// 	hub := ws2.NewHub(combinedHandler)
+// 	broadcaster := ws2.NewBroadcaster(hub)
 
-	// Set broadcasters
-	orderMsgHandler.SetBroadcaster(broadcaster)
-	deliveryMsgHandler.SetBroadcaster(broadcaster)
+// 	// Set broadcasters
+// 	orderMsgHandler.SetBroadcaster(broadcaster)
+// 	deliveryMsgHandler.SetBroadcaster(broadcaster)
 
-	// Setup router with token maker
-	wsRouter := ws2.NewWebSocketRouter(hub, tokenMaker)
-	wsRouter.RegisterRoutes(r)
+// 	// Setup router with token maker
+// 	wsRouter := ws2.NewWebSocketRouter(hub, tokenMaker)
+// 	wsRouter.RegisterRoutes(r)
 
-	go hub.Run()
-}
+// 	go hub.Run()
+// }
 
 func Start(addr string, r *chi.Mux) error {
 	log.Printf("Starting HTTP server on %s", addr)

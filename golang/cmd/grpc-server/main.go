@@ -2,7 +2,7 @@ package main
 
 import (
 	"english-ai-full/internal/account/account_repository"
-	"english-ai-full/internal/branch"
+
 	"english-ai-full/token"
 
 	"english-ai-full/internal/account/account_service"
@@ -12,7 +12,7 @@ import (
 
 	"english-ai-full/internal/db"
 	accountpb "english-ai-full/internal/proto_qr/account"
-	branchpb "english-ai-full/internal/proto_qr/branch"
+
 	"english-ai-full/utils"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -54,8 +54,8 @@ func main() {
 	accountRepository := account_repository.NewAccountRepository(dbConn)
 	accountService := initializeAccountService(accountRepository)
 
-	branchRepository := branch.NewBranchRepository(dbConn)
-	branchService := branch.NewBranchService(branchRepository)
+	// branchRepository := branch.NewBranchRepository(dbConn)
+	// branchService := branch.NewBranchService(branchRepository)
 
 	// Use gRPC address from environment or default
 	grpcAddress := getEnvOrDefault("GRPC_ADDRESS", "0.0.0.0:50051")
@@ -69,7 +69,7 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 	accountpb.RegisterAccountServiceServer(grpcServer, accountService)
-	branchpb.RegisterBranchServiceServer(grpcServer, branchService)
+	// branchpb.RegisterBranchServiceServer(grpcServer, branchService)
 
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve gRPC: %v", err)
