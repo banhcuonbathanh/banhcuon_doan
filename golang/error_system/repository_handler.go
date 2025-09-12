@@ -33,13 +33,13 @@ func (h *RepositoryErrorHandler) Handle(err error, operation, table string, cont
 	}
 	
 	// Handle database-specific errors
-	appErr := h.handleDatabaseError(err, operation, table)
+	appErr := h.handleDatabaseError(err, )
 	h.logError(appErr, operation, table, context)
 	
 	return appErr
 }
 
-func (h *RepositoryErrorHandler) handleDatabaseError(err error, operation, table string) *AppError {
+func (h *RepositoryErrorHandler) handleDatabaseError(err error) *AppError {
 	errStr := strings.ToLower(err.Error())
 	
 	// Check for duplicate key violations - MOST SPECIFIC FIRST
@@ -186,7 +186,7 @@ func (h *RepositoryErrorHandler) HandleWithCustomMessage(err error, operation, t
 	}
 	
 	// Determine appropriate error code from database error
-	appErr := h.handleDatabaseError(err, operation, table)
+	appErr := h.handleDatabaseError(err, )
 	
 	// Override messages with custom ones
 	appErr.Message = customMessage

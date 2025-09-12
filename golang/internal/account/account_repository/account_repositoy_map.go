@@ -1,17 +1,16 @@
 package account_repository
 
 import (
-	"context"
 	"english-ai-full/error_system"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/proto_qr/account"
-	"english-ai-full/utils"
+	"english-ai-full/logger/core"
+	"strings"
 
 	"english-ai-full/orm"
 	"time"
 
 	"github.com/aarondl/null/v8"
-"github.com/aarondl/sqlboiler/v4/queries/qm"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -171,37 +170,38 @@ func (r *Repository) buildORMAccount(user account_dto.Account) (*orm.Account, er
 
 
 
-func (r *Repository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
-	const operation = "exists_by_email"
+
+// logDatabaseOperation logs database operations with performance metrics
+func (r *Repository) logDatabaseOperation(operation, table string, duration time.Duration, success bool, rowsAffected int64) {
+	// Build database context with performance metrics
+	dbCtx := r.layerContext.BuildDatabaseContext(operation, table, core.FuncCreateUser, time.Now().Add(-duration), success, rowsAffected)
 	
-	r.logger.Debug("Checking if email exists", r.layerContext.MergeWithContext(map[string]interface{}{
-		"email": utils.MaskEmail(email),
-		"operation": operation,
-	}))
-	
-	// Context timeout check
-	if err := ctx.Err(); err != nil {
-		return false, r.errorHandler.Handle(err, operation, "accounts", map[string]interface{}{
-			"email": utils.MaskEmail(email),
-		})
+	if success {
+		r.logger.Info(core.MsgDatabaseOperationSuccess, dbCtx)
+	} else {
+		r.logger.Error(core.MsgDatabaseOperationFailed, dbCtx)
 	}
-	
-	// Query database for existing email
-	exists, err := orm.Accounts(qm.Where("email = ?", email)).Exists(ctx, r.db)
-	if err != nil {
-		r.logger.Error("Failed to check email existence", r.layerContext.MergeWithContext(map[string]interface{}{
-			"email": utils.MaskEmail(email),
-			"error": err.Error(),
-		}))
-		return false, r.errorHandler.Handle(err, operation, "accounts", map[string]interface{}{
-			"email": utils.MaskEmail(email),
-		})
-	}
-	
-	r.logger.Debug("Email existence check completed", r.layerContext.MergeWithContext(map[string]interface{}{
-		"email": utils.MaskEmail(email),
-		"exists": exists,
-	}))
-	
-	return exists, nil
 }
+
+// determineCause determines error cause from database errors
+func (r *Repository) determineCause(err error) string {
+	errStr := strings.ToLower(err.Error())
+	
+	// Check for common database error patterns
+	switch {
+	case strings.Contains(errStr, "duplicate") || strings.Contains(errStr, "unique"):
+		if strings.Contains(errStr, "email") {
+			return core.CauseDuplicateEmail
+		}
+		return "duplicate_entry"
+	case strings.Contains(errStr, "timeout"):
+		return core.CauseTimeout
+	case strings.Contains(errStr, "connection"):
+		return core.CauseNetworkError
+	case strings.Contains(errStr, "constraint"):
+		return "constraint_violation"
+	default:
+		return core.CauseDatabaseError
+	}
+}
+// new 12341231231
