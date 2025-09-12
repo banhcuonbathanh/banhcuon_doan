@@ -5,7 +5,8 @@ import (
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/proto_qr/account"
 	"english-ai-full/logger/core"
-	"strings"
+
+	// "strings"
 
 	"english-ai-full/orm"
 	"time"
@@ -183,25 +184,25 @@ func (r *Repository) logDatabaseOperation(operation, table string, duration time
 	}
 }
 
-// determineCause determines error cause from database errors
-func (r *Repository) determineCause(err error) string {
-	errStr := strings.ToLower(err.Error())
+// // determineCause determines error cause from database errors
+// func (r *Repository) determineCause(err error) string {
+// 	errStr := strings.ToLower(err.Error())
 	
-	// Check for common database error patterns
-	switch {
-	case strings.Contains(errStr, "duplicate") || strings.Contains(errStr, "unique"):
-		if strings.Contains(errStr, "email") {
-			return core.CauseDuplicateEmail
-		}
-		return "duplicate_entry"
-	case strings.Contains(errStr, "timeout"):
-		return core.CauseTimeout
-	case strings.Contains(errStr, "connection"):
-		return core.CauseNetworkError
-	case strings.Contains(errStr, "constraint"):
-		return "constraint_violation"
-	default:
-		return core.CauseDatabaseError
-	}
-}
-// new 12341231231
+// 	// Check for common database error patterns
+// 	switch {
+// 	case strings.Contains(errStr, "duplicate") || strings.Contains(errStr, "unique"):
+// 		if strings.Contains(errStr, "email") {
+// 			return core.CauseDuplicateEmail
+// 		}
+// 		return "duplicate_entry"
+// 	case strings.Contains(errStr, "timeout"):
+// 		return core.CauseTimeout
+// 	case strings.Contains(errStr, "connection"):
+// 		return core.CauseNetworkError
+// 	case strings.Contains(errStr, "constraint"):
+// 		return "constraint_violation"
+// 	default:
+// 		return core.CauseDatabaseError
+// 	}
+// }
+// // new 12341231231
