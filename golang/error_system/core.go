@@ -42,11 +42,10 @@ const (
 type AppError struct {
 	Code       ErrorCode              `json:"code"`
 	Message    string                 `json:"message"`
+	MessageVN  string                 `json:"message_vn"`
 	Details    map[string]interface{} `json:"details,omitempty"`
 	HTTPStatus int                    `json:"-"`
-	Internal   error                  `json:"-"` // Original error for logging
-
-		
+	Internal   error                  `json:"-"`
 }
 
 func (e *AppError) Error() string {
@@ -66,6 +65,17 @@ func NewError(code ErrorCode, message string) *AppError {
 	return &AppError{
 		Code:       code,
 		Message:    message,
+		MessageVN:  getVietnameseMessage(code, message),
+		HTTPStatus: getHTTPStatusForCode(code),
+		Details:    make(map[string]interface{}),
+	}
+}
+
+func NewErrorWithMessages(code ErrorCode, message, messageVN string) *AppError {
+	return &AppError{
+		Code:       code,
+		Message:    message,
+		MessageVN:  messageVN,
 		HTTPStatus: getHTTPStatusForCode(code),
 		Details:    make(map[string]interface{}),
 	}
@@ -75,6 +85,18 @@ func NewErrorWithInternal(code ErrorCode, message string, internal error) *AppEr
 	return &AppError{
 		Code:       code,
 		Message:    message,
+		MessageVN:  getVietnameseMessage(code, message),
+		HTTPStatus: getHTTPStatusForCode(code),
+		Details:    make(map[string]interface{}),
+		Internal:   internal,
+	}
+}
+
+func NewErrorWithInternalAndMessages(code ErrorCode, message, messageVN string, internal error) *AppError {
+	return &AppError{
+		Code:       code,
+		Message:    message,
+		MessageVN:  messageVN,
 		HTTPStatus: getHTTPStatusForCode(code),
 		Details:    make(map[string]interface{}),
 		Internal:   internal,
@@ -86,6 +108,7 @@ func AccountDuplicate(email string) *AppError {
 	return &AppError{
 		Code:       ErrAccountDuplicate,
 		Message:    "Account with this email already exists",
+		MessageVN:  "Tài khoản với email này đã tồn tại",
 		HTTPStatus: http.StatusConflict,
 		Details: map[string]interface{}{
 			"email": maskEmail(email),
@@ -93,15 +116,78 @@ func AccountDuplicate(email string) *AppError {
 	}
 }
 
+func AccountNotFound() *AppError {
+	return &AppError{
+		Code:       ErrAccountNotFound,
+		Message:    "Account not found",
+		MessageVN:  "Không tìm thấy tài khoản",
+		HTTPStatus: http.StatusNotFound,
+		Details:    make(map[string]interface{}),
+	}
+}
+
+func InvalidCredentials() *AppError {
+	return &AppError{
+		Code:       ErrInvalidCredentials,
+		Message:    "Invalid email or password",
+		MessageVN:  "Email hoặc mật khẩu không hợp lệ",
+		HTTPStatus: http.StatusUnauthorized,
+		Details:    make(map[string]interface{}),
+	}
+}
+
+func AccountSuspended() *AppError {
+	return &AppError{
+		Code:       ErrAccountSuspended,
+		Message:    "Account has been suspended",
+		MessageVN:  "Tài khoản đã bị tạm ngưng",
+		HTTPStatus: http.StatusForbidden,
+		Details:    make(map[string]interface{}),
+	}
+}
+
 func ValidationError(field, reason string) *AppError {
 	return &AppError{
 		Code:       ErrValidationFailed,
 		Message:    fmt.Sprintf("Validation failed: %s", reason),
+		MessageVN:  fmt.Sprintf("Xác thực thất bại: %s", reason),
 		HTTPStatus: http.StatusBadRequest,
 		Details: map[string]interface{}{
 			"field":  field,
 			"reason": reason,
 		},
+	}
+}
+
+func MissingField(field string) *AppError {
+	return &AppError{
+		Code:       ErrMissingField,
+		Message:    fmt.Sprintf("Missing required field: %s", field),
+		MessageVN:  fmt.Sprintf("Thiếu trường bắt buộc: %s", field),
+		HTTPStatus: http.StatusBadRequest,
+		Details: map[string]interface{}{
+			"field": field,
+		},
+	}
+}
+
+func Unauthorized() *AppError {
+	return &AppError{
+		Code:       ErrUnauthorized,
+		Message:    "Authentication required",
+		MessageVN:  "Yêu cầu xác thực",
+		HTTPStatus: http.StatusUnauthorized,
+		Details:    make(map[string]interface{}),
+	}
+}
+
+func Forbidden() *AppError {
+	return &AppError{
+		Code:       ErrForbidden,
+		Message:    "Access denied",
+		MessageVN:  "Truy cập bị từ chối",
+		HTTPStatus: http.StatusForbidden,
+		Details:    make(map[string]interface{}),
 	}
 }
 
@@ -112,6 +198,7 @@ func DatabaseError(operation string, internal error) *AppError {
 			return &AppError{
 				Code:       ErrAccountDuplicate,
 				Message:    "Account with this email already exists",
+				MessageVN:  "Tài khoản với email này đã tồn tại",
 				HTTPStatus: http.StatusConflict,
 				Internal:   internal,
 				Details: map[string]interface{}{
@@ -122,6 +209,7 @@ func DatabaseError(operation string, internal error) *AppError {
 		return &AppError{
 			Code:       ErrValidationFailed,
 			Message:    "Duplicate entry detected",
+			MessageVN:  "Phát hiện bản ghi trùng lặp",
 			HTTPStatus: http.StatusConflict,
 			Internal:   internal,
 		}
@@ -130,6 +218,7 @@ func DatabaseError(operation string, internal error) *AppError {
 	return &AppError{
 		Code:       ErrDatabaseError,
 		Message:    "Database operation failed",
+		MessageVN:  "Thao tác cơ sở dữ liệu thất bại",
 		HTTPStatus: http.StatusInternalServerError,
 		Internal:   internal,
 		Details: map[string]interface{}{
@@ -143,6 +232,7 @@ func ContextError(ctx context.Context) *AppError {
 		return &AppError{
 			Code:       ErrContextCancelled,
 			Message:    "Request was cancelled",
+			MessageVN:  "Yêu cầu đã bị hủy",
 			HTTPStatus: http.StatusRequestTimeout,
 			Internal:   ctx.Err(),
 		}
@@ -151,6 +241,7 @@ func ContextError(ctx context.Context) *AppError {
 		return &AppError{
 			Code:       ErrTimeout,
 			Message:    "Request timeout",
+			MessageVN:  "Yêu cầu hết thời gian chờ",
 			HTTPStatus: http.StatusRequestTimeout,
 			Internal:   ctx.Err(),
 		}
@@ -158,9 +249,47 @@ func ContextError(ctx context.Context) *AppError {
 	return &AppError{
 		Code:       ErrSystemError,
 		Message:    "Context error",
+		MessageVN:  "Lỗi ngữ cảnh",
 		HTTPStatus: http.StatusInternalServerError,
 		Internal:   ctx.Err(),
 	}
+}
+
+func ServiceUnavailable() *AppError {
+	return &AppError{
+		Code:       ErrServiceUnavailable,
+		Message:    "Service temporarily unavailable",
+		MessageVN:  "Dịch vụ tạm thời không khả dụng",
+		HTTPStatus: http.StatusServiceUnavailable,
+		Details:    make(map[string]interface{}),
+	}
+}
+
+// getVietnameseMessage provides default Vietnamese translations
+func getVietnameseMessage(code ErrorCode, englishMessage string) string {
+	defaultMessages := map[ErrorCode]string{
+		ErrAccountDuplicate:   "Tài khoản với email này đã tồn tại",
+		ErrAccountNotFound:    "Không tìm thấy tài khoản",
+		ErrInvalidCredentials: "Email hoặc mật khẩu không hợp lệ",
+		ErrAccountSuspended:   "Tài khoản đã bị tạm ngưng",
+		ErrInvalidInput:       "Dữ liệu đầu vào không hợp lệ",
+		ErrValidationFailed:   "Xác thực thất bại",
+		ErrMissingField:       "Thiếu trường bắt buộc",
+		ErrDatabaseError:      "Lỗi cơ sở dữ liệu",
+		ErrServiceUnavailable: "Dịch vụ tạm thời không khả dụng",
+		ErrTimeout:            "Hết thời gian chờ",
+		ErrContextCancelled:   "Yêu cầu đã bị hủy",
+		ErrUnauthorized:       "Yêu cầu xác thực",
+		ErrForbidden:         "Truy cập bị từ chối",
+		ErrSystemError:       "Lỗi hệ thống",
+	}
+	
+	if vnMsg, exists := defaultMessages[code]; exists {
+		return vnMsg
+	}
+	
+	// Fallback to English message if no Vietnamese translation available
+	return englishMessage
 }
 
 // getHTTPStatusForCode maps error codes to HTTP status codes
@@ -178,6 +307,8 @@ func getHTTPStatusForCode(code ErrorCode) int {
 		return http.StatusUnauthorized
 	case ErrForbidden:
 		return http.StatusForbidden
+	case ErrAccountSuspended:
+		return http.StatusForbidden
 	case ErrTimeout, ErrContextCancelled:
 		return http.StatusRequestTimeout
 	case ErrServiceUnavailable:
@@ -194,8 +325,33 @@ func (e *AppError) WriteHTTPResponse(w http.ResponseWriter) {
 	
 	response := map[string]interface{}{
 		"error": map[string]interface{}{
+			"code":       e.Code,
+			"message":    e.Message,
+			"message_vn": e.MessageVN,
+		},
+	}
+	
+	if len(e.Details) > 0 {
+		response["error"].(map[string]interface{})["details"] = e.Details
+	}
+	
+	json.NewEncoder(w).Encode(response)
+}
+
+// WriteHTTPResponseWithLang allows language-specific response
+func (e *AppError) WriteHTTPResponseWithLang(w http.ResponseWriter, lang string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(e.HTTPStatus)
+	
+	message := e.Message
+	if lang == "vi" || lang == "vn" {
+		message = e.MessageVN
+	}
+	
+	response := map[string]interface{}{
+		"error": map[string]interface{}{
 			"code":    e.Code,
-			"message": e.Message,
+			"message": message,
 		},
 	}
 	
