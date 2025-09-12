@@ -1,14 +1,13 @@
 package account_service
 
 import (
-
-
+	"context"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/proto_qr/account"
+	"fmt"
 
 	"strings"
 	"time"
-
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -146,4 +145,15 @@ func convertStatusToProto(status string) account.AccountStatus {
 	default:
 		return account.AccountStatus_UNKNOWN
 	}
+}
+
+func (s *AccountService) getRequestIDFromContext(ctx context.Context, req *account.AccountReq) string {
+    // First try to get from context
+    if requestID, ok := ctx.Value("request_id").(string); ok {
+        return requestID
+    }
+    
+
+    // Fallback: generate a new request ID
+    return fmt.Sprintf("service_req_%d", time.Now().UnixNano())
 }

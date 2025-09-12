@@ -1,10 +1,12 @@
 package account_handler
 
 import (
+	"context"
 	"encoding/json"
 	"english-ai-full/error_system"
 	"english-ai-full/logger/core"
 	"english-ai-full/utils"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -14,7 +16,6 @@ import (
 
 	"google.golang.org/grpc/status"
 )
-
 
 // decodeJSONRequest parses JSON request body into the destination struct
 func (h *AccountHandler) decodeJSONRequest(r *http.Request, dest interface{}) error {
@@ -244,3 +245,11 @@ func (h *AccountHandler) writeErrorResponse(w http.ResponseWriter, appErr *error
 }
 // new asdfasdfsd
 // new done asdfadsf
+
+func (h *AccountHandler) getRequestIDFromContext(ctx context.Context) string {
+    if requestID, ok := ctx.Value("request_id").(string); ok {
+        return requestID
+    }
+    // Fallback: generate a new request ID if not found
+    return fmt.Sprintf("missing_req_%d", time.Now().UnixNano())
+}

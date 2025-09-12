@@ -1,10 +1,12 @@
 package account_repository
 
 import (
+	"context"
 	"english-ai-full/error_system"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/proto_qr/account"
 	"english-ai-full/logger/core"
+	"fmt"
 
 	// "strings"
 
@@ -206,3 +208,13 @@ func (r *Repository) logDatabaseOperation(operation, table string, duration time
 // 	}
 // }
 // // new 12341231231
+
+
+func (r *Repository) getRequestIDFromContext(ctx context.Context) string {
+    if requestID, ok := ctx.Value("request_id").(string); ok {
+        return requestID
+    }
+    
+    // Fallback: generate a new request ID
+    return fmt.Sprintf("repo_req_%d", time.Now().UnixNano())
+}

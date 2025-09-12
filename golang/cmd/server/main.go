@@ -17,7 +17,7 @@ import (
 	pb "english-ai-full/internal/proto_qr/account"
 
 	utils_config "english-ai-full/utils/config"
-
+	 "english-ai-full/utils"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/cors"
 	"github.com/ianschenck/envflag"
@@ -54,6 +54,7 @@ func main() {
 	}
 
 	r := chi.NewRouter()
+	  r.Use(utils.RequestIDMiddleware)
 	setupCORS(r, cfg)
 
 	// Use environment variable with a default value
