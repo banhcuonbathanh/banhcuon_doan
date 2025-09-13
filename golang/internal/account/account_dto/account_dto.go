@@ -215,28 +215,28 @@ type Role string
 func (r Role) String() string {
 	return string(r)
 }
-
 const (
-	RoleAdmin   Role = "admin"
-	RoleManager Role = "manager"
-	RoleUser    Role = "user"
-	RoleGuest   Role = "guest" // Added RoleGuest constant
+    RoleAdmin    Role = "admin"
+    RoleManager  Role = "manager"
+    RoleUser     Role = "user"
+    RoleGuest    Role = "guest"
+    RoleEmployee Role = "employee" // ADD THIS
 )
+
+func IsValidRole(role string) bool {
+    switch Role(role) {
+    case RoleAdmin, RoleManager, RoleUser, RoleGuest, RoleEmployee: // ADD RoleEmployee
+        return true
+    default:
+        return false
+    }
+}
 
 // GetDefaultRole returns the default role when none is specified
 func GetDefaultRole() Role {
 	return RoleGuest
 }
 
-// IsValidRole checks if a role string is valid
-func IsValidRole(role string) bool {
-	switch Role(role) {
-	case RoleAdmin, RoleManager, RoleUser, RoleGuest:
-		return true
-	default:
-		return false
-	}
-}
 
 // NormalizeRole returns a valid role, defaulting to guest if invalid or empty
 func NormalizeRole(role string) Role {

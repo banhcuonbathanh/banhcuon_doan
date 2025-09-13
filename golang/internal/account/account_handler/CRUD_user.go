@@ -4,9 +4,10 @@ import (
 	"context"
 	"english-ai-full/error_system"
 	"english-ai-full/internal/account/account_dto"
+	pb "english-ai-full/internal/proto_qr/account"
 	"net/http"
 	"time"
-	pb "english-ai-full/internal/proto_qr/account"
+
 	"github.com/go-playground/validator"
 )
 
@@ -59,7 +60,8 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 		}))
 		
 		// Convert validator errors to our format
-		appErr := error_system.ValidationError("request", "Validation failed")
+		appErr := h.handleValidationError(err)
+		// appErr := error_system.ValidationError("request", "Validation failed")
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
 			field := validationErrors[0].Field()
 			reason := validationErrors[0].Tag()
@@ -69,16 +71,25 @@ func (h *AccountHandler) Register(w http.ResponseWriter, r *http.Request) {
 		h.writeErrorResponse(w, appErr, requestID, startTime)
 		return
 	}
-	if err := registerRequest.ValidatePasswordMatch(); err != nil {
-    h.logger.Error("Password confirmation validation failed", h.layerContext.MergeWithContext(map[string]interface{}{
-        "error": err.Error(),
-        "email": maskEmail(registerRequest.Email),
-    }))
-    
-    appErr := error_system.ValidationError("confirm_password", "Passwords do not match")
-    h.writeErrorResponse(w, appErr, requestID, startTime)
-    return
+if err := registerRequest.ValidatePasswordMatch(); err != nil {
+	h.logger.Error("Password confirmation validation failed", h.layerContext.MergeWithContext(map[string]interface{}{
+		"error": err.Error(),
+		"email": maskEmail(registerRequest.Email),
+	}))
+	
+	appErr := error_system.EnhancedValidationError(
+		"confirm_password", 
+		"***", // masked password
+		"match", 
+		"password",
+	)
+	appErr.Message = "Password and confirm password do not match"
+	appErr.MessageVN = "Mật khẩu và xác nhận mật khẩu không khớp"
+	
+	h.writeErrorResponse(w, appErr, requestID, startTime)
+	return
 }
+
 	// Create service context with timeout
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()

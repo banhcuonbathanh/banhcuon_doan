@@ -387,3 +387,49 @@ func maskEmail(email string) string {
 		return username[:2] + "***" + username[len(username)-1:] + domain
 	}
 }
+
+// 1. First, update error_system/core.go to add the enhanced validation function
+func EnhancedValidationErrorWithDetails(field string, value interface{}, constraint string, allowedValues []string) *AppError {
+	var message, messageVN string
+	
+	switch constraint {
+	case "oneof":
+		message = fmt.Sprintf("Invalid value '%v' for field '%s'. Allowed values are: %s", 
+			value, field, strings.Join(allowedValues, ", "))
+		messageVN = fmt.Sprintf("Giá trị '%v' không hợp lệ cho trường '%s'. Các giá trị được phép: %s", 
+			value, field, strings.Join(allowedValues, ", "))
+	case "required":
+		message = fmt.Sprintf("Field '%s' is required", field)
+		messageVN = fmt.Sprintf("Trường '%s' là bắt buộc", field)
+	case "email":
+		message = fmt.Sprintf("Field '%s' must be a valid email address", field)
+		messageVN = fmt.Sprintf("Trường '%s' phải là địa chỉ email hợp lệ", field)
+	case "min":
+		message = fmt.Sprintf("Field '%s' is too short", field)
+		messageVN = fmt.Sprintf("Trường '%s' quá ngắn", field)
+	case "max":
+		message = fmt.Sprintf("Field '%s' is too long", field)
+		messageVN = fmt.Sprintf("Trường '%s' quá dài", field)
+	default:
+		message = fmt.Sprintf("Field '%s' failed validation", field)
+		messageVN = fmt.Sprintf("Trường '%s' không hợp lệ", field)
+	}
+	
+	details := map[string]interface{}{
+		"field":      field,
+		"value":      value,
+		"constraint": constraint,
+	}
+	
+	if len(allowedValues) > 0 {
+		details["allowed_values"] = allowedValues
+	}
+	
+	return &AppError{
+		Code:       ErrValidationFailed,
+		Message:    message,
+		MessageVN:  messageVN,
+		HTTPStatus: http.StatusBadRequest,
+		Details:    details,
+	}
+}

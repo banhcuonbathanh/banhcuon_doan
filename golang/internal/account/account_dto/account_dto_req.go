@@ -8,19 +8,20 @@ type LoginRequest struct {
 	Password string `json:"password" validate:"required" example:"password123"`
 }
 
-
 type CreateUserRequest struct {
-    Name     string `json:"name" validate:"required,min=2,max=100"`
-    Email    string `json:"email" validate:"required,email,max=254"`
-    Password string `json:"password" validate:"required,min=8,max=100"`
-       ConfirmPassword string `json:"confirm_password" validate:"required,min=8,max=100"`
+    Name            string `json:"name" validate:"required,min=2,max=100"`
+    Email           string `json:"email" validate:"required,email,max=254"`
+    Password        string `json:"password" validate:"required,min=8,max=100"`
+    ConfirmPassword string `json:"confirm_password" validate:"required,min=8,max=100"`
     // Optional fields - use omitempty to make them optional
-    BranchID int64 `json:"branch_id,omitempty" validate:"omitempty"`
+    BranchID int64  `json:"branch_id,omitempty" validate:"omitempty"`
     Avatar   string `json:"avatar,omitempty" validate:"omitempty,url"`
     Title    string `json:"title,omitempty" validate:"omitempty,max=100"`
-    Role     string `json:"role,omitempty" validate:"omitempty,oneof=user admin manager guest"` // Added guest to validation
-    OwnerID  int64 `json:"owner_id,omitempty" validate:"omitempty"`
+    // FIXED: Added "employee" to the oneof validation
+    Role     string `json:"role,omitempty" validate:"omitempty,oneof=user admin manager guest employee"`
+    OwnerID  int64  `json:"owner_id,omitempty" validate:"omitempty"`
 }
+
 // ValidatePasswordMatch validates that password and confirm password match
 func (r *CreateUserRequest) ValidatePasswordMatch() error {
     if r.Password != r.ConfirmPassword {
