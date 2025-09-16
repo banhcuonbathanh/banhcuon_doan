@@ -12,7 +12,7 @@ import (
 	"english-ai-full/internal/account/account_handler" // Add this import
 	"english-ai-full/internal/branch"
 	"english-ai-full/logger/core"
-	log_output "english-ai-full/logger/output"
+
 
 	branchpb "english-ai-full/internal/proto_qr/branch"
 	pb "english-ai-full/internal/proto_qr/account"
@@ -191,27 +191,9 @@ func main() {
 // initializeLogging sets up the logging system
 func initializeLogging() {
 	// Create logger with file output
-	config := log_output.LoggerConfig{
-		Level:          core.InfoLevel,
-		Environment:    "development",
-		LogDirectory:   getEnvWithDefault("LOG_DIRECTORY", "./logs"), // Make configurable
-		EnableConsole:  true,
-		EnableFileJSON: true,
-		EnableFileText: true,
-		MaxFileSize:    100, // 100MB
-		MaxFileAge:     30,  // 30 days
-		EnableRotation: true,
-	}
 
-	var err error
-	appLogger, err = log_output.SetupLogger(config)
-	if err != nil {
-		log.Printf("Warning: Failed to setup file logging: %v", err)
-		// Fallback to console-only logging
-		appLogger = core.NewLogger()
-		appLogger.SetLevel(core.InfoLevel)
-		appLogger.SetEnvironment("development")
-	}
+
+
 
 	// Configure logger context
 	appLogger.SetComponent("restaurant-backend")

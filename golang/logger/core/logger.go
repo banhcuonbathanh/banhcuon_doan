@@ -33,8 +33,8 @@ func NewLogger() *CoreLogger {
 	}
 	
 	// Create a default console output manager with rich formatting
-	outputManager := NewDefaultOutputManager()
-	logger.SetOutputManager(outputManager)
+	// outputManager := NewDefaultOutputManager()
+	// logger.SetOutputManager(outputManager)
 	
 	return logger
 }
