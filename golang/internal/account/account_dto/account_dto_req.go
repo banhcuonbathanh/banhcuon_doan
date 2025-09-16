@@ -161,3 +161,5 @@ type ValidateTokenRequest struct {
 type VerifyEmailRequest struct {
 	VerificationToken string `json:"verification_token" validate:"required"`
 }
+
+

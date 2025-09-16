@@ -319,6 +319,7 @@ const (
 // Function name constants (for repository layer)
 const (
 	FuncCreateUser      = "CreateUser"
+		FuncLogin      = "Login"
 	FuncGetUser         = "GetUser"
 	FuncUpdateUser      = "UpdateUser"
 	FuncDeleteUser      = "DeleteUser"

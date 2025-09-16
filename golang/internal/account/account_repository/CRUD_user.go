@@ -2,13 +2,19 @@ package account_repository
 
 import (
 	"context"
+	"database/sql"
 	"english-ai-full/error_system"
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/logger/core"
+	"english-ai-full/orm"
 	"english-ai-full/utils"
+	"errors"
+	"strings"
 	"time"
 
 	"github.com/aarondl/sqlboiler/v4/boil"
+	"github.com/aarondl/sqlboiler/v4/queries/qm"
+	"golang.org/x/crypto/bcrypt"
 )
 
 
@@ -135,3 +141,256 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
     createdUser := r.mapORMToDTO(ormAccount)
     return createdUser, nil
 }
+
+// login start
+// Add this to your CRUD_user.go file
+// Add this to your CRUD_user.go file
+
+func (r *Repository) Login(ctx context.Context, loginReq account_dto.LoginRequest) (account_dto.Account, error) {
+    const operation = core.OperationLogin
+    const table = core.TableAccounts
+    const function = core.FuncLogin
+    
+    startTime := time.Now()
+    
+    // Extract request ID from context
+    requestID := r.getRequestIDFromContext(ctx)
+    
+    // Build operation context with request ID
+    operationCtx := r.layerContext.BuildOperationContext(operation, table, function, map[string]interface{}{
+        "request_id": requestID,
+        "email":      utils.MaskEmail(loginReq.Email),
+    })
+    
+    // Set request ID in logger
+    r.logger.SetOperation(operation)
+    
+    // Log the start with request ID
+    r.logger.Info(core.MsgDatabaseOperationStarted, r.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":        requestID,
+        core.FieldOperation: operation,
+        core.FieldTable:     table,
+        core.FieldFunction:  function,
+        core.FieldEmail:     utils.MaskEmail(loginReq.Email),
+    }))
+
+    // Context timeout check
+    if err := ctx.Err(); err != nil {
+        duration := time.Since(startTime)
+        r.logDatabaseOperation(operation, table, duration, false, 0)
+        
+        r.logger.ErrorWithCause(core.MsgContextError, core.CauseContextCancelled, core.LayerRepository, operation,
+            r.layerContext.MergeWithContext(map[string]interface{}{
+                "request_id":         requestID,
+                core.FieldError:      err.Error(),
+                core.FieldDurationMS: duration.Milliseconds(),
+                core.FieldTable:      table,
+                core.FieldFunction:   function,
+                "source_method":      "Login",
+                "error_location":     "context_check",
+            }))
+        
+        return account_dto.Account{}, r.errorHandler.Handle(err, operation, table, operationCtx)
+    }
+
+    // Validate login request
+    if err := r.validateLoginRequest(loginReq); err != nil {
+        duration := time.Since(startTime)
+        r.logDatabaseOperation(operation, table, duration, false, 0)
+        
+        r.logger.Error("Login validation failed", r.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id":         requestID,
+            "error_message":      err.Error(),
+            core.FieldDurationMS: duration.Milliseconds(),
+            core.FieldTable:      table,
+            core.FieldFunction:   function,
+            "source_method":      "Login",
+            "error_location":     "validation",
+            core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+        }))
+        
+        return account_dto.Account{}, err
+    }
+
+    // Log database query attempt
+    r.logger.Info("Attempting to find user by email", r.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":        requestID,
+        core.FieldOperation: operation,
+        core.FieldTable:     table,
+        core.FieldFunction:  function,
+        core.FieldEmail:     utils.MaskEmail(loginReq.Email),
+        "source_method":     "Login",
+        "query_step":        "find_by_email",
+    }))
+
+    // Find user by email
+    ormAccount, err := orm.Accounts(
+        qm.Where("email = ?", loginReq.Email),
+    ).One(ctx, r.db)
+    
+    if err != nil {
+        duration := time.Since(startTime)
+        r.logDatabaseOperation(operation, table, duration, false, 0)
+        
+        if errors.Is(err, sql.ErrNoRows) {
+            // User not found - log as security event but don't reveal this information
+            r.logger.Warn("Login attempt with non-existent email", r.layerContext.MergeWithContext(map[string]interface{}{
+                "request_id":         requestID,
+                core.FieldDurationMS: duration.Milliseconds(),
+                core.FieldTable:      table,
+                core.FieldFunction:   function,
+                "source_method":      "Login",
+                "error_location":     "user_not_found",
+                core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+                "security_event":     "invalid_login_attempt",
+            }))
+            
+            // Return generic authentication error to prevent user enumeration
+            return account_dto.Account{}, error_system.InvalidCredentials()
+        }
+        
+        // Database error
+        r.logger.ErrorWithCause("Database error during login", "database_error", core.LayerRepository, operation,
+            r.layerContext.MergeWithContext(map[string]interface{}{
+                "request_id":         requestID,
+                core.FieldError:      err.Error(),
+                core.FieldDurationMS: duration.Milliseconds(),
+                core.FieldTable:      table,
+                core.FieldFunction:   function,
+                "source_method":      "Login",
+                "error_location":     "database_query",
+                core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+            }))
+        
+        return account_dto.Account{}, r.errorHandler.Handle(err, operation, table, operationCtx)
+    }
+
+    // Log password verification attempt
+    r.logger.Debug("Verifying password", r.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":        requestID,
+        core.FieldOperation: operation,
+        core.FieldFunction:  function,
+        core.FieldUserID:    ormAccount.ID,
+        core.FieldEmail:     utils.MaskEmail(loginReq.Email),
+        "source_method":     "Login",
+        "verification_step": "password_check",
+    }))
+
+    // Verify password
+    if !r.verifyPassword(loginReq.Password, ormAccount.Password) {
+        duration := time.Since(startTime)
+        r.logDatabaseOperation(operation, table, duration, false, 0)
+        
+        // Log failed password attempt as security event
+        r.logger.Warn("Login attempt with invalid password", r.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id":         requestID,
+            core.FieldUserID:     ormAccount.ID,
+            core.FieldDurationMS: duration.Milliseconds(),
+            core.FieldTable:      table,
+            core.FieldFunction:   function,
+            "source_method":      "Login",
+            "error_location":     "password_verification",
+            core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+            "security_event":     "invalid_password_attempt",
+        }))
+        
+        // Return generic authentication error to prevent user enumeration
+        return account_dto.Account{}, error_system.InvalidCredentials()
+    }
+
+    // Check if account is active/valid
+    if err := r.validateAccountStatus(ormAccount); err != nil {
+        duration := time.Since(startTime)
+        r.logDatabaseOperation(operation, table, duration, false, 0)
+        
+        r.logger.Warn("Login attempt on inactive/suspended account", r.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id":         requestID,
+            core.FieldUserID:     ormAccount.ID,
+            core.FieldDurationMS: duration.Milliseconds(),
+            core.FieldTable:      table,
+            core.FieldFunction:   function,
+            "source_method":      "Login",
+            "error_location":     "account_status_check",
+            core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+            "account_status":     ormAccount.Status.String,
+            "security_event":     "inactive_account_login_attempt",
+        }))
+        
+        return account_dto.Account{}, err
+    }
+
+    duration := time.Since(startTime)
+    r.logDatabaseOperation(operation, table, duration, true, 1)
+    
+    // Log successful login
+    r.logger.Info("User login successful", r.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":           requestID,
+        core.FieldUserID:       ormAccount.ID,
+        core.FieldEmail:        utils.MaskEmail(loginReq.Email),
+        core.FieldDurationMS:   duration.Milliseconds(),
+        core.FieldOperation:    operation,
+        core.FieldTable:        table,
+        core.FieldFunction:     function,
+        "source_method":        "Login",
+        "success_step":         "login_complete",
+        "user_role":           ormAccount.Role,
+        "branch_id":           ormAccount.BranchID.Int64,
+    }))
+
+    // Convert to DTO and return
+    userAccount := r.mapORMToDTO(ormAccount)
+    
+    // Clear password from response for security
+    userAccount.Password = ""
+    
+    return userAccount, nil
+}
+
+// validateLoginRequest validates the login request
+func (r *Repository) validateLoginRequest(req account_dto.LoginRequest) error {
+    if req.Email == "" {
+        return error_system.ValidationError("email", "Email is required")
+    }
+    if req.Password == "" {
+        return error_system.ValidationError("password", "Password is required")
+    }
+    
+    // Basic email format validation
+    if !strings.Contains(req.Email, "@") || !strings.Contains(req.Email, ".") {
+        return error_system.ValidationError("email", "Invalid email format")
+    }
+    
+    return nil
+}
+
+// verifyPassword compares the provided password with the stored hashed password
+// Note: This assumes you're using bcrypt or similar hashing. Adjust based on your hashing method
+func (r *Repository) verifyPassword(providedPassword, hashedPassword string) bool {
+    // If you're using bcrypt:
+    err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(providedPassword))
+    return err == nil
+    
+    // If you're using plain text (NOT RECOMMENDED for production):
+    // return providedPassword == hashedPassword
+}
+
+// validateAccountStatus checks if the account is in a valid state for login
+func (r *Repository) validateAccountStatus(account *orm.Account) error {
+    if !account.Status.Valid {
+        return error_system.InvalidCredentials()
+    }
+    
+    switch strings.ToLower(account.Status.String) {
+    case "active":
+        return nil // Account is valid for login
+    case "inactive":
+        return error_system.InvalidCredentials()
+    case "suspended":
+        return error_system.AccountSuspended()
+    case "pending":
+        return error_system.InvalidCredentials()
+    default:
+        return error_system.InvalidCredentials()
+    }
+}
+// login end
