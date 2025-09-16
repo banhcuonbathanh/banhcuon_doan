@@ -33,7 +33,7 @@ func RegisterRoutesAccountHandler(r *chi.Mux, accountHandler *AccountHandler) {
 		// PUBLIC Authentication routes (NO JWT middleware)
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", accountHandler.Register)
-			// r.Post("/login", accountHandler.Login)
+			r.Post("/login", accountHandler.Login)
 			// r.Post("/logout", accountHandler.Logout)
 			// r.Post("/refresh-token", accountHandler.RefreshToken)
 			// r.Post("/validate-token", accountHandler.ValidateToken)

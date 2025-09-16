@@ -11,7 +11,7 @@ service AccountService {
   // rpc DeleteUser(DeleteAccountReq) returns (DeleteAccountRes);
   // rpc FindAllUsers(google.protobuf.Empty) returns (AccountList);
   // rpc FindByEmail(FindByEmailReq) returns (AccountRes);
-  // rpc Login(LoginReq) returns (AccountRes);
+  rpc Login(LoginReq) returns (AccountRes);
   // rpc Logout(LogoutReq) returns (LogoutRes);
   // rpc Register(RegisterReq) returns (RegisterRes);
   // rpc FindByID(FindByIDReq) returns (FindByIDRes);
@@ -81,7 +81,8 @@ message UpdateUserReq {
 
 message AccountRes {
   Account account = 1;
-  string token = 2;  // Add this field
+  string access_token = 2;
+  string refresh_token = 3;
 }
 
 message AccountList {

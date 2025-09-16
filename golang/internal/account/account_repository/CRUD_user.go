@@ -9,6 +9,7 @@ import (
 	"english-ai-full/orm"
 	"english-ai-full/utils"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -394,3 +395,274 @@ func (r *Repository) validateAccountStatus(account *orm.Account) error {
     }
 }
 // login end
+
+// find by email start
+
+func (r *Repository)  FindByEmail(ctx context.Context, email string) (account_dto.Account, error) {
+	const operation = "find_by_email"
+	startTime := time.Now()
+	
+	// Extract request ID from context
+	requestID := r.getRequestIDFromContext(ctx)
+	
+	// Build operation context with request ID
+operationCtx := r.layerContext.BuildOperationContext(operation, "accounts", "find_by_email", map[string]interface{}{
+		"request_id": requestID,
+		"email":      utils.MaskEmail(email),
+	})
+
+	// Set operation in logger
+	r.logger.SetOperation(operation)
+
+	// Log operation start
+	r.logger.Info(core.MsgOperationStarted, r.layerContext.MergeWithContext(map[string]interface{}{
+		"request_id": requestID,
+		"operation":  operation,
+		"email":      utils.MaskEmail(email),
+		"layer":      core.LayerRepository,
+	}))
+
+	// Context cancellation check
+	if err := ctx.Err(); err != nil {
+		r.logger.ErrorWithCause(core.MsgContextError, core.CauseContextCancelled,
+			core.LayerRepository, operation, r.layerContext.MergeWithContext(map[string]interface{}{
+				"request_id": requestID,
+			}))
+	appErr := r.errorHandler.Handle(err, operation,r.layerContext.Domain, operationCtx)
+	
+		return account_dto.Account{}, appErr
+	}
+
+	// Input validation
+	if email == "" {
+		err := fmt.Errorf("email cannot be empty")
+		r.logger.Error("Invalid email parameter", r.layerContext.MergeWithContext(map[string]interface{}{
+			"request_id": requestID,
+			"error":      err.Error(),
+		}))
+		appErr := r.errorHandler.Handle(err, operation,r.layerContext.Domain, operationCtx)
+		return account_dto.Account{}, appErr
+	}
+
+	// Prepare SQL query
+	query := `
+		SELECT 
+			id, branch_id, name, email, password, avatar, title, role, owner_id, status, created_at, updated_at
+		FROM accounts 
+		WHERE email = $1 AND deleted_at IS NULL
+	`
+
+	// Log database query execution
+	dbStartTime := time.Now()
+	r.logger.Debug("Executing database query", r.layerContext.MergeWithContext(map[string]interface{}{
+		"request_id": requestID,
+		"operation":  operation,
+		"query":      "SELECT * FROM accounts WHERE email = $1",
+		"email":      utils.MaskEmail(email),
+	}))
+
+	var user account_dto.Account
+	row := r.db.QueryRowContext(ctx, query, email)
+	
+	err := row.Scan(
+		&user.ID,
+		&user.BranchID,
+		&user.Name,
+		&user.Email,
+		&user.Password,
+		&user.Avatar,
+		&user.Title,
+		&user.Role,
+		&user.OwnerID,
+		&user.Status,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+
+	dbDuration := time.Since(dbStartTime)
+
+	if err != nil {
+		operationCtx["database_error"] = "failed to query user by email"
+		operationCtx["database_duration_ms"] = dbDuration.Milliseconds()
+
+		if err == sql.ErrNoRows {
+			r.logger.Info("User not found by email", r.layerContext.MergeWithContext(map[string]interface{}{
+				"request_id":           requestID,
+				"email":                utils.MaskEmail(email),
+				"database_duration_ms": dbDuration.Milliseconds(),
+				"result":               "not_found",
+			}))
+
+			// Create a custom "not found" error
+
+			operationCtx["error_type"] = "not_found"
+			appErr := r.errorHandler.Handle(err, operation,r.layerContext.Domain, operationCtx)
+			return account_dto.Account{}, appErr
+		}
+
+		r.logger.ErrorWithDomainAndCause("Database query failed", r.layerContext.Domain,
+			core.CauseDatabaseError, core.LayerRepository, operation,
+			r.layerContext.MergeWithContext(map[string]interface{}{
+				"request_id":           requestID,
+				"email":                utils.MaskEmail(email),
+				"database_duration_ms": dbDuration.Milliseconds(),
+				"error":                err.Error(),
+				"query":                "SELECT * FROM accounts WHERE email = $1",
+			}))
+	appErr := r.errorHandler.Handle(err, operation,r.layerContext.Domain, operationCtx)
+		return account_dto.Account{}, appErr
+	}
+
+	// Log successful operation
+	totalDuration := time.Since(startTime)
+	r.logger.Info(core.MsgOperationCompleted, r.layerContext.MergeWithContext(map[string]interface{}{
+		"request_id":           requestID,
+		"operation":            operation,
+		"user_id":              user.ID,
+		"email":                utils.MaskEmail(user.Email),
+		"role":                 user.Role,
+		"branch_id":            user.BranchID,
+		"status":               user.Status,
+		"success":              true,
+		"duration_ms":          totalDuration.Milliseconds(),
+		"database_duration_ms": dbDuration.Milliseconds(),
+	}))
+
+	return user, nil
+}
+
+
+
+// Optional: FindByEmailWithoutPassword - returns user without password field for security
+func (r *Repository) FindByEmailWithoutPassword(ctx context.Context, email string) (account_dto.Account, error) {
+	const operation = "find_by_email_no_password"
+	startTime := time.Now()
+	
+	// Extract request ID from context
+	requestID := r.getRequestIDFromContext(ctx)
+	
+	// Build operation context
+
+operationCtx := r.layerContext.BuildOperationContext(operation, "accounts", "find_by_email", map[string]interface{}{
+		"request_id": requestID,
+		"email":      utils.MaskEmail(email),
+	})
+
+	// Set operation in logger
+	r.logger.SetOperation(operation)
+
+	// Log operation start
+	r.logger.Info(core.MsgOperationStarted, r.layerContext.MergeWithContext(map[string]interface{}{
+		"request_id": requestID,
+		"operation":  operation,
+		"email":      utils.MaskEmail(email),
+		"layer":      core.LayerRepository,
+	}))
+
+	// Context cancellation check
+	if err := ctx.Err(); err != nil {
+		r.logger.ErrorWithCause(core.MsgContextError, core.CauseContextCancelled,
+			core.LayerRepository, operation, r.layerContext.MergeWithContext(map[string]interface{}{
+				"request_id": requestID,
+			}))
+
+		appErr := r.errorHandler.Handle(err, operation,r.layerContext.Domain, operationCtx)
+		return account_dto.Account{}, appErr
+	}
+
+	// Input validation
+	if email == "" {
+		err := fmt.Errorf("email cannot be empty")
+		r.logger.Error("Invalid email parameter", r.layerContext.MergeWithContext(map[string]interface{}{
+			"request_id": requestID,
+			"error":      err.Error(),
+		}))
+	appErr := r.errorHandler.Handle(err, operation,r.layerContext.Domain, operationCtx)
+		return account_dto.Account{}, appErr
+	}
+
+	// Prepare SQL query without password field
+	query := `
+		SELECT 
+			id, branch_id, name, email, avatar, title, role, owner_id, status, created_at, updated_at
+		FROM accounts 
+		WHERE email = $1 AND deleted_at IS NULL
+	`
+
+	// Log database query execution
+	dbStartTime := time.Now()
+	r.logger.Debug("Executing database query (without password)", r.layerContext.MergeWithContext(map[string]interface{}{
+		"request_id": requestID,
+		"operation":  operation,
+		"query":      "SELECT (no password) FROM accounts WHERE email = $1",
+		"email":      utils.MaskEmail(email),
+	}))
+
+	var user account_dto.Account
+	row := r.db.QueryRowContext(ctx, query, email)
+	
+	err := row.Scan(
+		&user.ID,
+		&user.BranchID,
+		&user.Name,
+		&user.Email,
+		&user.Avatar,
+		&user.Title,
+		&user.Role,
+		&user.OwnerID,
+		&user.Status,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+
+	dbDuration := time.Since(dbStartTime)
+
+	if err != nil {
+		operationCtx["database_error"] = "failed to query user by email"
+		operationCtx["database_duration_ms"] = dbDuration.Milliseconds()
+
+		if err == sql.ErrNoRows {
+			r.logger.Info("User not found by email", r.layerContext.MergeWithContext(map[string]interface{}{
+				"request_id":           requestID,
+				"email":                utils.MaskEmail(email),
+				"database_duration_ms": dbDuration.Milliseconds(),
+				"result":               "not_found",
+			}))
+
+			operationCtx["error_type"] = "not_found"
+			appErr := r.errorHandler.Handle(err, operation,r.layerContext.Domain, operationCtx)
+			return account_dto.Account{}, appErr
+		}
+
+		r.logger.ErrorWithDomainAndCause("Database query failed", r.layerContext.Domain,
+			core.CauseDatabaseError, core.LayerRepository, operation,
+			r.layerContext.MergeWithContext(map[string]interface{}{
+				"request_id":           requestID,
+				"email":                utils.MaskEmail(email),
+				"database_duration_ms": dbDuration.Milliseconds(),
+				"error":                err.Error(),
+			}))
+
+		appErr := r.errorHandler.Handle(err, operation,r.layerContext.Domain, operationCtx)
+		return account_dto.Account{}, appErr
+	}
+
+	// Log successful operation
+	totalDuration := time.Since(startTime)
+	r.logger.Info(core.MsgOperationCompleted, r.layerContext.MergeWithContext(map[string]interface{}{
+		"request_id":           requestID,
+		"operation":            operation,
+		"user_id":              user.ID,
+		"email":                utils.MaskEmail(user.Email),
+		"role":                 user.Role,
+		"branch_id":            user.BranchID,
+		"status":               user.Status,
+		"success":              true,
+		"duration_ms":          totalDuration.Milliseconds(),
+		"database_duration_ms": dbDuration.Milliseconds(),
+		"password_excluded":    true,
+	}))
+
+	return user, nil
+}
+// find by email end 

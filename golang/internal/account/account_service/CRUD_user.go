@@ -6,7 +6,9 @@ import (
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/proto_qr/account"
 	"english-ai-full/logger/core"
+	"english-ai-full/token"
 	"english-ai-full/utils"
+	"fmt"
 	"time"
 )
 
@@ -209,3 +211,246 @@ func (s *AccountService) CreateUser(ctx context.Context, req *account.AccountReq
     return s.convertDTOToProto(&createdUser), nil
 }
 // ne
+
+func (s *AccountService) Login(ctx context.Context, loginReq *account.LoginReq) (*account.AccountRes, error) {
+    const operation = "login"
+    startTime := time.Now()
+    
+    // Generate request ID for this operation
+    requestID := fmt.Sprintf("service_req_%d", time.Now().UnixNano())
+    
+    // Build operation context with request ID
+    operationCtx := s.layerContext.BuildOperationContext(operation, map[string]interface{}{
+        "request_id": requestID,
+        "email":      utils.MaskEmail(loginReq.Email),
+    })
+
+    // Set request ID in logger
+    s.logger.SetOperation(operation)
+
+    // Log operation start with request ID
+    s.logger.Info(core.MsgOperationStarted, s.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id": requestID,
+        "operation":  operation,
+        "email":      utils.MaskEmail(loginReq.Email),
+    }))
+
+    // Context cancellation check
+    if err := ctx.Err(); err != nil {
+        s.logger.ErrorWithCause(core.MsgContextError, core.CauseContextCancelled,
+            core.LayerService, operation, s.layerContext.MergeWithContext(map[string]interface{}{
+                "request_id": requestID,
+            }))
+
+        appErr := s.errorHandler.Handle(err, operation, operationCtx)
+        return &account.AccountRes{}, appErr
+    }
+
+    // Input validation with request ID logging
+    if err := s.validator.Struct(loginReq); err != nil {
+        s.logger.Error("Login request validation failed", s.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id": requestID,
+            "error":      err.Error(),
+            "email":      utils.MaskEmail(loginReq.Email),
+        }))
+        appErr := s.errorHandler.Handle(err, operation, operationCtx)
+        return &account.AccountRes{}, appErr
+    }
+
+    // Add request ID to repository context
+    ctx = context.WithValue(ctx, "request_id", requestID)
+
+    // Log repository call with request ID
+    repoStartTime := time.Now()
+    s.logger.Info("Calling repository to find user by email", s.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":      requestID,
+        "operation":       operation,
+        "target_layer":    core.LayerRepository,
+        "target_function": "FindByEmail",
+        "email":           utils.MaskEmail(loginReq.Email),
+    }))
+
+    // Call repository to find user by email
+    user, err := s.userRepo.FindByEmail(ctx, loginReq.Email)
+    if err != nil {
+        operationCtx["repository_error"] = "failed to find user by email"
+        operationCtx["repository_duration_ms"] = time.Since(repoStartTime).Milliseconds()
+
+        if appErr, ok := error_system.IsAppError(err); ok {
+            s.logger.Error("Repository returned AppError", s.layerContext.MergeWithContext(map[string]interface{}{
+                "request_id":             requestID,
+                "error_code":             appErr.Code,
+                "error_message":          appErr.Message,
+                "email":                  utils.MaskEmail(loginReq.Email),
+                "repository_duration_ms": time.Since(repoStartTime).Milliseconds(),
+            }))
+            return &account.AccountRes{}, appErr
+        }
+
+        s.logger.ErrorWithDomainAndCause("Repository call failed", s.layerContext.Domain,
+            core.CauseDatabaseError, core.LayerService, operation,
+            s.layerContext.MergeWithContext(map[string]interface{}{
+                "request_id":             requestID,
+                "target_layer":           core.LayerRepository,
+                "target_function":        "FindByEmail",
+                "email":                  utils.MaskEmail(loginReq.Email),
+                "repository_duration_ms": time.Since(repoStartTime).Milliseconds(),
+                "error":                  err.Error(),
+            }))
+
+        appErr := s.errorHandler.Handle(err, operation, operationCtx)
+        return &account.AccountRes{}, appErr
+    }
+
+    // Check if user account is active
+    if user.Status != "active" {
+        operationCtx["account_status"] = user.Status
+        
+        s.logger.Error("Login attempt for inactive account", s.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id":     requestID,
+            "operation":      operation,
+            "email":          utils.MaskEmail(loginReq.Email),
+            "account_status": user.Status,
+            "user_id":        user.ID,
+        }))
+
+        // Create a custom error for inactive account
+        inactiveErr := fmt.Errorf("account is %s", user.Status)
+        appErr := s.errorHandler.Handle(inactiveErr, operation, operationCtx)
+        return &account.AccountRes{}, appErr
+    }
+
+    // Password verification with request ID logging
+    if s.passwordHash != nil {
+        hashStartTime := time.Now()
+
+        s.logger.Debug("Starting password verification", s.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id": requestID,
+            "operation":  operation,
+            "email":      utils.MaskEmail(loginReq.Email),
+            "user_id":    user.ID,
+        }))
+
+        // Use ComparePassword to verify the password
+        isValid := s.passwordHash.ComparePassword(user.Password, loginReq.Password)
+
+        if !isValid {
+            operationCtx["invalid_credentials"] = "password does not match"
+
+            s.logger.Error("Invalid credentials provided", s.layerContext.MergeWithContext(map[string]interface{}{
+                "request_id":               requestID,
+                "operation":                operation,
+                "email":                    utils.MaskEmail(loginReq.Email),
+                "user_id":                  user.ID,
+                "verification_duration_ms": time.Since(hashStartTime).Milliseconds(),
+            }))
+
+            // Create a custom error for invalid credentials
+            invalidCredErr := fmt.Errorf("invalid email or password")
+            appErr := s.errorHandler.Handle(invalidCredErr, operation, operationCtx)
+            return &account.AccountRes{}, appErr
+        }
+
+        s.logger.Debug("Password verification successful", s.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id":               requestID,
+            "operation":                operation,
+            "email":                    utils.MaskEmail(loginReq.Email),
+            "user_id":                  user.ID,
+            "verification_duration_ms": time.Since(hashStartTime).Milliseconds(),
+        }))
+    }
+
+    // Generate JWT tokens after successful authentication
+    tokenStartTime := time.Now()
+    
+    // Convert user DTO to account DTO for token generation
+    userAccount := account_dto.Account{
+        ID:       user.ID,
+        Email:    user.Email,
+        Role:     user.Role, // Make sure this matches the Role type in account_dto
+        BranchID: user.BranchID,
+    }
+
+    // Generate access token
+    accessToken, err := token.GenerateJWTToken(userAccount)
+    if err != nil {
+        operationCtx["token_generation_error"] = "failed to generate access token"
+        
+        s.logger.Error("Failed to generate access token", s.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id":              requestID,
+            "operation":               operation,
+            "user_id":                 user.ID,
+            "email":                   utils.MaskEmail(user.Email),
+            "token_generation_duration_ms": time.Since(tokenStartTime).Milliseconds(),
+            "error":                   err.Error(),
+        }))
+
+        appErr := s.errorHandler.Handle(err, operation, operationCtx)
+        return &account.AccountRes{}, appErr
+    }
+
+    // Generate refresh token
+    refreshToken, err := token.GenerateRefreshToken(userAccount)
+    if err != nil {
+        operationCtx["token_generation_error"] = "failed to generate refresh token"
+        
+        s.logger.Error("Failed to generate refresh token", s.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id":              requestID,
+            "operation":               operation,
+            "user_id":                 user.ID,
+            "email":                   utils.MaskEmail(user.Email),
+            "token_generation_duration_ms": time.Since(tokenStartTime).Milliseconds(),
+            "error":                   err.Error(),
+        }))
+
+        appErr := s.errorHandler.Handle(err, operation, operationCtx)
+        return &account.AccountRes{}, appErr
+    }
+
+    s.logger.Debug("JWT tokens generated successfully", s.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":              requestID,
+        "operation":               operation,
+        "user_id":                 user.ID,
+        "email":                   utils.MaskEmail(user.Email),
+        "token_generation_duration_ms": time.Since(tokenStartTime).Milliseconds(),
+    }))
+
+    // Log successful login with request ID
+    totalDuration := time.Since(startTime)
+    s.logger.Info(core.MsgOperationCompleted, s.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":  requestID,
+        "operation":   operation,
+        "user_id":     user.ID,
+        "email":       utils.MaskEmail(user.Email),
+        "role":        user.Role,
+        "branch_id":   user.BranchID,
+        "success":     true,
+        "duration_ms": totalDuration.Milliseconds(),
+    }))
+
+    // Optional: Log login activity (if you have an activity logging service)
+    if s.emailService != nil {
+        go func() {
+            activityStartTime := time.Now()
+
+            // You could add login activity logging here
+            s.logger.Info("User login activity recorded", s.layerContext.MergeWithContext(map[string]interface{}{
+                "request_id":            requestID,
+                "operation":             "record_login_activity",
+                "user_id":               user.ID,
+                "email":                 utils.MaskEmail(user.Email),
+                "activity_duration_ms":  time.Since(activityStartTime).Milliseconds(),
+                "success":               true,
+            }))
+        }()
+    }
+
+    // Convert DTO to Proto and include tokens
+    accountProto := s.convertDTOToProto(&user)
+    
+    return &account.AccountRes{
+        Account:      accountProto,
+        AccessToken:  accessToken,
+        RefreshToken: refreshToken,
+    }, nil
+}

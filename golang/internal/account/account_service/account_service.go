@@ -2,8 +2,8 @@ package account_service
 
 import (
 
-	"strings"
-	"time"
+	
+
 
 	"english-ai-full/error_system"
 	"english-ai-full/internal"
@@ -64,30 +64,6 @@ func NewAccountService(
 
 
 
-// Updated handleServiceSuccess method to use enhanced logging
-func (s *AccountService) handleServiceSuccess(operation string, operationCtx map[string]interface{}, startTime time.Time) {
-	duration := time.Since(startTime)
 
-	// Update context with success metrics
-	successCtx := s.layerContext.MergeWithContext(operationCtx)
-	successCtx["success"] = true
-	successCtx["duration_ms"] = duration.Milliseconds()
-	successCtx["timestamp"] = time.Now().UTC().Format(time.RFC3339)
 
-	s.logger.Info("Service operation completed successfully", successCtx)
-}
-
-// Helper method to determine error cause
-func (s *AccountService) determineErrorCause(err error) string {
-	errStr := strings.ToLower(err.Error())
-
-	switch {
-	case strings.Contains(errStr, "network") || strings.Contains(errStr, "connection"):
-		return core.CauseNetworkError
-	case strings.Contains(errStr, "timeout"):
-		return core.CauseTimeout
-	default:
-		return core.CauseServiceError
-	}
-}
 

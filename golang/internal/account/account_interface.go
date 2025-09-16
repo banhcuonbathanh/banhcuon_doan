@@ -21,7 +21,7 @@ type AccountRepositoryInterface interface {
 		ExistsByEmail(ctx context.Context, email string) (bool, error) 
 		Login(ctx context.Context, loginReq account_dto.LoginRequest) (account_dto.Account, error)
 	// Register(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
-	// FindByEmail(ctx context.Context, email string) (account_dto.Account, error)
+	FindByEmail(ctx context.Context, email string) (account_dto.Account, error)
 	// FindByID(ctx context.Context, id int64) (account_dto.Account, error)
 	// FindAllUsers(ctx context.Context) ([]account_dto.Account, error)
 	// UpdateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
@@ -52,6 +52,7 @@ type AccountRepositoryInterface interface {
 type AccountServiceInterface interface {
 	// Basic gRPC service methods
 	CreateUser(ctx context.Context, req *pb.AccountReq) (*pb.Account, error)
+	Login(ctx context.Context, loginReq *pb.LoginReq) (*pb.AccountRes, error)
 // 	UpdateUser(ctx context.Context, req *pb.UpdateUserReq) (*pb.AccountRes, error)
 // 	DeleteUser(ctx context.Context, req *pb.DeleteAccountReq) (*pb.DeleteAccountRes, error)
 // 	FindAllUsers(ctx context.Context, req *emptypb.Empty) (*pb.AccountList, error)
