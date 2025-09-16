@@ -1,6 +1,6 @@
 # Create feature branch
 
-git checkout -b 16_sep_token
+git checkout -b 16.1_sep_token_other_AI
 
 # Commit changes
 
