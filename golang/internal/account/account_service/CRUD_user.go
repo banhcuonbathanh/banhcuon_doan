@@ -370,9 +370,9 @@ func (s *AccountService) Login(ctx context.Context, loginReq *account.LoginReq) 
         Role:     user.Role, // Make sure this matches the Role type in account_dto
         BranchID: user.BranchID,
     }
-
+    accessToken, err := s.tokenMaker.CreateToken(userAccount)
     // Generate access token
-    accessToken, err := token.GenerateJWTToken(userAccount)
+  
     if err != nil {
         operationCtx["token_generation_error"] = "failed to generate access token"
         

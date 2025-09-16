@@ -11,13 +11,15 @@ import (
 
 	"english-ai-full/internal/account/account_handler" // Add this import
 	"english-ai-full/internal/branch"
+	"english-ai-full/token"
 
 	branchpb "english-ai-full/internal/proto_qr/branch"
 
 	pb "english-ai-full/internal/proto_qr/account"
 
+	"english-ai-full/utils"
 	utils_config "english-ai-full/utils/config"
-	 "english-ai-full/utils"
+
 	"github.com/go-chi/chi"
 	"github.com/go-chi/cors"
 	"github.com/ianschenck/envflag"
@@ -28,8 +30,8 @@ import (
 
 func main() {
 	// Initialize configuration using the new system
-	configPath := getEnvWithDefault("CONFIG_PATH", "utils/config/config.yaml")
-
+	// configPath := getEnvWithDefault("CONFIG_PATH", "utils/config/config.yaml")
+configPath := "utils/config/config.yaml" 
 	err := utils_config.InitializeConfig(configPath)
 	if err != nil {
 		log.Printf("Warning: Failed to load config file: %v", err)
@@ -45,9 +47,24 @@ func main() {
 	// Get the configuration
 	cfg := utils_config.GetConfig()
 	if cfg == nil {
-		log.Fatalf("Configuration is nil")
+		log.Fatalf("Configuration is nil after initialization")
 	}
+	
+	// Verify JWT config specifically
+	if cfg.JWT.SecretKey == "" {
+		log.Fatalf("JWT secret key is not configured")
+	}
+	
+	log.Printf("Configuration loaded successfully with JWT key length: %d", len(cfg.JWT.SecretKey))
 
+	// 3. Initialize token maker ONLY ONCE
+	log.Println("Initializing token maker...")
+	if err := token.InitializeTokenMaker(); err != nil {
+		log.Fatalf("Failed to initialize token maker: %v", err)
+	}
+	log.Println("Token maker initialized successfully")
+
+    log.Printf("Token maker initialized successfully")
 	envflag.Parse()
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),

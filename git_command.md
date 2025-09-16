@@ -1,6 +1,6 @@
 # Create feature branch
 
-git checkout -b 16_sep_log_in
+git checkout -b 16_sep_token
 
 # Commit changes
 
