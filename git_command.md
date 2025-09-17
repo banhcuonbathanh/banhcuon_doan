@@ -1,6 +1,6 @@
 # Create feature branch
 
-git checkout -b 16.1_sep_token_other_AI
+git checkout -b 17_layerblock_original_16.1_sep_token_other_AI
 
 # Commit changes
 

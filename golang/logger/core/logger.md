@@ -1,4 +1,4 @@
-// logger/core/logger.go - Enhanced logger with layer blocking capability
+// logger/core/logger.go - Main logger implementation
 package core
 
 import (
@@ -8,10 +8,7 @@ import (
 	"time"
 )
 
-
-
-
-
+// Logger represents the main logger with enhanced capabilities
 type CoreLogger struct {
 	level         Level
 	outputManager OutputManager
@@ -22,7 +19,6 @@ type CoreLogger struct {
 	environment   string
 	captureStack  bool
 	stackDepth    int
-	blockedLayers map[string]bool  // New field for tracking blocked layers
 	mu            sync.RWMutex
 }
 
@@ -34,11 +30,7 @@ func NewLogger() *CoreLogger {
 		environment:   "development",
 		captureStack:  true,  // Enable stack capture for better debugging
 		stackDepth:    5,     // Capture up to 5 stack frames for errors
-		blockedLayers: make(map[string]bool),
 	}
-	
-	// Initialize with default blocked layers
-	logger.setDefaultBlockedLayers()
 	
 	// Create a default console output manager with rich formatting
 	outputManager := NewDefaultOutputManager()
@@ -200,18 +192,10 @@ func (l *CoreLogger) inferDomainFromLayer(layer string) string {
 	}
 }
 
-// Core logging implementation with enhanced caller tracking and layer blocking
+// Core logging implementation with enhanced caller tracking
 func (l *CoreLogger) log(level Level, message string, callerSkip int, fields ...map[string]interface{}) {
 	l.mu.RLock()
-	
-	// Check level threshold
 	if level < l.level {
-		l.mu.RUnlock()
-		return
-	}
-	
-	// Check if layer is blocked - NEW LAYER BLOCKING LOGIC
-	if !l.isLayerAllowed() {
 		l.mu.RUnlock()
 		return
 	}
@@ -271,4 +255,3 @@ func (l *CoreLogger) mergeFields(fields ...map[string]interface{}) map[string]in
 	
 	return merged
 }
-
