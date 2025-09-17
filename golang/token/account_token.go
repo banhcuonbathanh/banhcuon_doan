@@ -2,10 +2,11 @@
 package token
 
 import (
+	"context"
+
 	"english-ai-full/error_system"
 	"english-ai-full/internal/account/account_dto"
 	utils_config "english-ai-full/utils/config"
-	"context"
 
 	"fmt"
 	"sync"
@@ -187,7 +188,12 @@ func getTokenMaker() (*JWTTokenMaker, error) {
 		logger.Info("Token maker not initialized, attempting auto-initialization", operationCtx)
 	}
 
-	config := utils_config.GetConfig()
+config := utils_config.GetConfig()
+
+
+// logger.Info("sadfasdfasdfasdfsdfdsafasdfasdfsdsadkajsdhfadhsfkhsdjfhklsaj", map[string]interface{}{
+//     "secret_key": config.JWT.SecretKey,
+// })
 	if config == nil {
 		err := error_system.NewError(error_system.ErrSystemError, 
 			"Configuration not initialized - please ensure config is loaded before using token functions")
@@ -1049,7 +1055,7 @@ func CreateTokenWithContext(ctx context.Context, user account_dto.Account, reque
 
 	// Check context timeout
 	if err := ctx.Err(); err != nil {
-		appErr := error_system.NewError(error_system.ErrRequestTimeout, "Request context cancelled or timed out")
+		appErr := error_system.NewError(error_system.ErrTimeout, "Request context cancelled or timed out")
 		
 		if logger != nil {
 			logger.Error("Context error during token creation", 
@@ -1084,7 +1090,7 @@ func VerifyTokenWithContext(ctx context.Context, tokenString, requestID string) 
 
 	// Check context timeout
 	if err := ctx.Err(); err != nil {
-		appErr := error_system.NewError(error_system.ErrRequestTimeout, "Request context cancelled or timed out")
+		appErr := error_system.NewError(error_system.ErrTimeout, "Request context cancelled or timed out")
 		
 		if logger != nil {
 			logger.Error("Context error during token verification", 
@@ -1229,3 +1235,5 @@ func HealthCheck() error {
 
 	return nil
 }
+
+

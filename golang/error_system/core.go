@@ -36,6 +36,8 @@ const (
 	
 	// Generic fallback
 	ErrSystemError         ErrorCode = "SYSTEM_ERROR"
+// token
+	ErrInvalidToken        ErrorCode = "INVALID_TOKEN"
 )
 
 // AppError represents our application error with all necessary context

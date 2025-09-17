@@ -160,22 +160,18 @@ func (rco *RichConsoleOutput) buildEnhancedMessage(entry *LogEntry) string {
 }
 
 func (rco *RichConsoleOutput) filterFields(entry *LogEntry) map[string]interface{} {
-	// Filter out domain and cause since we already included them in the message for errors
+	// Return all fields instead of filtering
 	filteredFields := make(map[string]interface{})
+	
 	for k, v := range entry.Fields {
 		// Skip domain and cause for error levels since they're in the message
 		if entry.Level >= ErrorLevel && (k == "domain" || k == "cause") {
 			continue
 		}
-		// Include other important fields
-		if k == "request_id" || k == "user_id" || k == "email" || k == "method" || 
-		   k == "endpoint" || k == "status_code" || k == "duration_ms" || 
-		   k == "error_code" || k == "service" || k == "layer" || k == "operation" ||
-		   k == "table" || k == "function" || k == "attempted_email" || k == "attempted_role" ||
-		   k == "error" {
-			filteredFields[k] = v
-		}
+		// Include ALL other fields
+		filteredFields[k] = v
 	}
+	
 	return filteredFields
 }
 

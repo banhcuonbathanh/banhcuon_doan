@@ -73,6 +73,7 @@ const (
 	FieldDomain        = "domain"
 	FieldVersion       = "version"
 	FieldEnvironment   = "environment"
+		FieldConfigPath   = "Config_Path"
 	
 	// Database fields
 	FieldTable        = "table"

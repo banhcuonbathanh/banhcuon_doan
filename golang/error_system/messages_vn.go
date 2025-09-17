@@ -9,7 +9,8 @@ var vietnameseMessages = map[ErrorCode]string{
 	ErrAccountNotFound:    "Không tìm thấy tài khoản",
 	ErrInvalidCredentials: "Thông tin đăng nhập không chính xác",
 	ErrAccountSuspended:   "Tài khoản đã bị tạm khóa",
-	
+	// In getVietnameseMessage function, add:
+ErrInvalidToken:       "Token không hợp lệ",
 	// Validation errors - Lỗi xác thực dữ liệu
 	ErrInvalidInput:     "Dữ liệu đầu vào không hợp lệ",
 	ErrValidationFailed: "Xác thực dữ liệu thất bại",
