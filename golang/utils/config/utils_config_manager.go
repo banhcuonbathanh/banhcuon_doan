@@ -36,8 +36,8 @@ func NewConfigManager() *ConfigManager {
 func (cm *ConfigManager) Load(ctx context.Context, configPath string) (*Config, error) {
 	// Initialize logging context
 	logger := core.NewLogger()
-	logger.SetComponent("Config_manager")
-	logger.SetLayer("config")
+	logger.SetComponent(core.ConfigManager)
+logger.SetLayer(core.LayerConfig)
 	logger.SetOperation(core.OperationQuery) // Using query as closest match for config loading
 	
 	// Add context fields for tracing with detailed input information

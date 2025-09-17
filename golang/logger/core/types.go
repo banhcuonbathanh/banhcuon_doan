@@ -33,18 +33,6 @@ func (l Level) String() string {
 }
 
 // Layer constants for better organization
-const (
-	LayerHandler    = "handler"
-	LayerService    = "service" 
-	LayerRepository = "repository"
-	LayerMiddleware = "middleware"
-	LayerAuth       = "auth"
-	LayerValidation = "validation"
-	LayerCache      = "cache"
-	LayerDatabase   = "database"
-	LayerExternal   = "external"
-	LayerSecurity   = "security"
-)
 
 // Enhanced CallerInfo for better error tracking
 type CallerInfo struct {

@@ -26,14 +26,14 @@ var (
 func InitializeConfig(configPath string) error {
 	// Initialize logging context
 	logger := core.NewLogger()
-	logger.SetComponent("Config_global")
-	logger.SetLayer("Config_12121")
+	logger.SetComponent(core.ConfigGlobal)
+	logger.SetLayer(core.LayerConfig)
 	logger.SetOperation("initialize_config")
 
 	logger.Info("Starting global configuration initialization", map[string]interface{}{
 		core.FieldOperation:   "initialize_global_config",
 		core.FieldConfigPath:  configPath,
-		core.FieldMessage:     fmt.Sprintf("Initializing with path: %q (absolute: %s, exists: %t)", configPath, fileExists(configPath)),
+		core.FieldMessage:     fmt.Sprintf( configPath, fileExists(configPath)),
 		"input_path":          configPath,
 		// "input_path_absolute": getAbsolutePath(configPath),
 		"input_path_exists":   fileExists(configPath),
@@ -234,10 +234,7 @@ func InitializeConfig(configPath string) error {
 	
 	// Get the actual config file that was used by the config manager
 	var actualConfigFileUsed string
-	if cm != nil && globalConfigManager != nil {
-		// Try to get the actual file used from the manager's viper instance
-		// actualConfigFileUsed = getActualConfigFileUsed(cm)
-	}
+
 	
 	// successSummary := map[string]interface{}{
 	// 	core.FieldOperation:                "initialize_config_complete",

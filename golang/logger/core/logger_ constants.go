@@ -35,6 +35,11 @@ const (
 	OperationUploadFile   = "upload_file"
 	OperationDownloadFile = "download_file"
 	OperationCallAPI      = "call_api"
+
+	// config
+ConfigGlobal   = "config_global"
+ConfigManager   = "config_manager"
+	// token
 )
 
 // Field name constants for logging
@@ -354,4 +359,21 @@ const (
 	LocationValidation        = "validation"
 	LocationErrorWrapping     = "error_wrapping"
 	LocationCauseAnalysis     = "cause_analysis"
+)
+
+
+const (
+	LayerHandler    = "handler"
+	LayerService    = "service" 
+	LayerRepository = "repository"
+	LayerMiddleware = "middleware"
+	LayerAuth       = "auth"
+	LayerValidation = "validation"
+	LayerCache      = "cache"
+	LayerDatabase   = "database"
+	LayerExternal   = "external"
+	LayerSecurity   = "security"
+
+	LayerConfig   = "config"
+	LayerToken   = "token"
 )
