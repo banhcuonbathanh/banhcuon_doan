@@ -1,6 +1,6 @@
 # Create feature branch
 
-git checkout -b 16.2_sep_layer_filter
+git checkout -b 16.3_sep_layer_filter2
 
 # Commit changes
 
@@ -44,5 +44,5 @@ git push origin master
 
 git branch -d feature-account
 git push origin --delete feature-account
-
-git checkout feature-account-interface-service
+# jump to
+git checkout 16.1_sep_token_other_AI

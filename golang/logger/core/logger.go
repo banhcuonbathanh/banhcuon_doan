@@ -1,4 +1,4 @@
-// logger/core/logger.go - Main logger implementation
+// logger/core/logger_with_filter.go - Updated logger with layer filtering
 package core
 
 import (
@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Logger represents the main logger with enhanced capabilities
+// Enhanced CoreLogger with layer filtering capabilities
 type CoreLogger struct {
 	level         Level
 	outputManager OutputManager
@@ -19,10 +19,11 @@ type CoreLogger struct {
 	environment   string
 	captureStack  bool
 	stackDepth    int
+	layerFilter   *LayerFilter  // New: Layer filtering system
 	mu            sync.RWMutex
 }
 
-// NewLogger creates a new enhanced logger instance
+// NewLogger creates a new enhanced logger instance with layer filtering
 func NewLogger() *CoreLogger {
 	logger := &CoreLogger{
 		level:         InfoLevel,
@@ -30,6 +31,7 @@ func NewLogger() *CoreLogger {
 		environment:   "development",
 		captureStack:  true,  // Enable stack capture for better debugging
 		stackDepth:    5,     // Capture up to 5 stack frames for errors
+		layerFilter:   NewLayerFilter(), // Initialize layer filter
 	}
 	
 	// Create a default console output manager with rich formatting
@@ -37,6 +39,43 @@ func NewLogger() *CoreLogger {
 	logger.SetOutputManager(outputManager)
 	
 	return logger
+}
+
+// Layer filtering configuration methods
+func (l *CoreLogger) EnableOnlyLayers(layers ...string) {
+	l.layerFilter.EnableOnlyLayers(layers...)
+}
+
+func (l *CoreLogger) DisableLayers(layers ...string) {
+	l.layerFilter.DisableLayers(layers...)
+}
+
+func (l *CoreLogger) EnableAllLayers() {
+	l.layerFilter.EnableAllLayers()
+}
+
+func (l *CoreLogger) SetLayerLevel(layer string, level Level) {
+	l.layerFilter.SetLayerLevel(layer, level)
+}
+
+func (l *CoreLogger) RemoveLayerLevel(layer string) {
+	l.layerFilter.RemoveLayerLevel(layer)
+}
+
+func (l *CoreLogger) ClearLayerLevels() {
+	l.layerFilter.ClearLayerLevels()
+}
+
+func (l *CoreLogger) GetLayerFilterStatus() string {
+	return l.layerFilter.GetFilterStatus()
+}
+
+func (l *CoreLogger) SetLayerFilterConfig(config LayerFilterConfig) {
+	l.layerFilter.SetConfig(config)
+}
+
+func (l *CoreLogger) GetLayerFilterConfig() LayerFilterConfig {
+	return l.layerFilter.GetConfig()
 }
 
 // SetOutputManager sets the output manager for this logger
@@ -124,7 +163,7 @@ func (l *CoreLogger) InfoWithOperation(message, layer, operation string, fields 
 	mergedFields := l.mergeFields(fields...)
 	mergedFields["layer"] = layer
 	mergedFields["operation"] = operation
-	l.log(InfoLevel, message, 3, mergedFields)
+	l.logWithLayer(InfoLevel, message, layer, 3, mergedFields)
 }
 
 // Enhanced ErrorWithCause method with better caller tracking
@@ -139,7 +178,7 @@ func (l *CoreLogger) ErrorWithCause(message, cause, layer, operation string, fie
 		mergedFields["domain"] = l.inferDomainFromLayer(layer)
 	}
 	
-	l.log(ErrorLevel, message, 3, mergedFields)
+	l.logWithLayer(ErrorLevel, message, layer, 3, mergedFields)
 }
 
 // Enhanced WarnWithCause method
@@ -154,7 +193,7 @@ func (l *CoreLogger) WarnWithCause(message, cause, layer, operation string, fiel
 		mergedFields["domain"] = l.inferDomainFromLayer(layer)
 	}
 	
-	l.log(WarnLevel, message, 3, mergedFields)
+	l.logWithLayer(WarnLevel, message, layer, 3, mergedFields)
 }
 
 // New method for enhanced error logging with domain
@@ -165,7 +204,25 @@ func (l *CoreLogger) ErrorWithDomainAndCause(message, domain, cause, layer, oper
 	mergedFields["layer"] = layer  
 	mergedFields["operation"] = operation
 	
-	l.log(ErrorLevel, message, 3, mergedFields)
+	l.logWithLayer(ErrorLevel, message, layer, 3, mergedFields)
+}
+
+// New layer-specific logging methods
+// New layer-specific logging methods
+func (l *CoreLogger) DebugInLayer(layer, message string, fields ...map[string]interface{}) {
+	l.logWithLayer(DebugLevel, message, layer, 3, l.mergeFields(fields...))
+}
+
+func (l *CoreLogger) InfoInLayer(layer, message string, fields ...map[string]interface{}) {
+	l.logWithLayer(InfoLevel, message, layer, 3, l.mergeFields(fields...))
+}
+
+func (l *CoreLogger) WarnInLayer(layer, message string, fields ...map[string]interface{}) {
+	l.logWithLayer(WarnLevel, message, layer, 3, l.mergeFields(fields...))
+}
+
+func (l *CoreLogger) ErrorInLayer(layer, message string, fields ...map[string]interface{}) {
+	l.logWithLayer(ErrorLevel, message, layer, 3, l.mergeFields(fields...))
 }
 
 // inferDomainFromLayer infers domain from layer
@@ -192,10 +249,27 @@ func (l *CoreLogger) inferDomainFromLayer(layer string) string {
 	}
 }
 
-// Core logging implementation with enhanced caller tracking
+// Core logging implementation with enhanced caller tracking and layer filtering
 func (l *CoreLogger) log(level Level, message string, callerSkip int, fields ...map[string]interface{}) {
 	l.mu.RLock()
+	currentLayer := l.layer
+	l.mu.RUnlock()
+	
+	l.logWithLayer(level, message, currentLayer, callerSkip+1, fields...)
+}
+
+// logWithLayer handles logging with specific layer and applies filtering
+func (l *CoreLogger) logWithLayer(level Level, message string, layer string, callerSkip int, fields ...map[string]interface{}) {
+	l.mu.RLock()
+	
+	// Check global level first
 	if level < l.level {
+		l.mu.RUnlock()
+		return
+	}
+	
+	// Check layer filtering - this is the new filtering logic
+	if !l.layerFilter.ShouldLog(layer, level) {
 		l.mu.RUnlock()
 		return
 	}
@@ -207,7 +281,7 @@ func (l *CoreLogger) log(level Level, message string, callerSkip int, fields ...
 		Message:     message,
 		Fields:      l.mergeFields(fields...),
 		Component:   l.component,
-		Layer:       l.layer,
+		Layer:       layer,  // Use the specific layer passed in
 		Operation:   l.operation,
 		Environment: l.environment,
 	}

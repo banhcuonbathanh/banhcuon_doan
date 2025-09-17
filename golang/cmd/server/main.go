@@ -11,6 +11,7 @@ import (
 
 	"english-ai-full/internal/account/account_handler" // Add this import
 	"english-ai-full/internal/branch"
+	"english-ai-full/logger/core"
 	"english-ai-full/token"
 
 	branchpb "english-ai-full/internal/proto_qr/branch"
@@ -31,6 +32,7 @@ import (
 func main() {
 	// Initialize configuration using the new system
 	// configPath := getEnvWithDefault("CONFIG_PATH", "utils/config/config.yaml")
+	LogerSetup()
 configPath := "utils/config/config.yaml" 
 	err := utils_config.InitializeConfig(configPath)
 	if err != nil {
@@ -49,7 +51,9 @@ configPath := "utils/config/config.yaml"
 	if cfg == nil {
 		log.Fatalf("Configuration is nil after initialization")
 	}
-	
+	// loger
+
+	//
 	// Verify JWT config specifically
 	if cfg.JWT.SecretKey == "" {
 		log.Fatalf("JWT secret key is not configured")
@@ -252,4 +256,12 @@ func StartWithErrorHandling(addr string, r *chi.Mux, cfg *utils_config.Config) {
 		// })
 		log.Fatalf("Server failed to start: %v", err)
 	}
+}
+
+func LogerSetup() {
+
+logger := core.NewLogger()
+	logger.EnableOnlyLayers( core.LayerToken)
+
+		logger.DisableLayers(core.LayerDatabase, core.LayerExternal, core.LayerConfig, core.LayerHandler, core.LayerService, core.LayerRepository,)
 }
