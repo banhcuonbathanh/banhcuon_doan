@@ -1,0 +1,105 @@
+{
+  "info": {
+    "_postman_id": "k1l2m3n4-o5p6-7890-klmn-op1234567890",
+    "name": "Login - SQL Injection Attempt ❌",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "37760297",
+    "description": "Test case for login with SQL injection attempt in credentials"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Login - SQL Injection Attempt ❌",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 400 (Bad Request) or 401 (Unauthorized)\", function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([400, 401]);",
+              "});",
+              "",
+              "pm.test(\"Response contains appropriate error message\", function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.have.property('error');",
+              "    // Should not reveal SQL injection was attempted",
+              "    pm.expect(responseJson.error.toLowerCase()).to.satisfy(function(msg) {",
+              "        return msg.includes('invalid') || msg.includes('credentials') || msg.includes('authentication failed');",
+              "    });",
+              "});",
+              "",
+              "pm.test(\"No token is returned\", function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.not.have.property('token');",
+              "    pm.expect(responseJson).to.not.have.property('jwt_token');",
+              "    pm.expect(responseJson).to.not.have.property('access_token');",
+              "});",
+              "",
+              "pm.test(\"No user data is returned\", function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.not.have.property('id');",
+              "    pm.expect(responseJson).to.not.have.property('name');",
+              "    pm.expect(responseJson).to.not.have.property('user');",
+              "});",
+              "",
+              "pm.test(\"No SQL error details are exposed\", function () {",
+              "    const responseJson = pm.response.json();",
+              "    const errorMsg = responseJson.error ? responseJson.error.toLowerCase() : '';",
+              "    pm.expect(errorMsg).to.not.include('sql');",
+              "    pm.expect(errorMsg).to.not.include('database');",
+              "    pm.expect(errorMsg).to.not.include('mysql');",
+              "    pm.expect(errorMsg).to.not.include('postgres');",
+              "    pm.expect(errorMsg).to.not.include('syntax');",
+              "});",
+              "",
+              "pm.test(\"Response time is acceptable\", function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Testing SQL injection attempts",
+              "// The application should properly sanitize inputs",
+              "// and not reveal database structure or errors"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"admin@example.com' OR '1'='1' --\",\n    \"password\": \"' OR '1'='1' --\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/accounts/auth/login",
+          "host": ["{{base_url}}"],
+          "path": ["accounts", "auth", "login"]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "info": {
+    "_postman_id": "d4e5f6g7-h8i9-0123-defg-hi4567890123",
+    "name": "Login - Non-existent User ❌",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "37760297",
+    "description": "Test case for login with non-existent user email"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Login - Non-existent User ❌",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 401 (Unauthorized) or 404 (Not Found)\", function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([401, 404]);",
+              "});",
+              "",
+              "pm.test(\"Response contains error message about user not found\", function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.have.property('error');",
+              "    pm.expect(responseJson.error.toLowerCase()).to.satisfy(function(msg) {",
+              "        return msg.includes('user') && (msg.includes('not found') || msg.includes('does not exist') || msg.includes('invalid credentials'));",
+              "    });",
+              "});",
+              "",
+              "pm.test(\"No token is returned\", function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.not.have.property('token');",
+              "    pm.expect(responseJson).to.not.have.property('jwt_token');",
+              "    pm.expect(responseJson).to.not.have.property('access_token');",
+              "});",
+              "",
+              "pm.test(\"No user data is returned\", function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.not.have.property('id');",
+              "    pm.expect(responseJson).to.not.have.property('name');",
+              "    pm.expect(responseJson).to.not.have.property('user');",
+              "});",
+              "",
+              "pm.test(\"Response time is acceptable\", function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Testing with email that doesn't exist in the system",
+              "// Using a valid email format but non-existent user"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"nonexistent.user@example.com\",\n    \"password\": \"anyPassword123!\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/accounts/auth/login",
+          "host": ["{{base_url}}"],
+          "path": ["accounts", "auth", "login"]
+        }
+      }
+    }
+  ]
+}

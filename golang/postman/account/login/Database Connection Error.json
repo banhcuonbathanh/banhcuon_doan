@@ -1,0 +1,96 @@
+{
+  "info": {
+    "_postman_id": "g7h8i9j0-k1l2-3456-ghij-kl7890123456",
+    "name": "Login - Database Connection Error ❌",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "37760297",
+    "description": "Test case for login when database connection fails"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Login - Database Connection Error ❌",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 500 (Internal Server Error) or 503 (Service Unavailable)\", function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([500, 503]);",
+              "});",
+              "",
+              "pm.test(\"Response contains error message about service unavailability\", function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.have.property('error');",
+              "    pm.expect(responseJson.error.toLowerCase()).to.satisfy(function(msg) {",
+              "        return msg.includes('database') || msg.includes('service unavailable') || msg.includes('internal error') || msg.includes('connection');",
+              "    });",
+              "});",
+              "",
+              "pm.test(\"No token is returned\", function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.not.have.property('token');",
+              "    pm.expect(responseJson).to.not.have.property('jwt_token');",
+              "    pm.expect(responseJson).to.not.have.property('access_token');",
+              "});",
+              "",
+              "pm.test(\"No user data is returned\", function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.not.have.property('id');",
+              "    pm.expect(responseJson).to.not.have.property('name');",
+              "    pm.expect(responseJson).to.not.have.property('user');",
+              "});",
+              "",
+              "pm.test(\"Response time might be longer due to timeout\", function () {",
+              "    // Database connection errors might take longer due to connection timeout",
+              "    pm.expect(pm.response.responseTime).to.be.below(30000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Testing database connection failure",
+              "// This test case might require stopping the database",
+              "// or configuring the application with wrong database credentials",
+              "// Note: This is difficult to simulate without actual infrastructure changes"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"john.doe@example.com\",\n    \"password\": \"SecurePassword123!\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/accounts/auth/login",
+          "host": ["{{base_url}}"],
+          "path": ["accounts", "auth", "login"]
+        }
+      }
+    }
+  ]
+}

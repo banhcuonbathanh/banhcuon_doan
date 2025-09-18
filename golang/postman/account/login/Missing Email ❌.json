@@ -1,0 +1,93 @@
+{
+  "info": {
+    "_postman_id": "b2c3d4e5-f6g7-8901-bcde-fg2345678901",
+    "name": "Login - Empty/Missing Email ❌",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "37760297",
+    "description": "Test case for login with empty or missing email field"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Login - Empty/Missing Email ❌",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 400 (Bad Request)\", function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test(\"Response contains error message about missing email\", function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.have.property('error');",
+              "    pm.expect(responseJson.error.toLowerCase()).to.satisfy(function(msg) {",
+              "        return msg.includes('email') && (msg.includes('required') || msg.includes('missing') || msg.includes('empty'));",
+              "    });",
+              "});",
+              "",
+              "pm.test(\"No token is returned\", function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.not.have.property('token');",
+              "    pm.expect(responseJson).to.not.have.property('jwt_token');",
+              "    pm.expect(responseJson).to.not.have.property('access_token');",
+              "});",
+              "",
+              "pm.test(\"No user data is returned\", function () {",
+              "    const responseJson = pm.response.json();",
+              "    pm.expect(responseJson).to.not.have.property('id');",
+              "    pm.expect(responseJson).to.not.have.property('name');",
+              "    pm.expect(responseJson).to.not.have.property('user');",
+              "});",
+              "",
+              "pm.test(\"Response time is acceptable\", function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Testing with empty email field",
+              "// Email field is present but empty string"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"\",\n    \"password\": \"validPassword123!\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/accounts/auth/login",
+          "host": ["{{base_url}}"],
+          "path": ["accounts", "auth", "login"]
+        }
+      }
+    }
+  ]
+}
