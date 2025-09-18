@@ -6,7 +6,7 @@ import (
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/internal/proto_qr/account"
 	"english-ai-full/logger/core"
-	"english-ai-full/token"
+
 	"english-ai-full/utils"
 	"fmt"
 	"time"
@@ -388,9 +388,9 @@ func (s *AccountService) Login(ctx context.Context, loginReq *account.LoginReq) 
         appErr := s.errorHandler.Handle(err, operation, operationCtx)
         return &account.AccountRes{}, appErr
     }
-
+refreshToken, err := s.tokenMaker.CreateRefreshToken(userAccount)
     // Generate refresh token
-    refreshToken, err := token.GenerateRefreshToken(userAccount)
+
     if err != nil {
         operationCtx["token_generation_error"] = "failed to generate refresh token"
         

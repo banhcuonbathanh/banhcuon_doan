@@ -4,9 +4,9 @@ var DefaultBlockedLayers = []string{
 	LayerDatabase,
 	LayerCache,
 	LayerValidation,
-		LayerHandler,
-		LayerService,
-		LayerRepository,
+		// LayerHandler,
+		// LayerService,
+		// LayerRepository,
 			LayerConfig,
 }
 
