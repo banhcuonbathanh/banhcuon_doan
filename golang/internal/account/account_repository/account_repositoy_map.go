@@ -22,25 +22,58 @@ import (
 
 // mapORMToDTO converts ORM model to DTO
 func (r *Repository) mapORMToDTO(m *orm.Account) account_dto.Account {
-	return account_dto.Account{
-		ID:        m.ID,
-		BranchID:  m.BranchID.Int64,
-		Name:      m.Name,
-		Email:     m.Email,
-		Password:  m.Password,
-		Avatar:    m.Avatar.String,
-		Title:     m.Title.String,
-		Role:      account_dto.Role(m.Role),
-		OwnerID:   m.OwnerID.Int64,
-		Status: func() string {
-			if m.Status.Valid {
-				return m.Status.String
-			}
-			return "" // or some default value
-		}(),
-		CreatedAt: m.CreatedAt.Time,
-		UpdatedAt: m.UpdatedAt.Time,
+	dto := account_dto.Account{
+		ID:       m.ID,
+		Name:     m.Name,
+		Email:    m.Email,
+		Password: m.Password, // Note: Should be cleared in service layer
 	}
+	
+	// Handle nullable BranchID
+	if m.BranchID.Valid {
+		dto.BranchID = m.BranchID.Int64
+	}
+	
+	// Handle nullable OwnerID
+	if m.OwnerID.Valid {
+		dto.OwnerID = m.OwnerID.Int64
+	}
+	
+	// Handle nullable Avatar
+	if m.Avatar.Valid {
+		dto.Avatar = m.Avatar.String
+	}
+	
+	// Handle nullable Title
+	if m.Title.Valid {
+		dto.Title = m.Title.String
+	}
+	
+	// Handle Role with validation
+	if m.Role != "" {
+		// Normalize and validate role
+		dto.Role = account_dto.NormalizeRole(m.Role)
+	} else {
+		dto.Role = account_dto.GetDefaultRole()
+	}
+	
+	// Handle nullable Status
+	if m.Status.Valid {
+		dto.Status = m.Status.String
+	} else {
+		dto.Status = "inactive" // or your default status
+	}
+	
+	// Handle nullable timestamps
+	if m.CreatedAt.Valid {
+		dto.CreatedAt = m.CreatedAt.Time
+	}
+	
+	if m.UpdatedAt.Valid {
+		dto.UpdatedAt = m.UpdatedAt.Time
+	}
+	
+	return dto
 }
 
 // mapORMToProto converts ORM model to Proto format
@@ -218,3 +251,5 @@ func (r *Repository) getRequestIDFromContext(ctx context.Context) string {
     // Fallback: generate a new request ID
     return fmt.Sprintf("repo_req_%d", time.Now().UnixNano())
 }
+
+

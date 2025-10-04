@@ -19,126 +19,157 @@ import (
 )
 
 func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error) {
-    const operation = core.OperationCreateUser
-    const table = core.TableAccounts
-    const function = core.FuncCreateUser
-    
-    startTime := time.Now()
-    
-    // Extract request ID from context
-    requestID := r.getRequestIDFromContext(ctx)
-    
-    // Build operation context with request ID
-    operationCtx := r.layerContext.BuildOperationContext(operation, table, function, map[string]interface{}{
-        "request_id": requestID,
-        "email":      utils.MaskEmail(user.Email),
-        "role":       string(user.Role),
-    })
-    
-    // Set request ID in logger
-    r.logger.SetOperation(operation)
-    
-    // Log the start with request ID
-    r.logger.Info(core.MsgDatabaseOperationStarted, r.layerContext.MergeWithContext(map[string]interface{}{
-        "request_id":        requestID,
-        core.FieldOperation: operation,
-        core.FieldTable:     table,
-        core.FieldFunction:  function,
-        core.FieldEmail:     utils.MaskEmail(user.Email),
-    }))
+	const operation = core.OperationCreateUser
+	const table = core.TableAccounts
+	const function = core.FuncCreateUser
+	
+	startTime := time.Now()
+	
+	// Extract request ID from context
+	requestID := r.getRequestIDFromContext(ctx)
+	
+	// Build operation context with ALL relevant field values for FK error detection
+	operationCtx := r.layerContext.BuildOperationContext(operation, table, function, map[string]interface{}{
+		"request_id": requestID,
+		"email":      utils.MaskEmail(user.Email),
+		"role":       string(user.Role),
+		"owner_id":   user.OwnerID,   // ADDED: Critical for FK error messages
+		"branch_id":  user.BranchID,  // ADDED: Critical for FK error messages
+		"name":       user.Name,
+	})
+	
+	// Set request ID in logger
+	r.logger.SetOperation(operation)
+	
+	// Log the start with request ID
+	r.logger.Info(core.MsgDatabaseOperationStarted, r.layerContext.MergeWithContext(map[string]interface{}{
+		"request_id":        requestID,
+		core.FieldOperation: operation,
+		core.FieldTable:     table,
+		core.FieldFunction:  function,
+		core.FieldEmail:     utils.MaskEmail(user.Email),
+		core.FieldRole:      string(user.Role),
+		"owner_id":          user.OwnerID,
+		"branch_id":         user.BranchID,
+	}))
 
-    // Context timeout check
-    if err := ctx.Err(); err != nil {
-        duration := time.Since(startTime)
-        r.logDatabaseOperation(operation, table, duration, false, 0)
-        
-        r.logger.ErrorWithCause(core.MsgContextError, core.CauseContextCancelled, core.LayerRepository, operation,
-            r.layerContext.MergeWithContext(map[string]interface{}{
-                "request_id":         requestID,
-                core.FieldError:      err.Error(),
-                core.FieldDurationMS: duration.Milliseconds(),
-                core.FieldTable:      table,
-                core.FieldFunction:   function,
-                "source_method":      "CreateUser",
-                "error_location":     "context_check",
-            }))
-        
-        return account_dto.Account{}, r.errorHandler.Handle(err, operation, table, operationCtx)
-    }
+	// Context timeout check
+	if err := ctx.Err(); err != nil {
+		duration := time.Since(startTime)
+		r.logDatabaseOperation(operation, table, duration, false, 0)
+		
+		r.logger.ErrorWithCause(core.MsgContextError, core.CauseContextCancelled, core.LayerRepository, operation,
+			r.layerContext.MergeWithContext(map[string]interface{}{
+				"request_id":         requestID,
+				core.FieldError:      err.Error(),
+				core.FieldDurationMS: duration.Milliseconds(),
+				core.FieldTable:      table,
+				core.FieldFunction:   function,
+				"source_method":      "CreateUser",
+				"error_location":     "context_check",
+			}))
+		
+		return account_dto.Account{}, r.errorHandler.Handle(err, operation, table, operationCtx)
+	}
 
-    // Log validation start with request ID
-    r.logger.Debug("Starting user validation", r.layerContext.MergeWithContext(map[string]interface{}{
-        "request_id":        requestID,
-        core.FieldOperation: operation,
-        core.FieldFunction:  function,
-        core.FieldEmail:     utils.MaskEmail(user.Email),
-        core.FieldRole:      string(user.Role),
-        "source_method":     "CreateUser",
-        "validation_step":   "build_orm_account",
-    }))
+	// Log validation start with request ID
+	r.logger.Debug("Starting user validation", r.layerContext.MergeWithContext(map[string]interface{}{
+		"request_id":        requestID,
+		core.FieldOperation: operation,
+		core.FieldFunction:  function,
+		core.FieldEmail:     utils.MaskEmail(user.Email),
+		core.FieldRole:      string(user.Role),
+		"source_method":     "CreateUser",
+		"validation_step":   "build_orm_account",
+		"owner_id":          user.OwnerID,
+		"branch_id":         user.BranchID,
+	}))
 
-    // Build ORM account
-    ormAccount, err := r.buildORMAccount(user)
-    if err != nil {
-        duration := time.Since(startTime)
-        r.logDatabaseOperation(operation, table, duration, false, 0)
-        
-        if appErr, ok := error_system.IsAppError(err); ok {
-            r.logger.Error("Failed to build ORM account with AppError", r.layerContext.MergeWithContext(map[string]interface{}{
-                "request_id":         requestID,
-                "error_code":         appErr.Code,
-                "error_message":      appErr.Message,
-                core.FieldDurationMS: duration.Milliseconds(),
-                core.FieldTable:      table,
-                core.FieldFunction:   function,
-                "source_method":      "CreateUser",
-                "error_location":     "build_orm_account",
-            }))
-            return account_dto.Account{}, appErr
-        }
-        
-        return account_dto.Account{}, r.errorHandler.Handle(err, operation, table, operationCtx)
-    }
+	// Build ORM account
+	ormAccount, err := r.buildORMAccount(user)
+	if err != nil {
+		duration := time.Since(startTime)
+		r.logDatabaseOperation(operation, table, duration, false, 0)
+		
+		if appErr, ok := error_system.IsAppError(err); ok {
+			r.logger.Error("Failed to build ORM account with AppError", r.layerContext.MergeWithContext(map[string]interface{}{
+				"request_id":         requestID,
+				"error_code":         appErr.Code,
+				"error_message":      appErr.Message,
+				core.FieldDurationMS: duration.Milliseconds(),
+				core.FieldTable:      table,
+				core.FieldFunction:   function,
+				"source_method":      "CreateUser",
+				"error_location":     "build_orm_account",
+			}))
+			return account_dto.Account{}, appErr
+		}
+		
+		return account_dto.Account{}, r.errorHandler.Handle(err, operation, table, operationCtx)
+	}
 
-    // Log insert attempt with request ID
-    r.logger.Info(core.MsgDatabaseInsertAttempt, r.layerContext.MergeWithContext(map[string]interface{}{
-        "request_id":        requestID,
-        core.FieldOperation: operation,
-        core.FieldTable:     table,
-        core.FieldFunction:  function,
-        core.FieldEmail:     utils.MaskEmail(user.Email),
-        core.FieldRole:      string(user.Role),
-        "source_method":     "CreateUser",
-        "insert_step":       "database_insert",
-    }))
+	// Log insert attempt with request ID and FK values
+	r.logger.Info(core.MsgDatabaseInsertAttempt, r.layerContext.MergeWithContext(map[string]interface{}{
+		"request_id":        requestID,
+		core.FieldOperation: operation,
+		core.FieldTable:     table,
+		core.FieldFunction:  function,
+		core.FieldEmail:     utils.MaskEmail(user.Email),
+		core.FieldRole:      string(user.Role),
+		"source_method":     "CreateUser",
+		"insert_step":       "database_insert",
+		"owner_id":          user.OwnerID,
+		"branch_id":         user.BranchID,
+	}))
 
-    // Database insert
-    if err := ormAccount.Insert(ctx, r.db, boil.Infer()); err != nil {
-        duration := time.Since(startTime)
-        r.logDatabaseOperation(operation, table, duration, false, 0)
-        
-        return account_dto.Account{}, r.errorHandler.Handle(err, operation, table, operationCtx)
-    }
-    
-    duration := time.Since(startTime)
-    r.logDatabaseOperation(operation, table, duration, true, 1)
-    
-    // Log success with request ID
-    r.logger.Info(core.MsgDatabaseInsertSuccess, r.layerContext.MergeWithContext(map[string]interface{}{
-        "request_id":           requestID,
-        core.FieldUserID:       ormAccount.ID,
-        core.FieldEmail:        utils.MaskEmail(user.Email),
-        core.FieldDurationMS:   duration.Milliseconds(),
-        core.FieldRowsAffected: int64(1),
-        core.FieldOperation:    operation,
-        core.FieldTable:        table,
-        core.FieldFunction:     function,
-        "source_method":        "CreateUser",
-        "success_step":         "database_insert_complete",
-    }))
+	// Database insert - ERROR HANDLING WILL NOW WORK PROPERLY
+	if err := ormAccount.Insert(ctx, r.db, boil.Infer()); err != nil {
+		duration := time.Since(startTime)
+		r.logDatabaseOperation(operation, table, duration, false, 0)
+		
+		// Enhanced error logging before handling
+		r.logger.Error("Database insert failed", r.layerContext.MergeWithContext(map[string]interface{}{
+			"request_id":         requestID,
+			core.FieldError:      err.Error(),
+			core.FieldDurationMS: duration.Milliseconds(),
+			core.FieldTable:      table,
+			core.FieldFunction:   function,
+			"source_method":      "CreateUser",
+			"error_location":     "database_insert",
+			core.FieldEmail:      utils.MaskEmail(user.Email),
+			"owner_id":           user.OwnerID,
+			"branch_id":          user.BranchID,
+		}))
+		
+		// Pass operationCtx which now contains owner_id and branch_id
+		return account_dto.Account{}, r.errorHandler.Handle(err, operation, table, operationCtx)
+	}
+	
+	duration := time.Since(startTime)
+	r.logDatabaseOperation(operation, table, duration, true, 1)
+	
+	// Log success with request ID
+	r.logger.Info(core.MsgDatabaseInsertSuccess, r.layerContext.MergeWithContext(map[string]interface{}{
+		"request_id":           requestID,
+		core.FieldUserID:       ormAccount.ID,
+		core.FieldEmail:        utils.MaskEmail(user.Email),
+		core.FieldDurationMS:   duration.Milliseconds(),
+		core.FieldRowsAffected: int64(1),
+		core.FieldOperation:    operation,
+		core.FieldTable:        table,
+		core.FieldFunction:     function,
+		"source_method":        "CreateUser",
+		"success_step":         "database_insert_complete",
+		"owner_id":             ormAccount.OwnerID.Int64,
+		"branch_id":            ormAccount.BranchID.Int64,
+	}))
 
-    createdUser := r.mapORMToDTO(ormAccount)
-    return createdUser, nil
+	createdUser := r.mapORMToDTO(ormAccount)
+	
+	// Clear password before returning (security best practice)
+	createdUser.Password = ""
+	
+	return createdUser, nil
 }
 
 func (r *Repository) Login(ctx context.Context, loginReq account_dto.LoginRequest) (account_dto.Account, error) {

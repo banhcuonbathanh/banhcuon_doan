@@ -13,6 +13,34 @@ import (
 type ErrorCode string
 
 const (
+
+		// Reference errors
+	ErrInvalidReference = "INVALID_REFERENCE"
+	ErrNotFound         = "NOT_FOUND"
+	
+	// Duplicate errors
+	ErrDuplicateEntry   = "DUPLICATE_ENTRY"
+	ErrDuplicateEmail   = "DUPLICATE_EMAIL"
+	ErrDuplicatePhone   = "DUPLICATE_PHONE"
+	
+
+	ErrTokenExpired     = "TOKEN_EXPIRED"
+	ErrTokenInvalid     = "TOKEN_INVALID"
+	
+	// Permission errors
+
+	ErrInsufficientPermissions = "INSUFFICIENT_PERMISSIONS"
+	
+	// System errors
+
+	ErrInternalError    = "INTERNAL_ERROR"
+
+	ErrExternalService  = "EXTERNAL_SERVICE_ERROR"
+	
+	// Account status errors
+	ErrAccountInactive  = "ACCOUNT_INACTIVE"
+
+	ErrAccountLocked    = "ACCOUNT_LOCKED"
 	// User/Account errors
 	ErrAccountDuplicate    ErrorCode = "ACCOUNT_DUPLICATE"
 	ErrAccountNotFound     ErrorCode = "ACCOUNT_NOT_FOUND"
@@ -435,3 +463,55 @@ func EnhancedValidationErrorWithDetails(field string, value interface{}, constra
 		Details:    details,
 	}
 }
+
+
+// new asdfasdfasdf
+
+
+
+
+
+// Helper functions for common errors
+func NotFound(message, messageVN string) *AppError {
+	return &AppError{
+		Code:       ErrNotFound,
+		Message:    message,
+		MessageVN:  messageVN,
+
+	
+	}
+}
+
+
+func InvalidReference(field, entity string, value interface{}) *AppError {
+	return &AppError{
+		Code:       ErrInvalidReference,
+		Message:    "The specified " + entity + " does not exist",
+		MessageVN:  entity + " được chỉ định không tồn tại",
+
+		Details: map[string]interface{}{
+			"field":  field,
+			"entity": entity,
+			"value":  value,
+		},
+	}
+}
+
+func InternalError(message, messageVN, internalError string) *AppError {
+	details := make(map[string]interface{})
+	if internalError != "" {
+		details["internal_error"] = internalError
+	}
+	
+	return &AppError{
+		Code:       ErrInternalError,
+		Message:    message,
+		MessageVN:  messageVN,
+
+		Details:    details,
+	}
+}
+
+
+
+// new asdfasdfasdfsda

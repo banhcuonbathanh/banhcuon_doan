@@ -2,9 +2,12 @@
 package error_system
 
 import (
+	"database/sql"
+	"errors"
 	"strings"
 
 	"english-ai-full/logger/core"
+	"github.com/lib/pq" // Added for PostgreSQL error handling
 )
 
 // RepositoryErrorHandler handles database/repository layer errors
@@ -32,13 +35,339 @@ func (h *RepositoryErrorHandler) Handle(err error, operation, table string, cont
 		return appErr
 	}
 	
-	// Handle database-specific errors
-	appErr := h.handleDatabaseError(err, )
+	// NEW: Check for sql.ErrNoRows first (most common case)
+	if errors.Is(err, sql.ErrNoRows) {
+		appErr := NewErrorWithMessages(
+			ErrAccountNotFound,
+			"Record not found",
+			"Không tìm thấy bản ghi",
+		)
+		h.logError(appErr, operation, table, context)
+		return appErr
+	}
+	
+	// NEW: Handle PostgreSQL-specific errors using lib/pq
+	if pqErr, ok := err.(*pq.Error); ok {
+		appErr := h.handlePostgresError(pqErr, context)
+		h.logError(appErr, operation, table, context)
+		return appErr
+	}
+	
+	// Handle database-specific errors (existing logic as fallback)
+	appErr := h.handleDatabaseError(err)
 	h.logError(appErr, operation, table, context)
 	
 	return appErr
 }
 
+// NEW: handlePostgresError processes PostgreSQL-specific errors with detailed context
+func (h *RepositoryErrorHandler) handlePostgresError(pqErr *pq.Error, context map[string]interface{}) *AppError {
+	// Log the PostgreSQL error details for debugging
+	h.logPostgresError(pqErr)
+	
+	switch pqErr.Code {
+	case "23505": // unique_violation
+		return h.handleUniqueViolation(pqErr, context)
+		
+	case "23503": // foreign_key_violation
+		return h.handleForeignKeyViolation(pqErr, context)
+		
+	case "23502": // not_null_violation
+		return h.handleNotNullViolation(pqErr)
+		
+	case "23514": // check_violation
+		return h.handleCheckViolation(pqErr)
+		
+	case "42P01": // undefined_table
+		return NewErrorWithInternalAndMessages(
+			ErrSystemError,
+			"Database configuration error - table not found",
+			"Lỗi cấu hình cơ sở dữ liệu - không tìm thấy bảng",
+			pqErr,
+		)
+		
+	case "42703": // undefined_column
+		return NewErrorWithInternalAndMessages(
+			ErrSystemError,
+			"Database configuration error - column not found",
+			"Lỗi cấu hình cơ sở dữ liệu - không tìm thấy cột",
+			pqErr,
+		)
+		
+	case "08000", "08003", "08006": // connection errors
+		return NewErrorWithInternalAndMessages(
+			ErrServiceUnavailable,
+			"Database connection error",
+			"Lỗi kết nối cơ sở dữ liệu",
+			pqErr,
+		)
+		
+	case "57014": // query_canceled
+		return NewErrorWithInternalAndMessages(
+			ErrTimeout,
+			"Database query was canceled",
+			"Truy vấn cơ sở dữ liệu đã bị hủy",
+			pqErr,
+		)
+		
+	case "53300": // too_many_connections
+		return NewErrorWithInternalAndMessages(
+			ErrServiceUnavailable,
+			"Too many database connections",
+			"Quá nhiều kết nối cơ sở dữ liệu",
+			pqErr,
+		)
+		
+	default:
+		// Generic PostgreSQL error
+		return NewErrorWithInternalAndMessages(
+			ErrDatabaseError,
+			"Database operation failed: " + pqErr.Message,
+			"Thao tác cơ sở dữ liệu thất bại",
+			pqErr,
+		)
+	}
+}
+
+// NEW: handleUniqueViolation processes unique constraint violations with field detection
+func (h *RepositoryErrorHandler) handleUniqueViolation(pqErr *pq.Error, context map[string]interface{}) *AppError {
+	constraint := strings.ToLower(pqErr.Constraint)
+	detail := strings.ToLower(pqErr.Detail)
+	
+	// Determine which field caused the violation
+	var field, message, messageVN string
+	var value interface{}
+	
+	if strings.Contains(constraint, "email") || strings.Contains(detail, "email") {
+		field = "email"
+		message = "Account with this email already exists"
+		messageVN = "Tài khoản với email này đã tồn tại"
+		if context != nil {
+			if email, ok := context["email"]; ok {
+				value = email
+			}
+		}
+	} else if strings.Contains(constraint, "phone") || strings.Contains(detail, "phone") {
+		field = "phone"
+		message = "Phone number already exists"
+		messageVN = "Số điện thoại đã tồn tại"
+		if context != nil {
+			if phone, ok := context["phone"]; ok {
+				value = phone
+			}
+		}
+	} else if strings.Contains(constraint, "username") || strings.Contains(detail, "username") {
+		field = "username"
+		message = "Username already exists"
+		messageVN = "Tên người dùng đã tồn tại"
+		if context != nil {
+			if username, ok := context["username"]; ok {
+				value = username
+			}
+		}
+	} else {
+		// Generic duplicate error
+		field = "unknown"
+		message = "Duplicate entry detected"
+		messageVN = "Phát hiện bản ghi trùng lặp"
+	}
+	
+	appErr := NewErrorWithInternalAndMessages(
+		ErrAccountDuplicate,
+		message,
+		messageVN,
+		pqErr,
+	)
+	
+	// Add detailed information
+	appErr.Details = map[string]interface{}{
+		"field":      field,
+		"constraint": pqErr.Constraint,
+		"reason":     "duplicate",
+	}
+	
+	if value != nil {
+		appErr.Details["value"] = maskSensitiveValue(field, toString(value))
+	}
+	
+	return appErr
+}
+
+// NEW: handleForeignKeyViolation processes foreign key constraint violations with intelligent field detection
+func (h *RepositoryErrorHandler) handleForeignKeyViolation(pqErr *pq.Error, context map[string]interface{}) *AppError {
+	constraint := strings.ToLower(pqErr.Constraint)
+
+	
+	// Determine which foreign key is violated and provide specific error
+	var field, entity, message, messageVN string
+	var value interface{}
+	
+	// Check constraint name for foreign key references
+	if strings.Contains(constraint, "owner_id") {
+		field = "owner_id"
+		entity = "owner"
+		message = "The specified owner does not exist"
+		messageVN = "Chủ sở hữu được chỉ định không tồn tại"
+		if context != nil {
+			value = context["owner_id"]
+		}
+	} else if strings.Contains(constraint, "branch_id") {
+		field = "branch_id"
+		entity = "branch"
+		message = "The specified branch does not exist"
+		messageVN = "Chi nhánh được chỉ định không tồn tại"
+		if context != nil {
+			value = context["branch_id"]
+		}
+	} else if strings.Contains(constraint, "parent_id") {
+		field = "parent_id"
+		entity = "parent"
+		message = "The specified parent record does not exist"
+		messageVN = "Bản ghi cha được chỉ định không tồn tại"
+		if context != nil {
+			value = context["parent_id"]
+		}
+	} else if strings.Contains(constraint, "user_id") {
+		field = "user_id"
+		entity = "user"
+		message = "The specified user does not exist"
+		messageVN = "Người dùng được chỉ định không tồn tại"
+		if context != nil {
+			value = context["user_id"]
+		}
+	} else if strings.Contains(constraint, "role_id") {
+		field = "role_id"
+		entity = "role"
+		message = "The specified role does not exist"
+		messageVN = "Vai trò được chỉ định không tồn tại"
+		if context != nil {
+			value = context["role_id"]
+		}
+	} else if strings.Contains(constraint, "department_id") {
+		field = "department_id"
+		entity = "department"
+		message = "The specified department does not exist"
+		messageVN = "Phòng ban được chỉ định không tồn tại"
+		if context != nil {
+			value = context["department_id"]
+		}
+	} else if strings.Contains(constraint, "category_id") {
+		field = "category_id"
+		entity = "category"
+		message = "The specified category does not exist"
+		messageVN = "Danh mục được chỉ định không tồn tại"
+		if context != nil {
+			value = context["category_id"]
+		}
+	} else {
+		// Generic foreign key error
+		field = "reference"
+		entity = "record"
+		message = "Referenced record does not exist"
+		messageVN = "Bản ghi được tham chiếu không tồn tại"
+	}
+	
+	appErr := NewErrorWithInternalAndMessages(
+		ErrValidationFailed,
+		message,
+		messageVN,
+		pqErr,
+	)
+	
+	// Add detailed information for debugging
+	appErr.Details = map[string]interface{}{
+		"field":      field,
+		"entity":     entity,
+		"constraint": pqErr.Constraint,
+		"reason":     "invalid_reference",
+	}
+	
+	if value != nil {
+		appErr.Details["value"] = value
+	}
+	
+	return appErr
+}
+
+// NEW: handleNotNullViolation processes NOT NULL constraint violations
+func (h *RepositoryErrorHandler) handleNotNullViolation(pqErr *pq.Error) *AppError {
+	column := pqErr.Column
+	if column == "" {
+		column = "unknown"
+	}
+	
+	message := "Required field is missing: " + column
+	messageVN := "Trường bắt buộc bị thiếu: " + column
+	
+	appErr := NewErrorWithInternalAndMessages(
+		ErrValidationFailed,
+		message,
+		messageVN,
+		pqErr,
+	)
+	
+	appErr.Details = map[string]interface{}{
+		"field":  column,
+		"reason": "required",
+	}
+	
+	return appErr
+}
+
+// NEW: handleCheckViolation processes CHECK constraint violations
+func (h *RepositoryErrorHandler) handleCheckViolation(pqErr *pq.Error) *AppError {
+	constraint := pqErr.Constraint
+	
+	message := "Data validation failed"
+	messageVN := "Xác thực dữ liệu thất bại"
+	
+	// Provide more specific messages based on common check constraints
+	constraintLower := strings.ToLower(constraint)
+	if strings.Contains(constraintLower, "positive") {
+		message = "Value must be positive"
+		messageVN = "Giá trị phải là số dương"
+	} else if strings.Contains(constraintLower, "range") {
+		message = "Value is out of allowed range"
+		messageVN = "Giá trị nằm ngoài phạm vi cho phép"
+	} else if strings.Contains(constraintLower, "status") {
+		message = "Invalid status value"
+		messageVN = "Giá trị trạng thái không hợp lệ"
+	}
+	
+	appErr := NewErrorWithInternalAndMessages(
+		ErrValidationFailed,
+		message,
+		messageVN,
+		pqErr,
+	)
+	
+	appErr.Details = map[string]interface{}{
+		"constraint": constraint,
+		"reason":     "check_violation",
+	}
+	
+	return appErr
+}
+
+// NEW: logPostgresError logs detailed PostgreSQL error information for debugging
+func (h *RepositoryErrorHandler) logPostgresError(pqErr *pq.Error) {
+	if h.logger != nil {
+		h.logger.Debug("PostgreSQL error details", map[string]interface{}{
+			"code":       string(pqErr.Code),
+			"message":    pqErr.Message,
+			"detail":     pqErr.Detail,
+			"hint":       pqErr.Hint,
+			"position":   pqErr.Position,
+			"constraint": pqErr.Constraint,
+			"table":      pqErr.Table,
+			"column":     pqErr.Column,
+			"schema":     pqErr.Schema,
+			"severity":   pqErr.Severity,
+		})
+	}
+}
+
+// EXISTING: handleDatabaseError - kept as fallback for non-PostgreSQL errors
 func (h *RepositoryErrorHandler) handleDatabaseError(err error) *AppError {
 	errStr := strings.ToLower(err.Error())
 	
@@ -173,7 +502,7 @@ func (h *RepositoryErrorHandler) handleDatabaseError(err error) *AppError {
 	)
 }
 
-// HandleWithCustomMessage allows custom error messages while maintaining proper error codes
+// EXISTING: HandleWithCustomMessage allows custom error messages while maintaining proper error codes
 func (h *RepositoryErrorHandler) HandleWithCustomMessage(err error, operation, table, customMessage, customMessageVN string, context map[string]interface{}) *AppError {
 	if err == nil {
 		return nil
@@ -186,7 +515,7 @@ func (h *RepositoryErrorHandler) HandleWithCustomMessage(err error, operation, t
 	}
 	
 	// Determine appropriate error code from database error
-	appErr := h.handleDatabaseError(err, )
+	appErr := h.handleDatabaseError(err)
 	
 	// Override messages with custom ones
 	appErr.Message = customMessage
@@ -197,7 +526,7 @@ func (h *RepositoryErrorHandler) HandleWithCustomMessage(err error, operation, t
 	return appErr
 }
 
-// HandleNotFound creates a not found error for repository operations
+// EXISTING: HandleNotFound creates a not found error for repository operations
 func (h *RepositoryErrorHandler) HandleNotFound(entity, identifier string) *AppError {
 	return NewErrorWithMessages(
 		ErrAccountNotFound,
@@ -206,7 +535,7 @@ func (h *RepositoryErrorHandler) HandleNotFound(entity, identifier string) *AppE
 	)
 }
 
-// HandleDuplicateKey creates a duplicate key error with entity-specific message
+// EXISTING: HandleDuplicateKey creates a duplicate key error with entity-specific message
 func (h *RepositoryErrorHandler) HandleDuplicateKey(entity, field, value string) *AppError {
 	message := "Duplicate entry detected"
 	messageVN := "Phát hiện bản ghi trùng lặp"
@@ -226,6 +555,7 @@ func (h *RepositoryErrorHandler) HandleDuplicateKey(entity, field, value string)
 	return appErr
 }
 
+// EXISTING: logError logs error with context
 func (h *RepositoryErrorHandler) logError(appErr *AppError, operation, table string, context map[string]interface{}) {
 	logContext := map[string]interface{}{
 		"error_code": appErr.Code,
@@ -255,7 +585,7 @@ func (h *RepositoryErrorHandler) logError(appErr *AppError, operation, table str
 	h.logger.Error("Repository error occurred", logContext)
 }
 
-// Helper function to mask sensitive values in logs
+// EXISTING: Helper function to mask sensitive values in logs
 func maskSensitiveValue(field, value string) string {
 	switch strings.ToLower(field) {
 	case "email":
@@ -273,7 +603,7 @@ func maskSensitiveValue(field, value string) string {
 	}
 }
 
-// Helper function to mask phone numbers
+// EXISTING: Helper function to mask phone numbers
 func maskPhone(phone string) string {
 	if len(phone) < 4 {
 		return "***"
@@ -284,7 +614,7 @@ func maskPhone(phone string) string {
 	return phone[:3] + "***" + phone[len(phone)-3:]
 }
 
-// logErrorWithCause logs error with cause information using the repository logger
+// EXISTING: logErrorWithCause logs error with cause information using the repository logger
 func (h *RepositoryErrorHandler) logErrorWithCause(cause, operation, table string, context map[string]interface{}) {
 	if h.logger != nil {
 		enhancedContext := make(map[string]interface{})
@@ -299,4 +629,14 @@ func (h *RepositoryErrorHandler) logErrorWithCause(cause, operation, table strin
 		h.logger.ErrorWithCause("Database error categorized", cause, core.LayerRepository, operation, enhancedContext)
 	}
 }
-// new asdfasdfasdf
+
+// NEW: Helper function to convert interface{} to string
+func toString(val interface{}) string {
+	if val == nil {
+		return ""
+	}
+	if str, ok := val.(string); ok {
+		return str
+	}
+	return ""
+}
