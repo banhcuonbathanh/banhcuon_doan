@@ -14,6 +14,7 @@ var TableNames = struct {
 	OrderDishes      string
 	OrderSets        string
 	Orders           string
+	RefreshTokens    string
 	Regulations      string
 	SetDishes        string
 	Sets             string
@@ -29,6 +30,7 @@ var TableNames = struct {
 	OrderDishes:      "order_dishes",
 	OrderSets:        "order_sets",
 	Orders:           "orders",
+	RefreshTokens:    "refresh_tokens",
 	Regulations:      "regulations",
 	SetDishes:        "set_dishes",
 	Sets:             "sets",

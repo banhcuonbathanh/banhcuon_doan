@@ -956,6 +956,84 @@ func testAccountToManyUserOrders(t *testing.T) {
 	}
 }
 
+func testAccountToManyRefreshTokens(t *testing.T) {
+	var err error
+	ctx := context.Background()
+	tx := MustTx(boil.BeginTx(ctx, nil))
+	defer func() { _ = tx.Rollback() }()
+
+	var a Account
+	var b, c RefreshToken
+
+	seed := randomize.NewSeed()
+	if err = randomize.Struct(seed, &a, accountDBTypes, true, accountColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Account struct: %s", err)
+	}
+
+	if err := a.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = randomize.Struct(seed, &b, refreshTokenDBTypes, false, refreshTokenColumnsWithDefault...); err != nil {
+		t.Fatal(err)
+	}
+	if err = randomize.Struct(seed, &c, refreshTokenDBTypes, false, refreshTokenColumnsWithDefault...); err != nil {
+		t.Fatal(err)
+	}
+
+	b.AccountID = a.ID
+	c.AccountID = a.ID
+
+	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+	if err = c.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	check, err := a.RefreshTokens().All(ctx, tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bFound, cFound := false, false
+	for _, v := range check {
+		if v.AccountID == b.AccountID {
+			bFound = true
+		}
+		if v.AccountID == c.AccountID {
+			cFound = true
+		}
+	}
+
+	if !bFound {
+		t.Error("expected to find b")
+	}
+	if !cFound {
+		t.Error("expected to find c")
+	}
+
+	slice := AccountSlice{&a}
+	if err = a.L.LoadRefreshTokens(ctx, tx, false, (*[]*Account)(&slice), nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(a.R.RefreshTokens); got != 2 {
+		t.Error("number of eager loaded records wrong, got:", got)
+	}
+
+	a.R.RefreshTokens = nil
+	if err = a.L.LoadRefreshTokens(ctx, tx, true, &a, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(a.R.RefreshTokens); got != 2 {
+		t.Error("number of eager loaded records wrong, got:", got)
+	}
+
+	if t.Failed() {
+		t.Logf("%#v", check)
+	}
+}
+
 func testAccountToManyAddOpOwnerAccounts(t *testing.T) {
 	var err error
 
@@ -2462,6 +2540,81 @@ func testAccountToManyRemoveOpUserOrders(t *testing.T) {
 	}
 }
 
+func testAccountToManyAddOpRefreshTokens(t *testing.T) {
+	var err error
+
+	ctx := context.Background()
+	tx := MustTx(boil.BeginTx(ctx, nil))
+	defer func() { _ = tx.Rollback() }()
+
+	var a Account
+	var b, c, d, e RefreshToken
+
+	seed := randomize.NewSeed()
+	if err = randomize.Struct(seed, &a, accountDBTypes, false, strmangle.SetComplement(accountPrimaryKeyColumns, accountColumnsWithoutDefault)...); err != nil {
+		t.Fatal(err)
+	}
+	foreigners := []*RefreshToken{&b, &c, &d, &e}
+	for _, x := range foreigners {
+		if err = randomize.Struct(seed, x, refreshTokenDBTypes, false, strmangle.SetComplement(refreshTokenPrimaryKeyColumns, refreshTokenColumnsWithoutDefault)...); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := a.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+	if err = c.Insert(ctx, tx, boil.Infer()); err != nil {
+		t.Fatal(err)
+	}
+
+	foreignersSplitByInsertion := [][]*RefreshToken{
+		{&b, &c},
+		{&d, &e},
+	}
+
+	for i, x := range foreignersSplitByInsertion {
+		err = a.AddRefreshTokens(ctx, tx, i != 0, x...)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		first := x[0]
+		second := x[1]
+
+		if a.ID != first.AccountID {
+			t.Error("foreign key was wrong value", a.ID, first.AccountID)
+		}
+		if a.ID != second.AccountID {
+			t.Error("foreign key was wrong value", a.ID, second.AccountID)
+		}
+
+		if first.R.Account != &a {
+			t.Error("relationship was not added properly to the foreign slice")
+		}
+		if second.R.Account != &a {
+			t.Error("relationship was not added properly to the foreign slice")
+		}
+
+		if a.R.RefreshTokens[i*2] != first {
+			t.Error("relationship struct slice not set to correct value")
+		}
+		if a.R.RefreshTokens[i*2+1] != second {
+			t.Error("relationship struct slice not set to correct value")
+		}
+
+		count, err := a.RefreshTokens().Count(ctx, tx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := int64((i + 1) * 2); count != want {
+			t.Error("want", want, "got", count)
+		}
+	}
+}
 func testAccountToOneAccountUsingOwner(t *testing.T) {
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))

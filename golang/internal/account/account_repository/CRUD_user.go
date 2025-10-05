@@ -7,6 +7,7 @@ import (
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/logger/core"
 	"english-ai-full/orm"
+	"english-ai-full/token"
 	"english-ai-full/utils"
 	"errors"
 	"fmt"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/aarondl/sqlboiler/v4/queries/qm"
-
 )
 
 func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error) {
@@ -192,209 +192,253 @@ func (r *Repository) CreateUser(ctx context.Context, user account_dto.Account) (
     return createdUser, nil
 }
 
+// func (r *Repository) Login(ctx context.Context, loginReq account_dto.LoginRequest) (account_dto.Account, error) {
+//     const operation = core.OperationLogin
+//     const table = core.TableAccounts
+//     const function = core.FuncLogin
+    
+//     startTime := time.Now()
+    
+//     // Extract request ID from context
+//     requestID := r.getRequestIDFromContext(ctx)
+    
+//     // Build operation context with request ID
+//     operationCtx := r.layerContext.BuildOperationContext(operation, table, function, map[string]interface{}{
+//         "request_id": requestID,
+//         "email":      utils.MaskEmail(loginReq.Email),
+//     })
+    
+//     // Set request ID in logger
+//     r.logger.SetOperation(operation)
+    
+//     // Log the start with request ID
+//     r.logger.Info(core.MsgDatabaseOperationStarted, r.layerContext.MergeWithContext(map[string]interface{}{
+//         "request_id":        requestID,
+//         core.FieldOperation: operation,
+//         core.FieldTable:     table,
+//         core.FieldFunction:  function,
+//         core.FieldEmail:     utils.MaskEmail(loginReq.Email),
+//     }))
 
-func (r *Repository) Login(ctx context.Context, loginReq account_dto.LoginRequest) (account_dto.Account, error) {
-    const operation = core.OperationLogin
-    const table = core.TableAccounts
-    const function = core.FuncLogin
-    
-    startTime := time.Now()
-    
-    // Extract request ID from context
-    requestID := r.getRequestIDFromContext(ctx)
-    
-    // Build operation context with request ID
-    operationCtx := r.layerContext.BuildOperationContext(operation, table, function, map[string]interface{}{
-        "request_id": requestID,
-        "email":      utils.MaskEmail(loginReq.Email),
-    })
-    
-    // Set request ID in logger
-    r.logger.SetOperation(operation)
-    
-    // Log the start with request ID
-    r.logger.Info(core.MsgDatabaseOperationStarted, r.layerContext.MergeWithContext(map[string]interface{}{
-        "request_id":        requestID,
-        core.FieldOperation: operation,
-        core.FieldTable:     table,
-        core.FieldFunction:  function,
-        core.FieldEmail:     utils.MaskEmail(loginReq.Email),
-    }))
+//     // Context timeout check
+//     if err := ctx.Err(); err != nil {
+//         duration := time.Since(startTime)
+//         r.logDatabaseOperation(operation, table, duration, false, 0)
+        
+//         r.logger.ErrorWithCause(core.MsgContextError, core.CauseContextCancelled, core.LayerRepository, operation,
+//             r.layerContext.MergeWithContext(map[string]interface{}{
+//                 "request_id":         requestID,
+//                 core.FieldError:      err.Error(),
+//                 core.FieldDurationMS: duration.Milliseconds(),
+//                 core.FieldTable:      table,
+//                 core.FieldFunction:   function,
+//                 "source_method":      "Login",
+//                 "error_location":     "context_check",
+//             }))
+        
+//         return account_dto.Account{}, r.errorHandler.Handle(err, operation, table, operationCtx)
+//     }
 
-    // Context timeout check
-    if err := ctx.Err(); err != nil {
-        duration := time.Since(startTime)
-        r.logDatabaseOperation(operation, table, duration, false, 0)
+//     // Validate login request
+//     if err := r.validateLoginRequest(loginReq); err != nil {
+//         duration := time.Since(startTime)
+//         r.logDatabaseOperation(operation, table, duration, false, 0)
         
-        r.logger.ErrorWithCause(core.MsgContextError, core.CauseContextCancelled, core.LayerRepository, operation,
-            r.layerContext.MergeWithContext(map[string]interface{}{
-                "request_id":         requestID,
-                core.FieldError:      err.Error(),
-                core.FieldDurationMS: duration.Milliseconds(),
-                core.FieldTable:      table,
-                core.FieldFunction:   function,
-                "source_method":      "Login",
-                "error_location":     "context_check",
-            }))
+//         r.logger.Error("Login validation failed", r.layerContext.MergeWithContext(map[string]interface{}{
+//             "request_id":         requestID,
+//             "error_message":      err.Error(),
+//             core.FieldDurationMS: duration.Milliseconds(),
+//             core.FieldTable:      table,
+//             core.FieldFunction:   function,
+//             "source_method":      "Login",
+//             "error_location":     "validation",
+//             core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+//         }))
         
-        return account_dto.Account{}, r.errorHandler.Handle(err, operation, table, operationCtx)
-    }
+//         return account_dto.Account{}, err
+//     }
 
-    // Validate login request
-    if err := r.validateLoginRequest(loginReq); err != nil {
-        duration := time.Since(startTime)
-        r.logDatabaseOperation(operation, table, duration, false, 0)
-        
-        r.logger.Error("Login validation failed", r.layerContext.MergeWithContext(map[string]interface{}{
-            "request_id":         requestID,
-            "error_message":      err.Error(),
-            core.FieldDurationMS: duration.Milliseconds(),
-            core.FieldTable:      table,
-            core.FieldFunction:   function,
-            "source_method":      "Login",
-            "error_location":     "validation",
-            core.FieldEmail:      utils.MaskEmail(loginReq.Email),
-        }))
-        
-        return account_dto.Account{}, err
-    }
+//     // Log database query attempt
+//     r.logger.Info("Attempting to find user by email", r.layerContext.MergeWithContext(map[string]interface{}{
+//         "request_id":        requestID,
+//         core.FieldOperation: operation,
+//         core.FieldTable:     table,
+//         core.FieldFunction:  function,
+//         core.FieldEmail:     utils.MaskEmail(loginReq.Email),
+//         "source_method":     "Login",
+//         "query_step":        "find_by_email",
+//     }))
 
-    // Log database query attempt
-    r.logger.Info("Attempting to find user by email", r.layerContext.MergeWithContext(map[string]interface{}{
-        "request_id":        requestID,
-        core.FieldOperation: operation,
-        core.FieldTable:     table,
-        core.FieldFunction:  function,
-        core.FieldEmail:     utils.MaskEmail(loginReq.Email),
-        "source_method":     "Login",
-        "query_step":        "find_by_email",
-    }))
-
-    // Find user by email
-    ormAccount, err := orm.Accounts(
-        qm.Where("email = ?", loginReq.Email),
-    ).One(ctx, r.db)
+//     // Find user by email
+//     ormAccount, err := orm.Accounts(
+//         qm.Where("email = ?", loginReq.Email),
+//     ).One(ctx, r.db)
     
-    if err != nil {
-        duration := time.Since(startTime)
-        r.logDatabaseOperation(operation, table, duration, false, 0)
+//     if err != nil {
+//         duration := time.Since(startTime)
+//         r.logDatabaseOperation(operation, table, duration, false, 0)
         
-        if errors.Is(err, sql.ErrNoRows) {
-            // User not found - log as security event but don't reveal this information
-            r.logger.Warn("Login attempt with non-existent email", r.layerContext.MergeWithContext(map[string]interface{}{
-                "request_id":         requestID,
-                core.FieldDurationMS: duration.Milliseconds(),
-                core.FieldTable:      table,
-                core.FieldFunction:   function,
-                "source_method":      "Login",
-                "error_location":     "user_not_found",
-                core.FieldEmail:      utils.MaskEmail(loginReq.Email),
-                "security_event":     "invalid_login_attempt",
-            }))
+//         if errors.Is(err, sql.ErrNoRows) {
+//             // User not found - log as security event but don't reveal this information
+//             r.logger.Warn("Login attempt with non-existent email", r.layerContext.MergeWithContext(map[string]interface{}{
+//                 "request_id":         requestID,
+//                 core.FieldDurationMS: duration.Milliseconds(),
+//                 core.FieldTable:      table,
+//                 core.FieldFunction:   function,
+//                 "source_method":      "Login",
+//                 "error_location":     "user_not_found",
+//                 core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+//                 "security_event":     "invalid_login_attempt",
+//             }))
             
-            // Return generic authentication error to prevent user enumeration
-            return account_dto.Account{}, error_system.InvalidCredentials()
-        }
+//             // Return generic authentication error to prevent user enumeration
+//             return account_dto.Account{}, error_system.InvalidCredentials()
+//         }
         
-        // Database error
-        r.logger.ErrorWithCause("Database error during login", "database_error", core.LayerRepository, operation,
-            r.layerContext.MergeWithContext(map[string]interface{}{
-                "request_id":         requestID,
-                core.FieldError:      err.Error(),
-                core.FieldDurationMS: duration.Milliseconds(),
-                core.FieldTable:      table,
-                core.FieldFunction:   function,
-                "source_method":      "Login",
-                "error_location":     "database_query",
-                core.FieldEmail:      utils.MaskEmail(loginReq.Email),
-            }))
+//         // Database error
+//         r.logger.ErrorWithCause("Database error during login", "database_error", core.LayerRepository, operation,
+//             r.layerContext.MergeWithContext(map[string]interface{}{
+//                 "request_id":         requestID,
+//                 core.FieldError:      err.Error(),
+//                 core.FieldDurationMS: duration.Milliseconds(),
+//                 core.FieldTable:      table,
+//                 core.FieldFunction:   function,
+//                 "source_method":      "Login",
+//                 "error_location":     "database_query",
+//                 core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+//             }))
         
-        return account_dto.Account{}, r.errorHandler.Handle(err, operation, table, operationCtx)
-    }
+//         return account_dto.Account{}, r.errorHandler.Handle(err, operation, table, operationCtx)
+//     }
 
-    // Log password verification attempt
-    r.logger.Debug("Verifying password", r.layerContext.MergeWithContext(map[string]interface{}{
-        "request_id":        requestID,
-        core.FieldOperation: operation,
-        core.FieldFunction:  function,
-        core.FieldUserID:    ormAccount.ID,
-        core.FieldEmail:     utils.MaskEmail(loginReq.Email),
-        "source_method":     "Login",
-        "verification_step": "password_check",
-    }))
+//     // Log password verification attempt
+//     r.logger.Debug("Verifying password", r.layerContext.MergeWithContext(map[string]interface{}{
+//         "request_id":        requestID,
+//         core.FieldOperation: operation,
+//         core.FieldFunction:  function,
+//         core.FieldUserID:    ormAccount.ID,
+//         core.FieldEmail:     utils.MaskEmail(loginReq.Email),
+//         "source_method":     "Login",
+//         "verification_step": "password_check",
+//     }))
 
-    // Verify password
-    if !r.verifyPassword(loginReq.Password, ormAccount.Password) {
-        duration := time.Since(startTime)
-        r.logDatabaseOperation(operation, table, duration, false, 0)
+//     // Verify password
+//     if !r.verifyPassword(loginReq.Password, ormAccount.Password) {
+//         duration := time.Since(startTime)
+//         r.logDatabaseOperation(operation, table, duration, false, 0)
         
-        // Log failed password attempt as security event
-        r.logger.Warn("Login attempt with invalid password", r.layerContext.MergeWithContext(map[string]interface{}{
-            "request_id":         requestID,
-            core.FieldUserID:     ormAccount.ID,
-            core.FieldDurationMS: duration.Milliseconds(),
-            core.FieldTable:      table,
-            core.FieldFunction:   function,
-            "source_method":      "Login",
-            "error_location":     "password_verification",
-            core.FieldEmail:      utils.MaskEmail(loginReq.Email),
-            "security_event":     "invalid_password_attempt",
-        }))
+//         // Log failed password attempt as security event
+//         r.logger.Warn("Login attempt with invalid password", r.layerContext.MergeWithContext(map[string]interface{}{
+//             "request_id":         requestID,
+//             core.FieldUserID:     ormAccount.ID,
+//             core.FieldDurationMS: duration.Milliseconds(),
+//             core.FieldTable:      table,
+//             core.FieldFunction:   function,
+//             "source_method":      "Login",
+//             "error_location":     "password_verification",
+//             core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+//             "security_event":     "invalid_password_attempt",
+//         }))
         
-        // Return generic authentication error to prevent user enumeration
-        return account_dto.Account{}, error_system.InvalidCredentials()
-    }
+//         // Return generic authentication error to prevent user enumeration
+//         return account_dto.Account{}, error_system.InvalidCredentials()
+//     }
 
-    // Check if account is active/valid
-    if err := r.validateAccountStatus(ormAccount); err != nil {
-        duration := time.Since(startTime)
-        r.logDatabaseOperation(operation, table, duration, false, 0)
+//     // Check if account is active/valid
+//     if err := r.validateAccountStatus(ormAccount); err != nil {
+//         duration := time.Since(startTime)
+//         r.logDatabaseOperation(operation, table, duration, false, 0)
         
-        r.logger.Warn("Login attempt on inactive/suspended account", r.layerContext.MergeWithContext(map[string]interface{}{
-            "request_id":         requestID,
-            core.FieldUserID:     ormAccount.ID,
-            core.FieldDurationMS: duration.Milliseconds(),
-            core.FieldTable:      table,
-            core.FieldFunction:   function,
-            "source_method":      "Login",
-            "error_location":     "account_status_check",
-            core.FieldEmail:      utils.MaskEmail(loginReq.Email),
-            "account_status":     ormAccount.Status.String,
-            "security_event":     "inactive_account_login_attempt",
-        }))
+//         r.logger.Warn("Login attempt on inactive/suspended account", r.layerContext.MergeWithContext(map[string]interface{}{
+//             "request_id":         requestID,
+//             core.FieldUserID:     ormAccount.ID,
+//             core.FieldDurationMS: duration.Milliseconds(),
+//             core.FieldTable:      table,
+//             core.FieldFunction:   function,
+//             "source_method":      "Login",
+//             "error_location":     "account_status_check",
+//             core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+//             "account_status":     ormAccount.Status.String,
+//             "security_event":     "inactive_account_login_attempt",
+//         }))
         
-        return account_dto.Account{}, err
-    }
+//         return account_dto.Account{}, err
+//     }
 
-    duration := time.Since(startTime)
-    r.logDatabaseOperation(operation, table, duration, true, 1)
+//     // Convert to DTO for token generation
+//     userAccount := r.mapORMToDTO(ormAccount)
     
-    // Log successful login
-    r.logger.Info("User login successful", r.layerContext.MergeWithContext(map[string]interface{}{
-        "request_id":           requestID,
-        core.FieldUserID:       ormAccount.ID,
-        core.FieldEmail:        utils.MaskEmail(loginReq.Email),
-        core.FieldDurationMS:   duration.Milliseconds(),
-        core.FieldOperation:    operation,
-        core.FieldTable:        table,
-        core.FieldFunction:     function,
-        "source_method":        "Login",
-        "success_step":         "login_complete",
-        "user_role":           ormAccount.Role,
-        "branch_id":           ormAccount.BranchID.Int64,
-    }))
+//     // Generate refresh token using token package
+//     refreshToken, err := token.GenerateRefreshToken(userAccount)
+//     if err != nil {
+//         duration := time.Since(startTime)
+//         r.logDatabaseOperation(operation, table, duration, false, 0)
+        
+//         r.logger.Error("Failed to generate refresh token", r.layerContext.MergeWithContext(map[string]interface{}{
+//             "request_id":         requestID,
+//             core.FieldUserID:     ormAccount.ID,
+//             core.FieldError:      err.Error(),
+//             core.FieldDurationMS: duration.Milliseconds(),
+//             core.FieldTable:      table,
+//             core.FieldFunction:   function,
+//             "source_method":      "Login",
+//             "error_location":     "generate_refresh_token",
+//             core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+//         }))
+        
+//         return account_dto.Account{}, fmt.Errorf("failed to generate refresh token: %w", err)
+//     }
 
-    // Convert to DTO and return
-    userAccount := r.mapORMToDTO(ormAccount)
+//     // Set token expiration (e.g., 7 days from now)
+//     expiresAt := time.Now().Add(7 * 24 * time.Hour)
+
+//     // Store refresh token in database
+//     if err := r.StoreRefreshToken(ctx, ormAccount.ID, refreshToken, expiresAt); err != nil {
+//         duration := time.Since(startTime)
+//         r.logDatabaseOperation(operation, table, duration, false, 0)
+        
+//         r.logger.Error("Failed to store refresh token", r.layerContext.MergeWithContext(map[string]interface{}{
+//             "request_id":         requestID,
+//             core.FieldUserID:     ormAccount.ID,
+//             core.FieldError:      err.Error(),
+//             core.FieldDurationMS: duration.Milliseconds(),
+//             core.FieldTable:      table,
+//             core.FieldFunction:   function,
+//             "source_method":      "Login",
+//             "error_location":     "store_refresh_token",
+//             core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+//         }))
+        
+//         return account_dto.Account{}, fmt.Errorf("failed to store refresh token: %w", err)
+//     }
+
+//     duration := time.Since(startTime)
+//     r.logDatabaseOperation(operation, table, duration, true, 1)
     
-    // Clear password from response for security
-    userAccount.Password = ""
+//     // Log successful login
+//     r.logger.Info("User login successful", r.layerContext.MergeWithContext(map[string]interface{}{
+//         "request_id":           requestID,
+//         core.FieldUserID:       ormAccount.ID,
+//         core.FieldEmail:        utils.MaskEmail(loginReq.Email),
+//         core.FieldDurationMS:   duration.Milliseconds(),
+//         core.FieldOperation:    operation,
+//         core.FieldTable:        table,
+//         core.FieldFunction:     function,
+//         "source_method":        "Login",
+//         "success_step":         "login_complete",
+//         "user_role":           ormAccount.Role,
+//         "branch_id":           ormAccount.BranchID.Int64,
+//         "refresh_token_set":   true,
+//     }))
     
-    return userAccount, nil
-}
-
-
-
+//     // Clear password from response for security
+//     userAccount.Password = ""
+    
+//     // Add refresh token to the response
+  
+    
+//     return userAccount, nil
+// }
 
 // FIXED: FindByEmail with proper nullable field handling
 func (r *Repository) FindByEmail(ctx context.Context, email string) (account_dto.Account, error) {
@@ -630,3 +674,269 @@ func (r *Repository) FindByEmailWithoutPassword(ctx context.Context, email strin
 
     return user, nil
 }
+
+
+// new 
+
+func (r *Repository) Login(ctx context.Context, loginReq account_dto.LoginRequest) (account_dto.Account, error) {
+    const operation = core.OperationLogin
+    const table = core.TableAccounts
+    const function = core.FuncLogin
+    
+    startTime := time.Now()
+    
+    // Extract request ID from context
+    requestID := r.getRequestIDFromContext(ctx)
+    
+    // Build operation context with request ID
+    operationCtx := r.layerContext.BuildOperationContext(operation, table, function, map[string]interface{}{
+        "request_id": requestID,
+        "email":      utils.MaskEmail(loginReq.Email),
+    })
+    
+    // Set request ID in logger
+    r.logger.SetOperation(operation)
+    
+    // Log the start with request ID
+    r.logger.Info(core.MsgDatabaseOperationStarted, r.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":        requestID,
+        core.FieldOperation: operation,
+        core.FieldTable:     table,
+        core.FieldFunction:  function,
+        core.FieldEmail:     utils.MaskEmail(loginReq.Email),
+    }))
+
+    // Context timeout check
+    if err := ctx.Err(); err != nil {
+        duration := time.Since(startTime)
+        r.logDatabaseOperation(operation, table, duration, false, 0)
+        
+        r.logger.ErrorWithCause(core.MsgContextError, core.CauseContextCancelled, core.LayerRepository, operation,
+            r.layerContext.MergeWithContext(map[string]interface{}{
+                "request_id":         requestID,
+                core.FieldError:      err.Error(),
+                core.FieldDurationMS: duration.Milliseconds(),
+                core.FieldTable:      table,
+                core.FieldFunction:   function,
+                "source_method":      "Login",
+                "error_location":     "context_check",
+            }))
+        
+        return account_dto.Account{}, r.errorHandler.Handle(err, operation, table, operationCtx)
+    }
+
+    // Validate login request
+    if err := r.validateLoginRequest(loginReq); err != nil {
+        duration := time.Since(startTime)
+        r.logDatabaseOperation(operation, table, duration, false, 0)
+        
+        r.logger.Error("Login validation failed", r.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id":         requestID,
+            "error_message":      err.Error(),
+            core.FieldDurationMS: duration.Milliseconds(),
+            core.FieldTable:      table,
+            core.FieldFunction:   function,
+            "source_method":      "Login",
+            "error_location":     "validation",
+            core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+        }))
+        
+        return account_dto.Account{}, err
+    }
+
+    // Log database query attempt
+    r.logger.Info("Attempting to find user by email", r.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":        requestID,
+        core.FieldOperation: operation,
+        core.FieldTable:     table,
+        core.FieldFunction:  function,
+        core.FieldEmail:     utils.MaskEmail(loginReq.Email),
+        "source_method":     "Login",
+        "query_step":        "find_by_email",
+    }))
+
+    // Find user by email
+    ormAccount, err := orm.Accounts(
+        qm.Where("email = ?", loginReq.Email),
+    ).One(ctx, r.db)
+    
+    if err != nil {
+        duration := time.Since(startTime)
+        r.logDatabaseOperation(operation, table, duration, false, 0)
+        
+        if errors.Is(err, sql.ErrNoRows) {
+            // User not found - log as security event but don't reveal this information
+            r.logger.Warn("Login attempt with non-existent email", r.layerContext.MergeWithContext(map[string]interface{}{
+                "request_id":         requestID,
+                core.FieldDurationMS: duration.Milliseconds(),
+                core.FieldTable:      table,
+                core.FieldFunction:   function,
+                "source_method":      "Login",
+                "error_location":     "user_not_found",
+                core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+                "security_event":     "invalid_login_attempt",
+            }))
+            
+            // Return generic authentication error to prevent user enumeration
+            return account_dto.Account{}, error_system.InvalidCredentials()
+        }
+        
+        // Database error
+        r.logger.ErrorWithCause("Database error during login", "database_error", core.LayerRepository, operation,
+            r.layerContext.MergeWithContext(map[string]interface{}{
+                "request_id":         requestID,
+                core.FieldError:      err.Error(),
+                core.FieldDurationMS: duration.Milliseconds(),
+                core.FieldTable:      table,
+                core.FieldFunction:   function,
+                "source_method":      "Login",
+                "error_location":     "database_query",
+                core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+            }))
+        
+        return account_dto.Account{}, r.errorHandler.Handle(err, operation, table, operationCtx)
+    }
+
+    // Log password verification attempt
+    r.logger.Debug("Verifying password", r.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":        requestID,
+        core.FieldOperation: operation,
+        core.FieldFunction:  function,
+        core.FieldUserID:    ormAccount.ID,
+        core.FieldEmail:     utils.MaskEmail(loginReq.Email),
+        "source_method":     "Login",
+        "verification_step": "password_check",
+    }))
+
+    // Verify password
+    if !r.verifyPassword(loginReq.Password, ormAccount.Password) {
+        duration := time.Since(startTime)
+        r.logDatabaseOperation(operation, table, duration, false, 0)
+        
+        // Log failed password attempt as security event
+        r.logger.Warn("Login attempt with invalid password", r.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id":         requestID,
+            core.FieldUserID:     ormAccount.ID,
+            core.FieldDurationMS: duration.Milliseconds(),
+            core.FieldTable:      table,
+            core.FieldFunction:   function,
+            "source_method":      "Login",
+            "error_location":     "password_verification",
+            core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+            "security_event":     "invalid_password_attempt",
+        }))
+        
+        // Return generic authentication error to prevent user enumeration
+        return account_dto.Account{}, error_system.InvalidCredentials()
+    }
+
+    // Check if account is active/valid
+    if err := r.validateAccountStatus(ormAccount); err != nil {
+        duration := time.Since(startTime)
+        r.logDatabaseOperation(operation, table, duration, false, 0)
+        
+        r.logger.Warn("Login attempt on inactive/suspended account", r.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id":         requestID,
+            core.FieldUserID:     ormAccount.ID,
+            core.FieldDurationMS: duration.Milliseconds(),
+            core.FieldTable:      table,
+            core.FieldFunction:   function,
+            "source_method":      "Login",
+            "error_location":     "account_status_check",
+            core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+            "account_status":     ormAccount.Status.String,
+            "security_event":     "inactive_account_login_attempt",
+        }))
+        
+        return account_dto.Account{}, err
+    }
+
+    // Convert to DTO for token generation
+    userAccount := r.mapORMToDTO(ormAccount)
+    
+    // Generate refresh token using token package
+    refreshToken, err := token.GenerateRefreshToken(userAccount)
+    if err != nil {
+        duration := time.Since(startTime)
+        r.logDatabaseOperation(operation, table, duration, false, 0)
+        
+        r.logger.Error("Failed to generate refresh token", r.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id":         requestID,
+            core.FieldUserID:     ormAccount.ID,
+            core.FieldError:      err.Error(),
+            core.FieldDurationMS: duration.Milliseconds(),
+            core.FieldTable:      table,
+            core.FieldFunction:   function,
+            "source_method":      "Login",
+            "error_location":     "generate_refresh_token",
+            core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+        }))
+        
+        return account_dto.Account{}, fmt.Errorf("failed to generate refresh token: %w", err)
+    }
+
+    // Set token expiration (e.g., 7 days from now)
+    expiresAt := time.Now().Add(7 * 24 * time.Hour)
+
+    // DEBUG: Log before calling StoreRefreshToken
+    r.logger.Info("About to store refresh token", r.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":       requestID,
+        "account_id":       ormAccount.ID,
+        "expires_at":       expiresAt.Format(time.RFC3339),
+        "token_length":     len(refreshToken),
+    }))
+
+    // Store refresh token in database
+    if err := r.StoreRefreshToken(ctx, ormAccount.ID, refreshToken, expiresAt); err != nil {
+        duration := time.Since(startTime)
+        r.logDatabaseOperation(operation, table, duration, false, 0)
+        
+        r.logger.Error("Failed to store refresh token", r.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id":         requestID,
+            core.FieldUserID:     ormAccount.ID,
+            core.FieldError:      err.Error(),
+            core.FieldDurationMS: duration.Milliseconds(),
+            core.FieldTable:      table,
+            core.FieldFunction:   function,
+            "source_method":      "Login",
+            "error_location":     "store_refresh_token",
+            core.FieldEmail:      utils.MaskEmail(loginReq.Email),
+        }))
+        
+        return account_dto.Account{}, fmt.Errorf("failed to store refresh token: %w", err)
+    }
+
+    // DEBUG: Log after StoreRefreshToken succeeds
+    r.logger.Info("Refresh token stored successfully in Login", r.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id": requestID,
+        "account_id": ormAccount.ID,
+    }))
+
+    duration := time.Since(startTime)
+    r.logDatabaseOperation(operation, table, duration, true, 1)
+    
+    // Log successful login
+    r.logger.Info("User login successful", r.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":           requestID,
+        core.FieldUserID:       ormAccount.ID,
+        core.FieldEmail:        utils.MaskEmail(loginReq.Email),
+        core.FieldDurationMS:   duration.Milliseconds(),
+        core.FieldOperation:    operation,
+        core.FieldTable:        table,
+        core.FieldFunction:     function,
+        "source_method":        "Login",
+        "success_step":         "login_complete",
+        "user_role":           ormAccount.Role,
+        "branch_id":           ormAccount.BranchID.Int64,
+        "refresh_token_set":   true,
+    }))
+    
+    // Clear password from response for security
+    userAccount.Password = ""
+    
+    // Add refresh token to the response
+ 
+    
+    return userAccount, nil
+}
+// new

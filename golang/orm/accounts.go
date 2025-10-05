@@ -316,6 +316,7 @@ var AccountRels = struct {
 	UserDeliveries         string
 	OrderHandlerOrders     string
 	UserOrders             string
+	RefreshTokens          string
 }{
 	Owner:                  "Owner",
 	Branch:                 "Branch",
@@ -325,18 +326,20 @@ var AccountRels = struct {
 	UserDeliveries:         "UserDeliveries",
 	OrderHandlerOrders:     "OrderHandlerOrders",
 	UserOrders:             "UserOrders",
+	RefreshTokens:          "RefreshTokens",
 }
 
 // accountR is where relationships are stored.
 type accountR struct {
-	Owner                  *Account      `boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
-	Branch                 *Branch       `boil:"Branch" json:"Branch" toml:"Branch" yaml:"Branch"`
-	OwnerAccounts          AccountSlice  `boil:"OwnerAccounts" json:"OwnerAccounts" toml:"OwnerAccounts" yaml:"OwnerAccounts"`
-	ManagerBranches        BranchSlice   `boil:"ManagerBranches" json:"ManagerBranches" toml:"ManagerBranches" yaml:"ManagerBranches"`
-	OrderHandlerDeliveries DeliverySlice `boil:"OrderHandlerDeliveries" json:"OrderHandlerDeliveries" toml:"OrderHandlerDeliveries" yaml:"OrderHandlerDeliveries"`
-	UserDeliveries         DeliverySlice `boil:"UserDeliveries" json:"UserDeliveries" toml:"UserDeliveries" yaml:"UserDeliveries"`
-	OrderHandlerOrders     OrderSlice    `boil:"OrderHandlerOrders" json:"OrderHandlerOrders" toml:"OrderHandlerOrders" yaml:"OrderHandlerOrders"`
-	UserOrders             OrderSlice    `boil:"UserOrders" json:"UserOrders" toml:"UserOrders" yaml:"UserOrders"`
+	Owner                  *Account          `boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	Branch                 *Branch           `boil:"Branch" json:"Branch" toml:"Branch" yaml:"Branch"`
+	OwnerAccounts          AccountSlice      `boil:"OwnerAccounts" json:"OwnerAccounts" toml:"OwnerAccounts" yaml:"OwnerAccounts"`
+	ManagerBranches        BranchSlice       `boil:"ManagerBranches" json:"ManagerBranches" toml:"ManagerBranches" yaml:"ManagerBranches"`
+	OrderHandlerDeliveries DeliverySlice     `boil:"OrderHandlerDeliveries" json:"OrderHandlerDeliveries" toml:"OrderHandlerDeliveries" yaml:"OrderHandlerDeliveries"`
+	UserDeliveries         DeliverySlice     `boil:"UserDeliveries" json:"UserDeliveries" toml:"UserDeliveries" yaml:"UserDeliveries"`
+	OrderHandlerOrders     OrderSlice        `boil:"OrderHandlerOrders" json:"OrderHandlerOrders" toml:"OrderHandlerOrders" yaml:"OrderHandlerOrders"`
+	UserOrders             OrderSlice        `boil:"UserOrders" json:"UserOrders" toml:"UserOrders" yaml:"UserOrders"`
+	RefreshTokens          RefreshTokenSlice `boil:"RefreshTokens" json:"RefreshTokens" toml:"RefreshTokens" yaml:"RefreshTokens"`
 }
 
 // NewStruct creates a new relationship struct
@@ -470,6 +473,22 @@ func (r *accountR) GetUserOrders() OrderSlice {
 	}
 
 	return r.UserOrders
+}
+
+func (o *Account) GetRefreshTokens() RefreshTokenSlice {
+	if o == nil {
+		return nil
+	}
+
+	return o.R.GetRefreshTokens()
+}
+
+func (r *accountR) GetRefreshTokens() RefreshTokenSlice {
+	if r == nil {
+		return nil
+	}
+
+	return r.RefreshTokens
 }
 
 // accountL is where Load methods for each relationship are stored.
@@ -892,6 +911,20 @@ func (o *Account) UserOrders(mods ...qm.QueryMod) orderQuery {
 	)
 
 	return Orders(queryMods...)
+}
+
+// RefreshTokens retrieves all the refresh_token's RefreshTokens with an executor.
+func (o *Account) RefreshTokens(mods ...qm.QueryMod) refreshTokenQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"refresh_tokens\".\"account_id\"=?", o.ID),
+	)
+
+	return RefreshTokens(queryMods...)
 }
 
 // LoadOwner allows an eager lookup of values, cached into the
@@ -1820,6 +1853,119 @@ func (accountL) LoadUserOrders(ctx context.Context, e boil.ContextExecutor, sing
 	return nil
 }
 
+// LoadRefreshTokens allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (accountL) LoadRefreshTokens(ctx context.Context, e boil.ContextExecutor, singular bool, maybeAccount interface{}, mods queries.Applicator) error {
+	var slice []*Account
+	var object *Account
+
+	if singular {
+		var ok bool
+		object, ok = maybeAccount.(*Account)
+		if !ok {
+			object = new(Account)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeAccount)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeAccount))
+			}
+		}
+	} else {
+		s, ok := maybeAccount.(*[]*Account)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeAccount)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeAccount))
+			}
+		}
+	}
+
+	args := make(map[interface{}]struct{})
+	if singular {
+		if object.R == nil {
+			object.R = &accountR{}
+		}
+		args[object.ID] = struct{}{}
+	} else {
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &accountR{}
+			}
+			args[obj.ID] = struct{}{}
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	argsSlice := make([]interface{}, len(args))
+	i := 0
+	for arg := range args {
+		argsSlice[i] = arg
+		i++
+	}
+
+	query := NewQuery(
+		qm.From(`refresh_tokens`),
+		qm.WhereIn(`refresh_tokens.account_id in ?`, argsSlice...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load refresh_tokens")
+	}
+
+	var resultSlice []*RefreshToken
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice refresh_tokens")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on refresh_tokens")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for refresh_tokens")
+	}
+
+	if len(refreshTokenAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.RefreshTokens = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &refreshTokenR{}
+			}
+			foreign.R.Account = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.AccountID {
+				local.R.RefreshTokens = append(local.R.RefreshTokens, foreign)
+				if foreign.R == nil {
+					foreign.R = &refreshTokenR{}
+				}
+				foreign.R.Account = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetOwner of the account to the related item.
 // Sets o.R.Owner to related.
 // Adds o to related.R.OwnerAccounts.
@@ -2739,6 +2885,59 @@ func (o *Account) RemoveUserOrders(ctx context.Context, exec boil.ContextExecuto
 		}
 	}
 
+	return nil
+}
+
+// AddRefreshTokens adds the given related objects to the existing relationships
+// of the account, optionally inserting them as new records.
+// Appends related to o.R.RefreshTokens.
+// Sets related.R.Account appropriately.
+func (o *Account) AddRefreshTokens(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*RefreshToken) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.AccountID = o.ID
+			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"refresh_tokens\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"account_id"}),
+				strmangle.WhereClause("\"", "\"", 2, refreshTokenPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.IsDebug(ctx) {
+				writer := boil.DebugWriterFrom(ctx)
+				fmt.Fprintln(writer, updateQuery)
+				fmt.Fprintln(writer, values)
+			}
+			if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.AccountID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &accountR{
+			RefreshTokens: related,
+		}
+	} else {
+		o.R.RefreshTokens = append(o.R.RefreshTokens, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &refreshTokenR{
+				Account: o,
+			}
+		} else {
+			rel.R.Account = o
+		}
+	}
 	return nil
 }
 

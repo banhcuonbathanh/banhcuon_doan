@@ -18,7 +18,9 @@ Now let's create the SQLBoiler configuration file. This is like creating a detai
 
 The configuration file is crucial because it tells SQLBoiler where to find your database, how to connect to it, and what kind of output you want. Think of it as the blueprint that guides the entire code generation process.
 
-## Step 4: Generate Your ORM Models
+## Step 4: Generate Your ORM Models command to cretae orm is sqlboiler psql
+
+
 
 Now comes the exciting part - this is where SQLBoiler reads your database structure and creates the Go code that will serve as your ORM layer. Think of this as the moment when your database blueprint gets transformed into a working Go library specifically designed for your schema.
 
