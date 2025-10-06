@@ -12,6 +12,7 @@ service AccountService {
   // rpc FindAllUsers(google.protobuf.Empty) returns (AccountList);
   // rpc FindByEmail(FindByEmailReq) returns (AccountRes);
   rpc Login(LoginReq) returns (AccountRes);
+    rpc RunDailyCleanup(RunDailyCleanupReq) returns (RunDailyCleanupRes);
   // rpc Logout(LogoutReq) returns (LogoutRes);
   // rpc Register(RegisterReq) returns (RegisterRes);
   // rpc FindByID(FindByIDReq) returns (FindByIDRes);
@@ -271,4 +272,14 @@ message PaginationInfo {
   int32 total_pages = 3;
   bool has_next = 4;
   bool has_prev = 5;
+}
+
+message RunDailyCleanupRes {
+  bool success = 1;
+  string message = 2;
+  int64 duration_ms = 3;
+}
+
+message RunDailyCleanupReq {
+  // Empty request - no parameters needed
 }

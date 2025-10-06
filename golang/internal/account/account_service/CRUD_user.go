@@ -210,7 +210,7 @@ func (s *AccountService) CreateUser(ctx context.Context, req *account.AccountReq
 
     return s.convertDTOToProto(&createdUser), nil
 }
-// ne
+
 
 func (s *AccountService) Login(ctx context.Context, loginReq *account.LoginReq) (*account.AccountRes, error) {
     const operation = "login"
@@ -302,6 +302,13 @@ func (s *AccountService) Login(ctx context.Context, loginReq *account.LoginReq) 
         return &account.AccountRes{}, appErr
     }
 
+    s.logger.Debug("User found successfully", s.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":             requestID,
+        "user_id":                user.ID,
+        "email":                  utils.MaskEmail(loginReq.Email),
+        "repository_duration_ms": time.Since(repoStartTime).Milliseconds(),
+    }))
+
     // Check if user account is active
     if user.Status != "active" {
         operationCtx["account_status"] = user.Status
@@ -367,40 +374,52 @@ func (s *AccountService) Login(ctx context.Context, loginReq *account.LoginReq) 
     userAccount := account_dto.Account{
         ID:       user.ID,
         Email:    user.Email,
-        Role:     user.Role, // Make sure this matches the Role type in account_dto
+        Role:     user.Role,
         BranchID: user.BranchID,
     }
-    accessToken, err := s.tokenMaker.CreateToken(userAccount)
+
+    s.logger.Debug("Generating access token", s.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id": requestID,
+        "user_id":    user.ID,
+        "email":      utils.MaskEmail(user.Email),
+    }))
+
     // Generate access token
-  
+    accessToken, err := s.tokenMaker.CreateToken(userAccount)
     if err != nil {
         operationCtx["token_generation_error"] = "failed to generate access token"
         
         s.logger.Error("Failed to generate access token", s.layerContext.MergeWithContext(map[string]interface{}{
-            "request_id":              requestID,
-            "operation":               operation,
-            "user_id":                 user.ID,
-            "email":                   utils.MaskEmail(user.Email),
-            "token_generation_duration_ms": time.Since(tokenStartTime).Milliseconds(),
-            "error":                   err.Error(),
+            "request_id":                       requestID,
+            "operation":                        operation,
+            "user_id":                          user.ID,
+            "email":                            utils.MaskEmail(user.Email),
+            "token_generation_duration_ms":     time.Since(tokenStartTime).Milliseconds(),
+            "error":                            err.Error(),
         }))
 
         appErr := s.errorHandler.Handle(err, operation, operationCtx)
         return &account.AccountRes{}, appErr
     }
-refreshToken, err := s.tokenMaker.CreateRefreshToken(userAccount)
-    // Generate refresh token
 
+    s.logger.Debug("Generating refresh token", s.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id": requestID,
+        "user_id":    user.ID,
+        "email":      utils.MaskEmail(user.Email),
+    }))
+
+    // Generate refresh token
+    refreshToken, err := s.tokenMaker.CreateRefreshToken(userAccount)
     if err != nil {
         operationCtx["token_generation_error"] = "failed to generate refresh token"
         
         s.logger.Error("Failed to generate refresh token", s.layerContext.MergeWithContext(map[string]interface{}{
-            "request_id":              requestID,
-            "operation":               operation,
-            "user_id":                 user.ID,
-            "email":                   utils.MaskEmail(user.Email),
-            "token_generation_duration_ms": time.Since(tokenStartTime).Milliseconds(),
-            "error":                   err.Error(),
+            "request_id":                       requestID,
+            "operation":                        operation,
+            "user_id":                          user.ID,
+            "email":                            utils.MaskEmail(user.Email),
+            "token_generation_duration_ms":     time.Since(tokenStartTime).Milliseconds(),
+            "error":                            err.Error(),
         }))
 
         appErr := s.errorHandler.Handle(err, operation, operationCtx)
@@ -408,11 +427,56 @@ refreshToken, err := s.tokenMaker.CreateRefreshToken(userAccount)
     }
 
     s.logger.Debug("JWT tokens generated successfully", s.layerContext.MergeWithContext(map[string]interface{}{
-        "request_id":              requestID,
-        "operation":               operation,
-        "user_id":                 user.ID,
-        "email":                   utils.MaskEmail(user.Email),
-        "token_generation_duration_ms": time.Since(tokenStartTime).Milliseconds(),
+        "request_id":                       requestID,
+        "operation":                        operation,
+        "user_id":                          user.ID,
+        "email":                            utils.MaskEmail(user.Email),
+        "token_generation_duration_ms":     time.Since(tokenStartTime).Milliseconds(),
+    }))
+
+    // Store refresh token in database
+    tokenExpiresAt := time.Now().Add(7 * 24 * time.Hour)
+    
+    s.logger.Info("Storing refresh token in database", s.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":      requestID,
+        "user_id":         user.ID,
+        "email":           utils.MaskEmail(user.Email),
+        "expires_at":      tokenExpiresAt.Format(time.RFC3339),
+        "target_layer":    core.LayerRepository,
+        "target_function": "StoreRefreshToken",
+    }))
+
+   if err := s.userRepo.RevokeAllUserTokens(ctx, user.ID); err != nil {
+        s.logger.Error("Failed to revoke previous tokens", s.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id": requestID,
+            "user_id":    user.ID,
+            "error":      err.Error(),
+        }))
+        // Continue anyway - don't fail login for this
+    }
+
+    storeTokenStartTime := time.Now()
+    if err := s.userRepo.StoreRefreshToken(ctx, user.ID, refreshToken, tokenExpiresAt); err != nil {
+        operationCtx["store_token_error"] = "failed to store refresh token"
+        
+        s.logger.Error("Failed to store refresh token", s.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id":             requestID,
+            "operation":              operation,
+            "user_id":                user.ID,
+            "email":                  utils.MaskEmail(user.Email),
+            "store_duration_ms":      time.Since(storeTokenStartTime).Milliseconds(),
+            "error":                  err.Error(),
+        }))
+
+        appErr := s.errorHandler.Handle(err, operation, operationCtx)
+        return &account.AccountRes{}, appErr
+    }
+
+    s.logger.Debug("Refresh token stored successfully", s.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":        requestID,
+        "user_id":           user.ID,
+        "email":             utils.MaskEmail(user.Email),
+        "store_duration_ms": time.Since(storeTokenStartTime).Milliseconds(),
     }))
 
     // Log successful login with request ID
@@ -435,12 +499,12 @@ refreshToken, err := s.tokenMaker.CreateRefreshToken(userAccount)
 
             // You could add login activity logging here
             s.logger.Info("User login activity recorded", s.layerContext.MergeWithContext(map[string]interface{}{
-                "request_id":            requestID,
-                "operation":             "record_login_activity",
-                "user_id":               user.ID,
-                "email":                 utils.MaskEmail(user.Email),
-                "activity_duration_ms":  time.Since(activityStartTime).Milliseconds(),
-                "success":               true,
+                "request_id":           requestID,
+                "operation":            "record_login_activity",
+                "user_id":              user.ID,
+                "email":                utils.MaskEmail(user.Email),
+                "activity_duration_ms": time.Since(activityStartTime).Milliseconds(),
+                "success":              true,
             }))
         }()
     }
@@ -454,3 +518,4 @@ refreshToken, err := s.tokenMaker.CreateRefreshToken(userAccount)
         RefreshToken: refreshToken,
     }, nil
 }
+// new asdlfks

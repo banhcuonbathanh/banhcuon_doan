@@ -5,7 +5,6 @@ package account_handler
 import (
 	"net/http"
 
-
 	// utils_config "english-ai-full/utils/config"
 
 	"github.com/go-chi/chi"
@@ -34,6 +33,7 @@ func RegisterRoutesAccountHandler(r *chi.Mux, accountHandler *AccountHandler) {
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", accountHandler.Register)
 			r.Post("/login", accountHandler.Login)
+				r.Post("/dailyCleanup", accountHandler.DailyCleanup)
 			// r.Post("/logout", accountHandler.Logout)
 			// r.Post("/refresh-token", accountHandler.RefreshToken)
 			// r.Post("/validate-token", accountHandler.ValidateToken)

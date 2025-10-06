@@ -4,12 +4,11 @@ package account
 import (
 	"context"
 	account_dto "english-ai-full/internal/account/account_dto"
-
+	"time"
 
 	// "english-ai-full/internal/proto_qr/account"
 	pb "english-ai-full/internal/proto_qr/account"
 	"net/http"
-
 	// "google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -22,6 +21,25 @@ type AccountRepositoryInterface interface {
 		Login(ctx context.Context, loginReq account_dto.LoginRequest) (account_dto.Account, error)
 	// Register(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
 	FindByEmail(ctx context.Context, email string) (account_dto.Account, error)
+		StoreRefreshToken(ctx context.Context, accountID int64, token string, expiresAt time.Time) error
+
+		  RevokeAllUserTokens(ctx context.Context, userID int64) error
+    RevokeToken(ctx context.Context, token string) error
+    CountActiveTokens(ctx context.Context, userID int64) (int, error)
+    RevokeOldestTokens(ctx context.Context, userID int64, count int) error
+
+	IsTokenValid(ctx context.Context, token string) (bool, error) 
+
+	 GetUserIDFromToken(ctx context.Context, token string) (int64, error) 
+
+	 CleanupExpiredTokens(ctx context.Context, retentionDays int) (int64, error) 
+
+	  CleanupRevokedTokens(ctx context.Context, retentionDays int) (int64, error) 
+
+	   ComprehensiveTokenCleanup(ctx context.Context) error 
+
+	   RevokeAllUserTokensWithDelete(ctx context.Context, userID int64) error 
+
 	// FindByID(ctx context.Context, id int64) (account_dto.Account, error)
 	// FindAllUsers(ctx context.Context) ([]account_dto.Account, error)
 	// UpdateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
@@ -53,6 +71,8 @@ type AccountServiceInterface interface {
 	// Basic gRPC service methods
 	CreateUser(ctx context.Context, req *pb.AccountReq) (*pb.Account, error)
 	Login(ctx context.Context, loginReq *pb.LoginReq) (*pb.AccountRes, error)
+
+	RunDailyCleanup(ctx context.Context) error 
 // 	UpdateUser(ctx context.Context, req *pb.UpdateUserReq) (*pb.AccountRes, error)
 // 	DeleteUser(ctx context.Context, req *pb.DeleteAccountReq) (*pb.DeleteAccountRes, error)
 // 	FindAllUsers(ctx context.Context, req *emptypb.Empty) (*pb.AccountList, error)

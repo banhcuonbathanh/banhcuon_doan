@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AccountService_CreateUser_FullMethodName = "/account_proto.AccountService/CreateUser"
-	AccountService_Login_FullMethodName      = "/account_proto.AccountService/Login"
+	AccountService_CreateUser_FullMethodName      = "/account_proto.AccountService/CreateUser"
+	AccountService_Login_FullMethodName           = "/account_proto.AccountService/Login"
+	AccountService_RunDailyCleanup_FullMethodName = "/account_proto.AccountService/RunDailyCleanup"
 )
 
 // AccountServiceClient is the client API for AccountService service.
@@ -33,6 +34,7 @@ type AccountServiceClient interface {
 	// rpc FindAllUsers(google.protobuf.Empty) returns (AccountList);
 	// rpc FindByEmail(FindByEmailReq) returns (AccountRes);
 	Login(ctx context.Context, in *LoginReq, opts ...grpc.CallOption) (*AccountRes, error)
+	RunDailyCleanup(ctx context.Context, in *RunDailyCleanupReq, opts ...grpc.CallOption) (*RunDailyCleanupRes, error)
 }
 
 type accountServiceClient struct {
@@ -63,6 +65,16 @@ func (c *accountServiceClient) Login(ctx context.Context, in *LoginReq, opts ...
 	return out, nil
 }
 
+func (c *accountServiceClient) RunDailyCleanup(ctx context.Context, in *RunDailyCleanupReq, opts ...grpc.CallOption) (*RunDailyCleanupRes, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunDailyCleanupRes)
+	err := c.cc.Invoke(ctx, AccountService_RunDailyCleanup_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AccountServiceServer is the server API for AccountService service.
 // All implementations must embed UnimplementedAccountServiceServer
 // for forward compatibility.
@@ -73,6 +85,7 @@ type AccountServiceServer interface {
 	// rpc FindAllUsers(google.protobuf.Empty) returns (AccountList);
 	// rpc FindByEmail(FindByEmailReq) returns (AccountRes);
 	Login(context.Context, *LoginReq) (*AccountRes, error)
+	RunDailyCleanup(context.Context, *RunDailyCleanupReq) (*RunDailyCleanupRes, error)
 	mustEmbedUnimplementedAccountServiceServer()
 }
 
@@ -88,6 +101,9 @@ func (UnimplementedAccountServiceServer) CreateUser(context.Context, *AccountReq
 }
 func (UnimplementedAccountServiceServer) Login(context.Context, *LoginReq) (*AccountRes, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedAccountServiceServer) RunDailyCleanup(context.Context, *RunDailyCleanupReq) (*RunDailyCleanupRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RunDailyCleanup not implemented")
 }
 func (UnimplementedAccountServiceServer) mustEmbedUnimplementedAccountServiceServer() {}
 func (UnimplementedAccountServiceServer) testEmbeddedByValue()                        {}
@@ -146,6 +162,24 @@ func _AccountService_Login_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccountService_RunDailyCleanup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunDailyCleanupReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountServiceServer).RunDailyCleanup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountService_RunDailyCleanup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountServiceServer).RunDailyCleanup(ctx, req.(*RunDailyCleanupReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AccountService_ServiceDesc is the grpc.ServiceDesc for AccountService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -160,6 +194,10 @@ var AccountService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _AccountService_Login_Handler,
+		},
+		{
+			MethodName: "RunDailyCleanup",
+			Handler:    _AccountService_RunDailyCleanup_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
