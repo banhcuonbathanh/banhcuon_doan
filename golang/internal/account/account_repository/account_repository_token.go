@@ -3,7 +3,9 @@ package account_repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 
+	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/logger/core"
 	"english-ai-full/orm"
 
@@ -13,6 +15,9 @@ import (
 
 	"github.com/aarondl/null/v8" // Use this instead of volatiletech/null
 	"github.com/aarondl/sqlboiler/v4/boil"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+    	pb "english-ai-full/internal/proto_qr/account"
 )
 
 // StoreRefreshToken stores a new refresh token in the database using ORM
@@ -647,3 +652,105 @@ func (r *Repository) RevokeAllUserTokensWithDelete(ctx context.Context, userID i
 
 // RunDailyCleanup should be called by your cron job scheduler
 // Example: Run every day at 2 AM
+// newe asdfasdfasdfds
+
+
+func (r *Repository) GetRefreshTokenByUserIDAndToken(ctx context.Context, userID int64, token string) (*account_dto.RefreshToken, error) {
+	query := `
+		SELECT id, user_id, token, expires_at, is_revoked, created_at 
+		FROM refresh_tokens 
+		WHERE user_id = $1 AND token = $2 AND is_revoked = false
+	`
+	
+	var refreshToken account_dto.RefreshToken
+	err := r.db.QueryRowContext(ctx, query, userID, token).Scan(
+		&refreshToken.ID,
+		&refreshToken.AccountID,
+		&refreshToken.Token,
+		&refreshToken.ExpiresAt,
+        &refreshToken.CreatedAt,
+        		&refreshToken.RevokedAt,
+		&refreshToken.IsRevoked,
+	
+	)
+	
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("refresh token not found or has been revoked")
+		}
+		return nil, fmt.Errorf("failed to get refresh token: %w", err)
+	}
+	
+	return &refreshToken, nil
+}
+
+
+
+func (r *Repository) RevokeRefreshToken(ctx context.Context, token string) error {
+	query := `
+		UPDATE refresh_tokens 
+		SET is_revoked = true 
+		WHERE token = $1
+	`
+	
+	_, err := r.db.ExecContext(ctx, query, token)
+	if err != nil {
+		return fmt.Errorf("failed to revoke refresh token: %w", err)
+	}
+	
+	return nil
+}
+
+func (r *Repository) GetUserByID(ctx context.Context, userID int64) (*pb.Account, error) {
+	query := `
+		SELECT id, branch_id, name, email, avatar, title, role, owner_id, status, created_at, updated_at
+		FROM accounts 
+		WHERE id = $1
+	`
+	
+	var account pb.Account
+	var createdAt, updatedAt time.Time
+	var status string
+	
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(
+		&account.Id,
+		&account.BranchId,
+		&account.Name,
+		&account.Email,
+		&account.Avatar,
+		&account.Title,
+		&account.Role,
+		&account.OwnerId,
+		&status,
+		&createdAt,
+		&updatedAt,
+	)
+	
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	
+	// Convert status string to enum
+	account.Status = parseAccountStatus(status)
+	account.CreatedAt = timestamppb.New(createdAt)
+	account.UpdatedAt = timestamppb.New(updatedAt)
+	
+	return &account, nil
+}
+
+func parseAccountStatus(status string) pb.AccountStatus {
+	switch status {
+	case "ACTIVE":
+		return pb.AccountStatus_ACTIVE
+	case "INACTIVE":
+		return pb.AccountStatus_INACTIVE
+	case "SUSPENDED":
+		return pb.AccountStatus_SUSPENDED
+	default:
+		return pb.AccountStatus_UNKNOWN
+	}
+}
+// new asdfasdfadsfsd

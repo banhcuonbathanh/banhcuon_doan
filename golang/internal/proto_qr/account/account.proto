@@ -33,8 +33,10 @@ service AccountService {
   // rpc SearchUsers(SearchUsersReq) returns (SearchUsersRes);
   
   // // Token/Session management
-  // rpc RefreshToken(RefreshTokenReq) returns (RefreshTokenRes);
-  // rpc ValidateToken(ValidateTokenReq) returns (ValidateTokenRes);
+
+
+    rpc RefreshToken(RefreshTokenReq) returns (RefreshTokenRes);
+  rpc ValidateToken(ValidateTokenReq) returns (ValidateTokenRes);
 }
 enum AccountStatus {
   UNKNOWN = 0;

@@ -2,7 +2,9 @@ package account_handler
 
 import (
 	"context"
+	"encoding/json"
 	"english-ai-full/error_system"
+	"english-ai-full/internal/account/account_dto"
 	pb "english-ai-full/internal/proto_qr/account"
 	"net/http"
 	"time"
@@ -97,4 +99,46 @@ func (h *AccountHandler) DailyCleanup(w http.ResponseWriter, r *http.Request) {
 
 	// Send successful response
 	h.writeSuccessResponse(w, responseData, http.StatusOK, requestID)
+}
+
+
+func (h *AccountHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+    var req account_dto.GetNewAccessTokenRequest
+    
+    // Parse request body
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+    
+    // Validate request
+    if req.RefreshToken == "" {
+        http.Error(w, "Refresh token is required", http.StatusBadRequest)
+        return
+    }
+    
+    // Call service layer
+    accessToken, newRefreshToken, expiresIn, err := h.accountService.RefreshToken(r.Context(), req.RefreshToken)
+    if err != nil {
+        switch err {
+        case services.ErrInvalidToken:
+            http.Error(w, "Invalid or expired refresh token", http.StatusUnauthorized)
+        case services.ErrUserNotFound:
+            http.Error(w, "User not found", http.StatusNotFound)
+        default:
+            http.Error(w, "Internal server error", http.StatusInternalServerError)
+        }
+        return
+    }
+    
+    // Prepare response
+    response := RefreshTokenResponse{
+        AccessToken:  accessToken,
+        RefreshToken: newRefreshToken,
+        ExpiresIn:    expiresIn,
+    }
+    
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(response)
 }

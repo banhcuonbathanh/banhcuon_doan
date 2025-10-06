@@ -3,7 +3,7 @@ package account_dto
 
 import (
 	"fmt"
-	"time"
+
 )
 
 type LoginRequest struct {
@@ -166,12 +166,3 @@ type VerifyEmailRequest struct {
 }
 
 
-type RefreshToken struct {
-    ID           int64     `json:"id"`
-    AccountID    int64     `json:"account_id"`
-    Token        string    `json:"token"`
-    ExpiresAt    time.Time `json:"expires_at"`
-    CreatedAt    time.Time `json:"created_at"`
-    RevokedAt    *time.Time `json:"revoked_at,omitempty"`
-    IsRevoked    bool      `json:"is_revoked"`
-}
