@@ -1,0 +1,720 @@
+{
+  "info": {
+    "_postman_id": "cleanup-test-collection-001",
+    "name": "Daily Token Cleanup - Complete Test Suite",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "37760297",
+    "description": "Comprehensive test suite for Daily Token Cleanup endpoint"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string",
+      "description": "JWT token for admin/system operations"
+    }
+  ],
+  "item": [
+    {
+      "name": "Success Cases ✅",
+      "item": [
+        {
+          "name": "Cleanup - Success with Expired Tokens ✅",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 (OK)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has success status\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('success', true);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains cleanup message\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('message');",
+                  "    pm.expect(responseJson.message).to.be.a('string');",
+                  "    pm.expect(responseJson.message).to.include('completed successfully');",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains job identifier\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('job', 'token_cleanup');",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains duration metrics\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('duration_ms');",
+                  "    pm.expect(responseJson.duration_ms).to.be.a('number');",
+                  "    pm.expect(responseJson.duration_ms).to.be.at.least(0);",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is within acceptable range\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(60000);",
+                  "});",
+                  "",
+                  "pm.test(\"Content-Type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Prerequisites:",
+                  "// 1. Database should have expired refresh tokens",
+                  "// 2. Admin/system token should be set if authentication is required"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}",
+                "disabled": true,
+                "description": "Enable if endpoint requires authentication"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/dailyCleanup",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "cleanup", "daily"]
+            },
+            "description": "Test successful cleanup when expired tokens exist in database"
+          }
+        },
+        {
+          "name": "Cleanup - Success with No Expired Tokens ✅",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 (OK)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has success status\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('success', true);",
+                  "});",
+                  "",
+                  "pm.test(\"Response indicates successful cleanup\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.message).to.include('completed successfully');",
+                  "});",
+                  "",
+                  "pm.test(\"Duration is reasonable for empty cleanup\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.duration_ms).to.be.below(5000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/dailyCleanup",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "cleanup", "daily"]
+            },
+            "description": "Test cleanup when no expired tokens exist"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Cases ❌",
+      "item": [
+        {
+          "name": "Cleanup - Database Connection Error ❌",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 500 or 503\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([500, 503]);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains error information\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('error');",
+                  "    pm.expect(responseJson.error).to.be.a('string');",
+                  "});",
+                  "",
+                  "pm.test(\"Error indicates database issue\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    const errorMsg = responseJson.error.toLowerCase();",
+                  "    pm.expect(errorMsg).to.satisfy(function(msg) {",
+                  "        return msg.includes('database') || msg.includes('connection') || msg.includes('unavailable');",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test(\"Content-Type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Prerequisites:",
+                  "// 1. Stop database service temporarily",
+                  "// 2. Or use a mock/test endpoint that simulates DB error"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/dailyCleanup",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "cleanup", "daily"]
+            },
+            "description": "Test behavior when database connection fails"
+          }
+        },
+        {
+          "name": "Cleanup - Invalid Request Method ❌",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 405 (Method Not Allowed)\", function () {",
+                  "    pm.response.to.have.status(405);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains error message\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('error');",
+                  "});",
+                  "",
+                  "pm.test(\"Error indicates method not allowed\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    const errorMsg = responseJson.error.toLowerCase();",
+                  "    pm.expect(errorMsg).to.include('method');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/accounts/cleanup/daily",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "cleanup", "daily"]
+            },
+            "description": "Test with GET instead of POST method"
+          }
+        },
+        {
+          "name": "Cleanup - Service Timeout ❌",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 408 or 504\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([408, 504, 500]);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains timeout error\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('error');",
+                  "    const errorMsg = responseJson.error.toLowerCase();",
+                  "    pm.expect(errorMsg).to.satisfy(function(msg) {",
+                  "        return msg.includes('timeout') || msg.includes('deadline') || msg.includes('context');",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Prerequisites:",
+                  "// 1. Set up test environment with very short timeout",
+                  "// 2. Or create large dataset that exceeds 60s timeout"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/dailyCleanup",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "cleanup", "daily"]
+            },
+            "description": "Test when cleanup operation exceeds timeout threshold"
+          }
+        },
+        {
+          "name": "Cleanup - Service Unavailable ❌",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 503 (Service Unavailable)\", function () {",
+                  "    pm.response.to.have.status(503);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains error message\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('error');",
+                  "});",
+                  "",
+                  "pm.test(\"Error indicates service unavailability\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    const errorMsg = responseJson.error.toLowerCase();",
+                  "    pm.expect(errorMsg).to.satisfy(function(msg) {",
+                  "        return msg.includes('unavailable') || msg.includes('service') || msg.includes('connection');",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Prerequisites:",
+                  "// 1. Stop the account service",
+                  "// 2. Or simulate gRPC connection failure"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/dailyCleanup",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "cleanup", "daily"]
+            },
+            "description": "Test when account service is unavailable"
+          }
+        },
+        {
+          "name": "Cleanup - Malformed Request Body ❌",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400 (Bad Request)\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains error message\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('error');",
+                  "});",
+                  "",
+                  "pm.test(\"Error indicates invalid JSON\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    const errorMsg = responseJson.error.toLowerCase();",
+                  "    pm.expect(errorMsg).to.satisfy(function(msg) {",
+                  "        return msg.includes('invalid') || msg.includes('json') || msg.includes('parse');",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{invalid json content here",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/dailyCleanup",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "cleanup", "daily"]
+            },
+            "description": "Test with malformed JSON in request body"
+          }
+        },
+        {
+          "name": "Cleanup - Missing Content-Type Header ❌",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400 or 415\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 415, 200]);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is properly formatted\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.be.an('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/dailyCleanup",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "cleanup", "daily"]
+            },
+            "description": "Test cleanup request without Content-Type header"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Edge Cases ❌",
+      "item": [
+        {
+          "name": "Cleanup - Large Dataset Processing ⚠️",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 or 504\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 504]);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Cleanup completed successfully\", function () {",
+                  "        const responseJson = pm.response.json();",
+                  "        pm.expect(responseJson.success).to.be.true;",
+                  "    });",
+                  "    ",
+                  "    pm.test(\"Duration reflects large dataset processing\", function () {",
+                  "        const responseJson = pm.response.json();",
+                  "        pm.expect(responseJson.duration_ms).to.be.above(1000);",
+                  "    });",
+                  "} else {",
+                  "    pm.test(\"Timeout error is properly handled\", function () {",
+                  "        const responseJson = pm.response.json();",
+                  "        pm.expect(responseJson).to.have.property('error');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Prerequisites:",
+                  "// 1. Insert large number of expired tokens (10k+)",
+                  "// 2. Monitor system resources during test"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/dailyCleanup",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "cleanup", "daily"]
+            },
+            "description": "Test cleanup with very large number of expired tokens"
+          }
+        },
+        {
+          "name": "Cleanup - Concurrent Request Handling ⚠️",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 or 409\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 409, 429]);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is properly structured\", function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.be.an('object');",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Cleanup succeeded\", function () {",
+                  "        const responseJson = pm.response.json();",
+                  "        pm.expect(responseJson.success).to.be.true;",
+                  "    });",
+                  "} else if (pm.response.code === 409) {",
+                  "    pm.test(\"Conflict error indicates concurrent cleanup\", function () {",
+                  "        const responseJson = pm.response.json();",
+                  "        pm.expect(responseJson.error).to.exist;",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Prerequisites:",
+                  "// 1. Run this test multiple times simultaneously",
+                  "// 2. Or use Postman Collection Runner with multiple iterations"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/dailyCleanup",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "cleanup", "daily"]
+            },
+            "description": "Test behavior when multiple cleanup requests run concurrently"
+          }
+        },
+        {
+          "name": "Cleanup - During High System Load ⚠️",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code indicates proper handling\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 429, 503]);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Cleanup succeeded under load\", function () {",
+                  "        const responseJson = pm.response.json();",
+                  "        pm.expect(responseJson.success).to.be.true;",
+                  "    });",
+                  "} else if (pm.response.code === 429) {",
+                  "    pm.test(\"Rate limiting is active\", function () {",
+                  "        const responseJson = pm.response.json();",
+                  "        pm.expect(responseJson.error).to.exist;",
+                  "    });",
+                  "} else if (pm.response.code === 503) {",
+                  "    pm.test(\"Service properly reports overload\", function () {",
+                  "        const responseJson = pm.response.json();",
+                  "        pm.expect(responseJson.error).to.exist;",
+                  "    });",
+                  "}",
+                  "",
+                  "pm.test(\"Response time reflects system load\", function () {",
+                  "    // Response may be slower under load",
+                  "    pm.expect(pm.response.responseTime).to.be.below(65000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Prerequisites:",
+                  "// 1. Simulate high load with stress testing tools",
+                  "// 2. Monitor system resources (CPU, memory, connections)"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/dailyCleanup",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "cleanup", "daily"]
+            },
+            "description": "Test cleanup execution during high system load"
+          }
+        }
+      ]
+    }
+  ]
+}

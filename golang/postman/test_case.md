@@ -37,3 +37,25 @@
    SQL injection attempt ❌
    Rate limiting exceeded ❌
    Success case with valid credentials ✅
+3. Daily Token Cleanup Test Cases Structure
+
+   cases:1. Success Cases ✅
+
+   Successful cleanup with expired tokens removed
+   Successful cleanup with no expired tokens
+   Successful cleanup with revoked tokens removed
+   2. Error Cases ❌
+
+   Database connection error
+   Context timeout/cancellation
+   Service unavailable
+   Invalid request method (should be POST/GET based on your implementation)
+   Concurrent cleanup requests
+   Nil response from service
+   Cleanup service panic/crash
+   Transaction rollback failure
+   3. Edge Cases ❌
+
+   Large number of tokens to cleanup
+   Cleanup during high system load
+   Partial cleanup failure
