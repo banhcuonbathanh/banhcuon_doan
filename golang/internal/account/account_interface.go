@@ -19,13 +19,13 @@ type AccountRepositoryInterface interface {
 	CreateUser(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
 		ExistsByEmail(ctx context.Context, email string) (bool, error) 
 		Login(ctx context.Context, loginReq account_dto.LoginRequest) (account_dto.Account, error)
-		GetUserByID(ctx context.Context, userID int64) (*pb.Account, error) 
+		GetUserByID(ctx context.Context, userID int64) (account_dto.Account, error) 
 	// Register(ctx context.Context, user account_dto.Account) (account_dto.Account, error)
 	FindByEmail(ctx context.Context, email string) (account_dto.Account, error)
 		StoreRefreshToken(ctx context.Context, accountID int64, token string, expiresAt time.Time) error
 
 		  RevokeAllUserTokens(ctx context.Context, userID int64) error
-    RevokeToken(ctx context.Context, token string) error
+    RevokeRefreshToken(ctx context.Context, token string) error
     CountActiveTokens(ctx context.Context, userID int64) (int, error)
     RevokeOldestTokens(ctx context.Context, userID int64, count int) error
 

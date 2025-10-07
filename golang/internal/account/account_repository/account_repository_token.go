@@ -8,6 +8,7 @@ import (
 	"english-ai-full/internal/account/account_dto"
 	"english-ai-full/logger/core"
 	"english-ai-full/orm"
+	"english-ai-full/utils"
 
 	"fmt"
 	"strings"
@@ -15,9 +16,9 @@ import (
 
 	"github.com/aarondl/null/v8" // Use this instead of volatiletech/null
 	"github.com/aarondl/sqlboiler/v4/boil"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	"github.com/aarondl/sqlboiler/v4/queries/qm"
 
-    	pb "english-ai-full/internal/proto_qr/account"
+
 )
 
 // StoreRefreshToken stores a new refresh token in the database using ORM
@@ -282,7 +283,7 @@ func (r *Repository) RevokeAllUserTokens(ctx context.Context, userID int64) erro
 }
 
 // RevokeToken marks a specific refresh token as revoked
-func (r *Repository) RevokeToken(ctx context.Context, token string) error {
+func (r *Repository) RevokeRefreshToken(ctx context.Context, token string) error {
     const operation = "RevokeToken"
     startTime := time.Now()
 
@@ -686,71 +687,124 @@ func (r *Repository) GetRefreshTokenByUserIDAndToken(ctx context.Context, userID
 
 
 
-func (r *Repository) RevokeRefreshToken(ctx context.Context, token string) error {
-	query := `
-		UPDATE refresh_tokens 
-		SET is_revoked = true 
-		WHERE token = $1
-	`
-	
-	_, err := r.db.ExecContext(ctx, query, token)
-	if err != nil {
-		return fmt.Errorf("failed to revoke refresh token: %w", err)
-	}
-	
-	return nil
-}
 
-func (r *Repository) GetUserByID(ctx context.Context, userID int64) (*pb.Account, error) {
-	query := `
-		SELECT id, branch_id, name, email, avatar, title, role, owner_id, status, created_at, updated_at
-		FROM accounts 
-		WHERE id = $1
-	`
-	
-	var account pb.Account
-	var createdAt, updatedAt time.Time
-	var status string
-	
-	err := r.db.QueryRowContext(ctx, query, userID).Scan(
-		&account.Id,
-		&account.BranchId,
-		&account.Name,
-		&account.Email,
-		&account.Avatar,
-		&account.Title,
-		&account.Role,
-		&account.OwnerId,
-		&status,
-		&createdAt,
-		&updatedAt,
-	)
-	
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("user not found")
-		}
-		return nil, fmt.Errorf("failed to get user: %w", err)
-	}
-	
-	// Convert status string to enum
-	account.Status = parseAccountStatus(status)
-	account.CreatedAt = timestamppb.New(createdAt)
-	account.UpdatedAt = timestamppb.New(updatedAt)
-	
-	return &account, nil
-}
 
-func parseAccountStatus(status string) pb.AccountStatus {
-	switch status {
-	case "ACTIVE":
-		return pb.AccountStatus_ACTIVE
-	case "INACTIVE":
-		return pb.AccountStatus_INACTIVE
-	case "SUSPENDED":
-		return pb.AccountStatus_SUSPENDED
-	default:
-		return pb.AccountStatus_UNKNOWN
-	}
-}
+
+
 // new asdfasdfadsfsd
+
+
+func (r *Repository) GetUserByID(ctx context.Context, userID int64) (account_dto.Account, error) {
+    const operation = "get_user_by_id"
+    const table = "accounts"
+    const function = "get_user_by_id"
+    startTime := time.Now()
+    
+    // Extract request ID from context
+    requestID := r.getRequestIDFromContext(ctx)
+    
+    // Build operation context with request ID
+    operationCtx := r.layerContext.BuildOperationContext(operation, table, function, map[string]interface{}{
+        "request_id": requestID,
+        "user_id":    userID,
+    })
+
+    // Set operation in logger
+    r.logger.SetOperation(operation)
+
+    // Log operation start
+    r.logger.Info(core.MsgOperationStarted, r.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id": requestID,
+        "operation":  operation,
+        "user_id":    userID,
+        "layer":      core.LayerRepository,
+    }))
+
+    // Context cancellation check
+    if err := ctx.Err(); err != nil {
+        r.logger.ErrorWithCause(core.MsgContextError, core.CauseContextCancelled,
+            core.LayerRepository, operation, r.layerContext.MergeWithContext(map[string]interface{}{
+                "request_id": requestID,
+            }))
+        appErr := r.errorHandler.Handle(err, operation, r.layerContext.Domain, operationCtx)
+        return account_dto.Account{}, appErr
+    }
+
+    // Input validation
+    if userID <= 0 {
+        err := fmt.Errorf("user ID must be positive")
+        r.logger.Error("Invalid user ID parameter", r.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id": requestID,
+            "user_id":    userID,
+            "error":      err.Error(),
+        }))
+        appErr := r.errorHandler.Handle(err, operation, r.layerContext.Domain, operationCtx)
+        return account_dto.Account{}, appErr
+    }
+
+    // Use SQLBoiler ORM instead of raw SQL to handle nullable fields properly
+    r.logger.Debug("Executing database query", r.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id": requestID,
+        "operation":  operation,
+        "user_id":    userID,
+    }))
+
+    dbStartTime := time.Now()
+    
+    // Use SQLBoiler query with proper nullable field handling
+    ormAccount, err := orm.Accounts(
+        qm.Where("id = ?", userID),
+        qm.And("deleted_at IS NULL"),
+    ).One(ctx, r.db)
+    
+    dbDuration := time.Since(dbStartTime)
+
+    if err != nil {
+        operationCtx["database_error"] = "failed to query user by ID"
+        operationCtx["database_duration_ms"] = dbDuration.Milliseconds()
+
+        if errors.Is(err, sql.ErrNoRows) {
+            r.logger.Info("User not found by ID", r.layerContext.MergeWithContext(map[string]interface{}{
+                "request_id":           requestID,
+                "user_id":              userID,
+                "database_duration_ms": dbDuration.Milliseconds(),
+                "result":               "not_found",
+            }))
+
+            operationCtx["error_type"] = "not_found"
+            appErr := r.errorHandler.Handle(err, operation, r.layerContext.Domain, operationCtx)
+            return account_dto.Account{}, appErr
+        }
+
+        r.logger.ErrorWithDomainAndCause("Database query failed", r.layerContext.Domain,
+            core.CauseDatabaseError, core.LayerRepository, operation,
+            r.layerContext.MergeWithContext(map[string]interface{}{
+                "request_id":           requestID,
+                "user_id":              userID,
+                "database_duration_ms": dbDuration.Milliseconds(),
+                "error":                err.Error(),
+            }))
+        appErr := r.errorHandler.Handle(err, operation, r.layerContext.Domain, operationCtx)
+        return account_dto.Account{}, appErr
+    }
+
+    // Convert ORM to DTO using the existing mapping function
+    user := r.mapORMToDTO(ormAccount)
+
+    // Log successful operation
+    totalDuration := time.Since(startTime)
+    r.logger.Info(core.MsgOperationCompleted, r.layerContext.MergeWithContext(map[string]interface{}{
+        "request_id":           requestID,
+        "operation":            operation,
+        "user_id":              user.ID,
+        "email":                utils.MaskEmail(user.Email),
+        "role":                 user.Role,
+        "branch_id":            user.BranchID,
+        "status":               user.Status,
+        "success":              true,
+        "duration_ms":          totalDuration.Milliseconds(),
+        "database_duration_ms": dbDuration.Milliseconds(),
+    }))
+
+    return user, nil
+}

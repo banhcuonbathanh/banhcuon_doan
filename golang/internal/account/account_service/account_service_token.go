@@ -4,6 +4,8 @@ import (
 	"context"
 	"english-ai-full/internal/account/account_dto"
 	pb "english-ai-full/internal/proto_qr/account"
+	"english-ai-full/utils"
+	utils_config "english-ai-full/utils/config"
 	"fmt"
 	"strconv"
 	"time"
@@ -59,7 +61,7 @@ func (s *AccountService) RunDailyCleanup(ctx context.Context, req *pb.RunDailyCl
 func (s *AccountService) RefreshToken(ctx context.Context, req *pb.RefreshTokenReq) (*pb.RefreshTokenRes, error) {
 	const operation = "refresh_token"
 	startTime := time.Now()
-	
+	   requestID := fmt.Sprintf("service_req_%d", time.Now().UnixNano())
 	s.logger.SetOperation(operation)
 	
 	// Validate request
@@ -71,14 +73,14 @@ func (s *AccountService) RefreshToken(ctx context.Context, req *pb.RefreshTokenR
 			Success: false,
 		}, status.Error(codes.InvalidArgument, "Refresh token is required")
 	}
-	
+	cfg := utils_config.GetConfig()
 	// Parse and validate refresh token JWT
 	token, err := jwt.ParseWithClaims(req.RefreshToken, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
 		// Validate signing method
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(s.jwtSecret), nil
+		return []byte(cfg.JWT.SecretKey), nil
 	})
 	
 	if err != nil {
@@ -174,12 +176,14 @@ func (s *AccountService) RefreshToken(ctx context.Context, req *pb.RefreshTokenR
 	}
 	
 	// Check if user account is active
-	if user.Status != pb.AccountStatus_ACTIVE {
-		s.logger.Error("User account is not active", map[string]interface{}{
-			"operation": operation,
-			"user_id":   userID,
-			"status":    user.Status.String(),
-		})
+    if user.Status != "active" {
+	        s.logger.Error("Login attempt for inactive account", s.layerContext.MergeWithContext(map[string]interface{}{
+            "request_id":     requestID,
+            "operation":      operation,
+            "email":          utils.MaskEmail(user.Email),
+            "account_status": user.Status,
+            "user_id":        user.ID,
+        }))
 		return &pb.RefreshTokenRes{
 			Success: false,
 		}, status.Error(codes.PermissionDenied, "Account is not active")
@@ -225,9 +229,9 @@ func (s *AccountService) RefreshToken(ctx context.Context, req *pb.RefreshTokenR
 		})
 		// Don't fail the request if revocation fails, but log it
 	}
-	
+	  tokenExpiresAt := time.Now().Add(7 * 24 * time.Hour)
 	// Save new refresh token to repository
-	if err := s.userRepo.SaveRefreshToken(ctx, userID, newRefreshToken, refreshExpiresAt); err != nil {
+	if err := s.userRepo.StoreRefreshToken(ctx, userID, newRefreshToken,tokenExpiresAt ); err != nil {
 		s.logger.Error("Failed to save new refresh token", map[string]interface{}{
 			"error":     err.Error(),
 			"operation": operation,
@@ -246,7 +250,7 @@ func (s *AccountService) RefreshToken(ctx context.Context, req *pb.RefreshTokenR
 	})
 	
 	// Convert time.Time to protobuf Timestamp
-	expiresAtProto := timestamppb.New(accessExpiresAt)
+	expiresAtProto := timestamppb.New(tokenExpiresAt)
 	
 	return &pb.RefreshTokenRes{
 		Success:      true,
@@ -256,43 +260,4 @@ func (s *AccountService) RefreshToken(ctx context.Context, req *pb.RefreshTokenR
 	}, nil
 }
 
-// Helper function to generate access token
-func (s *AccountService) generateAccessToken(userID int64, email string) (string, time.Time, error) {
-	expiresAt := time.Now().Add(s.accessTokenTTL) // e.g., 15 minutes
-	
-	claims := jwt.RegisteredClaims{
-		Subject:   strconv.FormatInt(userID, 10),
-		ExpiresAt: jwt.NewNumericDate(expiresAt),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		Issuer:    "english-ai-service",
-	}
-	
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(s.jwtSecret))
-	if err != nil {
-		return "", time.Time{}, err
-	}
-	
-	return tokenString, expiresAt, nil
-}
 
-// Helper function to generate refresh token
-func (s *AccountService) generateRefreshToken(userID int64) (string, time.Time, error) {
-	expiresAt := time.Now().Add(s.refreshTokenTTL) // e.g., 7 days
-	
-	claims := jwt.RegisteredClaims{
-		Subject:   strconv.FormatInt(userID, 10),
-		ExpiresAt: jwt.NewNumericDate(expiresAt),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		Issuer:    "english-ai-service",
-	}
-	
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(s.jwtSecret))
-	if err != nil {
-		return "", time.Time{}, err
-	}
-	
-	return tokenString, expiresAt, nil
-}
-// new adasdfsdfs

@@ -22,6 +22,8 @@ const (
 	AccountService_CreateUser_FullMethodName      = "/account_proto.AccountService/CreateUser"
 	AccountService_Login_FullMethodName           = "/account_proto.AccountService/Login"
 	AccountService_RunDailyCleanup_FullMethodName = "/account_proto.AccountService/RunDailyCleanup"
+	AccountService_RefreshToken_FullMethodName    = "/account_proto.AccountService/RefreshToken"
+	AccountService_ValidateToken_FullMethodName   = "/account_proto.AccountService/ValidateToken"
 )
 
 // AccountServiceClient is the client API for AccountService service.
@@ -35,6 +37,8 @@ type AccountServiceClient interface {
 	// rpc FindByEmail(FindByEmailReq) returns (AccountRes);
 	Login(ctx context.Context, in *LoginReq, opts ...grpc.CallOption) (*AccountRes, error)
 	RunDailyCleanup(ctx context.Context, in *RunDailyCleanupReq, opts ...grpc.CallOption) (*RunDailyCleanupRes, error)
+	RefreshToken(ctx context.Context, in *RefreshTokenReq, opts ...grpc.CallOption) (*RefreshTokenRes, error)
+	ValidateToken(ctx context.Context, in *ValidateTokenReq, opts ...grpc.CallOption) (*ValidateTokenRes, error)
 }
 
 type accountServiceClient struct {
@@ -75,6 +79,26 @@ func (c *accountServiceClient) RunDailyCleanup(ctx context.Context, in *RunDaily
 	return out, nil
 }
 
+func (c *accountServiceClient) RefreshToken(ctx context.Context, in *RefreshTokenReq, opts ...grpc.CallOption) (*RefreshTokenRes, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RefreshTokenRes)
+	err := c.cc.Invoke(ctx, AccountService_RefreshToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountServiceClient) ValidateToken(ctx context.Context, in *ValidateTokenReq, opts ...grpc.CallOption) (*ValidateTokenRes, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ValidateTokenRes)
+	err := c.cc.Invoke(ctx, AccountService_ValidateToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AccountServiceServer is the server API for AccountService service.
 // All implementations must embed UnimplementedAccountServiceServer
 // for forward compatibility.
@@ -86,6 +110,8 @@ type AccountServiceServer interface {
 	// rpc FindByEmail(FindByEmailReq) returns (AccountRes);
 	Login(context.Context, *LoginReq) (*AccountRes, error)
 	RunDailyCleanup(context.Context, *RunDailyCleanupReq) (*RunDailyCleanupRes, error)
+	RefreshToken(context.Context, *RefreshTokenReq) (*RefreshTokenRes, error)
+	ValidateToken(context.Context, *ValidateTokenReq) (*ValidateTokenRes, error)
 	mustEmbedUnimplementedAccountServiceServer()
 }
 
@@ -104,6 +130,12 @@ func (UnimplementedAccountServiceServer) Login(context.Context, *LoginReq) (*Acc
 }
 func (UnimplementedAccountServiceServer) RunDailyCleanup(context.Context, *RunDailyCleanupReq) (*RunDailyCleanupRes, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunDailyCleanup not implemented")
+}
+func (UnimplementedAccountServiceServer) RefreshToken(context.Context, *RefreshTokenReq) (*RefreshTokenRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RefreshToken not implemented")
+}
+func (UnimplementedAccountServiceServer) ValidateToken(context.Context, *ValidateTokenReq) (*ValidateTokenRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ValidateToken not implemented")
 }
 func (UnimplementedAccountServiceServer) mustEmbedUnimplementedAccountServiceServer() {}
 func (UnimplementedAccountServiceServer) testEmbeddedByValue()                        {}
@@ -180,6 +212,42 @@ func _AccountService_RunDailyCleanup_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccountService_RefreshToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RefreshTokenReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountServiceServer).RefreshToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountService_RefreshToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountServiceServer).RefreshToken(ctx, req.(*RefreshTokenReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AccountService_ValidateToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ValidateTokenReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountServiceServer).ValidateToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountService_ValidateToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountServiceServer).ValidateToken(ctx, req.(*ValidateTokenReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AccountService_ServiceDesc is the grpc.ServiceDesc for AccountService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -198,6 +266,14 @@ var AccountService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RunDailyCleanup",
 			Handler:    _AccountService_RunDailyCleanup_Handler,
+		},
+		{
+			MethodName: "RefreshToken",
+			Handler:    _AccountService_RefreshToken_Handler,
+		},
+		{
+			MethodName: "ValidateToken",
+			Handler:    _AccountService_ValidateToken_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

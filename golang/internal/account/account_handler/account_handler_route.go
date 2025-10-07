@@ -35,7 +35,7 @@ func RegisterRoutesAccountHandler(r *chi.Mux, accountHandler *AccountHandler) {
 			r.Post("/login", accountHandler.Login)
 				r.Post("/dailyCleanup", accountHandler.DailyCleanup)
 			// r.Post("/logout", accountHandler.Logout)
-			// r.Post("/refresh-token", accountHandler.RefreshToken)
+			r.Post("/refresh-token", accountHandler.RefreshToken)
 			// r.Post("/validate-token", accountHandler.ValidateToken)
 		})
 		
